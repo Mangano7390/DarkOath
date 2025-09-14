@@ -263,6 +263,9 @@ const ChatComponent = ({ roomCode, currentPlayerId, currentPlayerName }) => {
     </Card>
   );
 };
+
+// Players List Component
+const PlayersList = ({ players, currentPlayerId, regentSeat, deadPlayers }) => {
   const { t } = useTranslation();
   
   return (
