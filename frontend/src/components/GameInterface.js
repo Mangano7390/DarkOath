@@ -176,8 +176,93 @@ const DecreeTrack = ({ tracks, powers }) => {
   );
 };
 
-// Players List Component
-const PlayersList = ({ players, currentPlayerId, regentSeat, deadPlayers }) => {
+// Chat Component
+const ChatComponent = ({ roomCode, currentPlayerId, currentPlayerName }) => {
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [isSending, setIsSending] = useState(false);
+
+  const sendMessage = async () => {
+    if (!newMessage.trim() || isSending) return;
+
+    setIsSending(true);
+    try {
+      await axios.post(`${API}/rooms/${roomCode}/chat?player_id=${currentPlayerId}&message=${encodeURIComponent(newMessage)}`);
+      setNewMessage('');
+    } catch (error) {
+      console.error('Error sending message:', error);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+
+  // Mock some initial messages for now
+  useEffect(() => {
+    const mockMessages = [
+      { id: 1, player_name: 'Système', message: 'La partie a commencé !', timestamp: new Date().toISOString(), type: 'system' },
+      { id: 2, player_name: currentPlayerName, message: 'Salut tout le monde !', timestamp: new Date().toISOString(), type: 'player' }
+    ];
+    setMessages(mockMessages);
+  }, [currentPlayerName]);
+
+  return (
+    <Card className="h-80">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-lg flex items-center">
+          <MessageCircle className="h-5 w-5 mr-2" />
+          Chat de la partie
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col h-64">
+        <ScrollArea className="flex-1 mb-3">
+          <div className="space-y-2">
+            {messages.map((msg) => (
+              <div key={msg.id} className={`p-2 rounded-lg text-sm ${
+                msg.type === 'system' 
+                  ? 'bg-blue-100 text-blue-800 italic' 
+                  : msg.player_name === currentPlayerName
+                  ? 'bg-amber-100 text-amber-800 ml-4'
+                  : 'bg-gray-100 text-gray-800'
+              }`}>
+                <div className="font-medium text-xs">
+                  {msg.player_name}
+                  <span className="text-xs opacity-60 ml-2">
+                    {new Date(msg.timestamp).toLocaleTimeString()}
+                  </span>
+                </div>
+                <div>{msg.message}</div>
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+        <div className="flex space-x-2">
+          <Input
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Tapez votre message..."
+            className="flex-1"
+            maxLength={200}
+          />
+          <Button 
+            onClick={sendMessage}
+            disabled={!newMessage.trim() || isSending}
+            size="sm"
+          >
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
   const { t } = useTranslation();
   
   return (
