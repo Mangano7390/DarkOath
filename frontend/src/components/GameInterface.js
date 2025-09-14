@@ -163,16 +163,16 @@ const DecreeTrack = ({ tracks, powers }) => {
       </Card>
       
       {/* Crisis Track */}
-      <Card className="bg-gray-50 border-gray-200">
+      <Card className="game-info-parchment">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Piste de Crise</CardTitle>
+          <CardTitle className="text-sm font-cinzel">Piste de Crise</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center space-x-2">
             <Progress value={(tracks.crisis / 3) * 100} className="flex-1" />
-            <span className="text-sm font-medium">{tracks.crisis}/3</span>
+            <span className="text-sm font-medium font-fell">{tracks.crisis}/3</span>
           </div>
-          <p className="text-xs text-gray-600 mt-1">
+          <p className="text-xs text-amber-700 mt-1 font-fell">
             3 échecs consécutifs → Adoption automatique
           </p>
         </CardContent>
