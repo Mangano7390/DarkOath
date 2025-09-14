@@ -558,23 +558,96 @@ const GameInterface = ({ roomCode }) => {
           
           {/* Center Column - Game Actions & Chat */}
           <div className="space-y-4">
+            {/* Game Actions */}
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Actions de Jeu</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-center p-6">
-                  <Crown className="h-12 w-12 text-amber-600 mx-auto mb-4" />
-                  <p className="text-amber-800 text-lg mb-4">
-                    🎉 Interface de jeu chargée avec succès !
-                  </p>
-                  <div className="space-y-2 text-sm text-amber-700">
-                    <p>✅ Room: {roomCode}</p>
-                    <p>✅ Votre rôle: {playerRole}</p>
-                    <p>✅ Phase: {gameState.phase}</p>
-                    <p>✅ Joueurs: {gameState.players?.length || 0}</p>
-                  </div>
+                {/* Debug Info */}
+                <div className="mb-4 p-3 bg-gray-100 rounded text-xs">
+                  <p><strong>Debug:</strong> Phase: {gameState.phase} | Régent: Siège {gameState.regent_seat} | Nominee: {gameState.nominee_seat || 'Aucun'}</p>
+                  <p>Joueurs vivants: {gameState.players?.filter(p => p.alive).length || 0}</p>
                 </div>
+
+                {/* Phase-specific actions */}
+                {gameState.phase === 'NOMINATION' && (
+                  <NominationPanel
+                    meSeat={gameState.players?.find(p => p.id === currentPlayerId)?.seat}
+                    regentSeat={gameState.regent_seat}
+                    players={gameState.players || []}
+                    prevGovernment={gameState.prev_government}
+                    onNominate={async (seat) => {
+                      console.log('Nominating seat:', seat);
+                      try {
+                        await axios.post(`${API}/rooms/${roomCode}/action?player_id=${currentPlayerId}&action_type=NOMINATE`, {
+                          nomineeSeat: seat
+                        });
+                        console.log('Nomination successful');
+                      } catch (error) {
+                        console.error('Nomination failed:', error);
+                        alert('Erreur lors de la nomination: ' + (error.response?.data?.detail || error.message));
+                      }
+                    }}
+                  />
+                )}
+
+                {gameState.phase === 'VOTE' && (
+                  <VotePanel
+                    players={gameState.players || []}
+                    regentSeat={gameState.regent_seat}
+                    nomineeSeat={gameState.nominee_seat}
+                    votes={gameState.votes || {}}
+                    myVote={gameState.votes?.[currentPlayerId]}
+                    onVote={async (vote) => {
+                      console.log('Voting:', vote);
+                      try {
+                        await axios.post(`${API}/rooms/${roomCode}/action?player_id=${currentPlayerId}&action_type=VOTE`, {
+                          vote: vote
+                        });
+                        console.log('Vote successful');
+                      } catch (error) {
+                        console.error('Vote failed:', error);
+                        alert('Erreur lors du vote: ' + (error.response?.data?.detail || error.message));
+                      }
+                    }}
+                  />
+                )}
+
+                {(gameState.phase === 'LEGIS_REGENT' || gameState.phase === 'LEGIS_CHAMBELLAN') && (
+                  <LegislativePanel
+                    phase={gameState.phase}
+                    mySeat={gameState.players?.find(p => p.id === currentPlayerId)?.seat}
+                    regentSeat={gameState.regent_seat}
+                    chambellanSeat={gameState.nominee_seat}
+                    players={gameState.players || []}
+                    cards={gameState.legislative_cards || []}
+                    onDiscard={async (cardId) => {
+                      console.log('Discarding card:', cardId);
+                      try {
+                        await axios.post(`${API}/rooms/${roomCode}/action?player_id=${currentPlayerId}&action_type=DISCARD`, {
+                          cardId: cardId
+                        });
+                        console.log('Discard successful');
+                      } catch (error) {
+                        console.error('Discard failed:', error);
+                        alert('Erreur lors de la défausse: ' + (error.response?.data?.detail || error.message));
+                      }
+                    }}
+                  />
+                )}
+
+                {!['NOMINATION', 'VOTE', 'LEGIS_REGENT', 'LEGIS_CHAMBELLAN'].includes(gameState.phase) && (
+                  <div className="text-center p-6">
+                    <Clock className="h-12 w-12 text-amber-600 mx-auto mb-4" />
+                    <p className="text-amber-800 text-lg mb-4">
+                      Phase: {gameState.phase}
+                    </p>
+                    <p className="text-amber-600 text-sm">
+                      Actions en cours de développement pour cette phase
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
