@@ -94,9 +94,9 @@ const DecreeTrack = ({ tracks, powers }) => {
   return (
     <div className="space-y-4">
       {/* Loyal Track */}
-      <Card className="bg-blue-50 border-blue-200">
+      <Card className="game-info-parchment">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center space-x-2">
+          <CardTitle className="text-sm flex items-center space-x-2 font-cinzel">
             <Shield className="h-4 w-4 text-blue-600" />
             <span>Décrets Loyaux</span>
           </CardTitle>
@@ -115,7 +115,7 @@ const DecreeTrack = ({ tracks, powers }) => {
                 {index + 1}
               </div>
             ))}
-            <div className="ml-4 text-sm text-blue-700 font-medium flex items-center">
+            <div className="ml-4 text-sm text-blue-700 font-medium flex items-center font-fell">
               {tracks.loyal}/5 pour la victoire
             </div>
           </div>
@@ -123,9 +123,9 @@ const DecreeTrack = ({ tracks, powers }) => {
       </Card>
       
       {/* Conjure Track */}
-      <Card className="bg-red-50 border-red-200">
+      <Card className="game-info-parchment">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center space-x-2">
+          <CardTitle className="text-sm flex items-center space-x-2 font-cinzel">
             <Sword className="h-4 w-4 text-red-600" />
             <span>Décrets Conjurés</span>
           </CardTitle>
