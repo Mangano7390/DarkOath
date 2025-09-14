@@ -206,16 +206,16 @@ const LandingPage = () => {
 
             {/* Join/Create Section */}
             <Tabs defaultValue="create" className="w-full max-w-2xl mx-auto">
-              <TabsList className="grid w-full grid-cols-2 bg-amber-100 border-2 border-gold-accent">
+              <TabsList className="grid w-full grid-cols-2 bg-amber-100 border-2 border-yellow-600">
                 <TabsTrigger 
                   value="create" 
-                  className="font-cinzel font-semibold data-[state=active]:bg-gold-accent data-[state=active]:text-white"
+                  className="font-cinzel font-semibold data-[state=active]:bg-yellow-600 data-[state=active]:text-white"
                 >
                   🏰 Créer une salle
                 </TabsTrigger>
                 <TabsTrigger 
                   value="join"
-                  className="font-cinzel font-semibold data-[state=active]:bg-gold-accent data-[state=active]:text-white"
+                  className="font-cinzel font-semibold data-[state=active]:bg-yellow-600 data-[state=active]:text-white"
                 >
                   ⚔️ Rejoindre une salle
                 </TabsTrigger>
