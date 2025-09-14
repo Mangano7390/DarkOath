@@ -174,91 +174,102 @@ class VotingPermissionsTest:
         """Test the critical voting permissions bug fix"""
         print(f"\n🗳️  Testing voting permissions (CRITICAL BUG FIX)")
         
-        # Get current game state to identify players by seat
+        # Get current game state to verify phase and players
         success, game_state = self.make_request(
             'GET',
             f'rooms/{self.room_code}/game_state',
-            params={"player_id": self.existing_player_id}
+            params={"player_id": self.players[0]['id']}
         )
         
         if not success:
             return self.log_test("Get game state for voting", False, "- Failed to get game state")
         
-        players_by_seat = {}
-        for player in game_state.get('players', []):
-            players_by_seat[player['seat']] = player
-        
         regent_seat = game_state.get('regent_seat', 1)
         nominee_seat = game_state.get('nominee_seat', 2)
+        phase = game_state.get('phase')
         
+        print(f"   Current phase: {phase}")
         print(f"   Regent seat: {regent_seat}, Nominee seat: {nominee_seat}")
         
-        # Test 1: Regent (seat 1) should NOT be able to vote
-        regent_player = players_by_seat.get(regent_seat)
-        if regent_player:
-            print(f"   Testing regent voting restriction...")
-            success, response = self.make_request(
-                'POST',
-                f'rooms/{self.room_code}/action',
-                data={"vote": "oui"},
-                params={"player_id": regent_player['id'], "action_type": "VOTE"},
-                expected_status=400  # Should fail with permission denied
-            )
-            
-            regent_blocked = success  # Success means we got expected 400 error
-            self.log_test("Regent voting blocked", regent_blocked, 
-                         "- Regent correctly blocked from voting" if regent_blocked else "- Regent incorrectly allowed to vote")
-        else:
-            regent_blocked = False
-            self.log_test("Regent voting blocked", False, "- Could not find regent player")
+        if phase != 'VOTE':
+            return self.log_test("Voting phase check", False, f"- Expected VOTE phase, got {phase}")
         
-        # Test 2: Nominee/Chambellan (seat 2) should NOT be able to vote  
-        nominee_player = players_by_seat.get(nominee_seat)
-        if nominee_player:
-            print(f"   Testing nominee voting restriction...")
-            success, response = self.make_request(
-                'POST',
-                f'rooms/{self.room_code}/action',
-                data={"vote": "oui"},
-                params={"player_id": nominee_player['id'], "action_type": "VOTE"},
-                expected_status=400  # Should fail with permission denied
-            )
-            
-            nominee_blocked = success  # Success means we got expected 400 error
-            self.log_test("Nominee voting blocked", nominee_blocked,
-                         "- Nominee correctly blocked from voting" if nominee_blocked else "- Nominee incorrectly allowed to vote")
-        else:
-            nominee_blocked = False
-            self.log_test("Nominee voting blocked", False, "- Could not find nominee player")
+        # Test 1: Regent (seat 1) should NOT be able to vote - expect HTTP 400
+        regent_player = self.players[0]  # Alice, seat 1
+        print(f"   Testing regent {regent_player['name']} (seat {regent_player['seat']}) voting restriction...")
+        success, response = self.make_request(
+            'POST',
+            f'rooms/{self.room_code}/action',
+            data={"vote": "oui"},
+            params={"player_id": regent_player['id'], "action_type": "VOTE"},
+            expected_status=400  # Should fail with permission denied
+        )
         
-        # Test 3: Other players (seats 3, 4, 5) SHOULD be able to vote
+        regent_blocked = success  # Success means we got expected 400 error
+        if regent_blocked and response.get('detail') == "Regent cannot vote":
+            print(f"     ✅ Regent correctly blocked with proper error message")
+        elif regent_blocked:
+            print(f"     ⚠️ Regent blocked but error message different: {response.get('detail', 'No detail')}")
+        else:
+            print(f"     ❌ CRITICAL: Regent was allowed to vote!")
+        
+        self.log_test("Regent voting blocked", regent_blocked, 
+                     "- Regent correctly blocked from voting" if regent_blocked else "- CRITICAL: Regent incorrectly allowed to vote")
+        
+        # Test 2: Nominee (seat 2) should NOT be able to vote - expect HTTP 400
+        nominee_player = self.players[1]  # Bob, seat 2
+        print(f"   Testing nominee {nominee_player['name']} (seat {nominee_player['seat']}) voting restriction...")
+        success, response = self.make_request(
+            'POST',
+            f'rooms/{self.room_code}/action',
+            data={"vote": "oui"},
+            params={"player_id": nominee_player['id'], "action_type": "VOTE"},
+            expected_status=400  # Should fail with permission denied
+        )
+        
+        nominee_blocked = success  # Success means we got expected 400 error
+        if nominee_blocked and response.get('detail') == "Nominee cannot vote":
+            print(f"     ✅ Nominee correctly blocked with proper error message")
+        elif nominee_blocked:
+            print(f"     ⚠️ Nominee blocked but error message different: {response.get('detail', 'No detail')}")
+        else:
+            print(f"     ❌ CRITICAL: Nominee was allowed to vote!")
+            
+        self.log_test("Nominee voting blocked", nominee_blocked,
+                     "- Nominee correctly blocked from voting" if nominee_blocked else "- CRITICAL: Nominee incorrectly allowed to vote")
+        
+        # Test 3: Eligible voters (seats 3, 4, 5) SHOULD be able to vote - expect HTTP 200
+        eligible_voters = self.players[2:5]  # Charlie, Diana, Eve (seats 3, 4, 5)
         voting_allowed_count = 0
-        for seat in [3, 4, 5]:
-            player = players_by_seat.get(seat)
-            if player:
-                print(f"   Testing seat {seat} voting permission...")
-                success, response = self.make_request(
-                    'POST',
-                    f'rooms/{self.room_code}/action',
-                    data={"vote": "oui"},
-                    params={"player_id": player['id'], "action_type": "VOTE"},
-                    expected_status=200  # Should succeed
-                )
-                
-                if success:
-                    voting_allowed_count += 1
-                    print(f"     ✅ Seat {seat} successfully voted")
-                else:
-                    print(f"     ❌ Seat {seat} incorrectly blocked from voting")
         
-        other_players_can_vote = (voting_allowed_count >= 2)  # At least 2 out of 3 should work
-        self.log_test("Other players can vote", other_players_can_vote,
-                     f"- {voting_allowed_count}/3 non-government players can vote")
+        for i, player in enumerate(eligible_voters):
+            vote_choice = "oui" if i < 2 else "non"  # First 2 vote yes, last votes no
+            print(f"   Testing eligible voter {player['name']} (seat {player['seat']}) voting '{vote_choice}'...")
+            success, response = self.make_request(
+                'POST',
+                f'rooms/{self.room_code}/action',
+                data={"vote": vote_choice},
+                params={"player_id": player['id'], "action_type": "VOTE"},
+                expected_status=200  # Should succeed
+            )
+            
+            if success:
+                voting_allowed_count += 1
+                print(f"     ✅ {player['name']} successfully voted '{vote_choice}'")
+            else:
+                print(f"     ❌ CRITICAL: Eligible voter {player['name']} was blocked from voting!")
+            
+            # Small delay between votes
+            time.sleep(0.2)
+        
+        other_players_can_vote = (voting_allowed_count == 3)  # All 3 should work
+        self.log_test("Eligible players can vote", other_players_can_vote,
+                     f"- {voting_allowed_count}/3 eligible players successfully voted")
         
         # Overall voting permissions test result
         overall_success = regent_blocked and nominee_blocked and other_players_can_vote
         return self.log_test("VOTING PERMISSIONS BUG FIX", overall_success,
-                           "- All voting restrictions working correctly" if overall_success else "- Voting permissions still have issues")
+                           "- All voting restrictions working correctly" if overall_success else "- CRITICAL: Voting permissions still have issues")
 
     def verify_vote_counting(self):
         """Verify that vote counting works correctly with filtered voters"""
