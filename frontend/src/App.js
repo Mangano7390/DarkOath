@@ -264,16 +264,16 @@ const LandingPage = () => {
               
               <TabsContent value="join" className="space-y-6 mt-8">
                 <div className="text-center">
-                  <h3 className="font-cinzel text-2xl font-bold text-medieval-brown mb-4">
+                  <h3 className="font-cinzel text-2xl font-bold text-amber-900 mb-4">
                     Rejoindre un royaume
                   </h3>
-                  <p className="font-fell text-medieval-brown mb-6">
+                  <p className="font-fell text-amber-900 mb-6">
                     Un seigneur vous a-t-il invité dans son château ?
                   </p>
                   
                   <div className="space-y-4">
                     <div>
-                      <Label htmlFor="join-name" className="font-cinzel font-semibold text-medieval-brown">
+                      <Label htmlFor="join-name" className="font-cinzel font-semibold text-amber-900">
                         Votre nom de noble
                       </Label>
                       <Input
@@ -286,7 +286,7 @@ const LandingPage = () => {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="room-code" className="font-cinzel font-semibold text-medieval-brown">
+                      <Label htmlFor="room-code" className="font-cinzel font-semibold text-amber-900">
                         Code du royaume
                       </Label>
                       <Input
