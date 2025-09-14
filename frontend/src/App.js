@@ -388,7 +388,4 @@ const GameWrapper = () => {
   return <Game roomCode={roomCode} />;
 };
 
-// Import useParams hook
-import { useParams } from 'react-router-dom';
-
 export default App;
