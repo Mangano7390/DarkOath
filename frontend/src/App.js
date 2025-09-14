@@ -232,7 +232,7 @@ const LandingPage = () => {
                   
                   <div className="space-y-4">
                     <div>
-                      <Label htmlFor="create-name" className="font-cinzel font-semibold text-medieval-brown">
+                      <Label htmlFor="create-name" className="font-cinzel font-semibold text-amber-900">
                         Votre nom de noble
                       </Label>
                       <Input
