@@ -1,11 +1,6 @@
 import React from "react";
 
-interface MedievalTableProps {
-  players: { seat: number; name: string; active?: boolean }[];
-  size?: number; // taille du SVG
-}
-
-export default function MedievalTable({ players, size = 500 }: MedievalTableProps) {
+const MedievalTable = ({ players, size = 500 }) => {
   const radius = size / 2 - 60; // rayon où placer les chaises/pseudos
   const tableRadius = size / 3; // taille de la table ronde
 
@@ -73,4 +68,6 @@ export default function MedievalTable({ players, size = 500 }: MedievalTableProp
       })}
     </svg>
   );
-}
+};
+
+export default MedievalTable;
