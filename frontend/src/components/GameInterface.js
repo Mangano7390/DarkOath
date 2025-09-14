@@ -496,14 +496,22 @@ const GameInterface = ({ roomCode }) => {
   
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-900 via-amber-800 to-orange-900 flex items-center justify-center">
-        <Card className="bg-amber-50/95 backdrop-blur-sm border-amber-200 shadow-xl p-8">
-          <div className="text-center">
-            <div className="animate-spin h-8 w-8 border-4 border-amber-600 border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-amber-800 text-lg">Chargement de la partie...</p>
-            <p className="text-amber-600 text-sm mt-2">Room: {roomCode}</p>
-          </div>
-        </Card>
+      <div className="medieval-room">
+        {/* Atmospheric elements */}
+        <div className="torch-light"></div>
+        <div className="torch-light"></div>
+        <div className="torch-light"></div>
+        <div className="torch-light"></div>
+        
+        <div className="flex items-center justify-center min-h-screen">
+          <Card className="game-info-parchment shadow-2xl p-8">
+            <div className="text-center">
+              <div className="animate-spin h-8 w-8 border-4 border-amber-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+              <p className="text-amber-800 text-lg font-cinzel">Préparation de la salle du conseil...</p>
+              <p className="text-amber-600 text-sm mt-2 font-fell">Room: {roomCode}</p>
+            </div>
+          </Card>
+        </div>
       </div>
     );
   }
