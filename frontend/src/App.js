@@ -137,7 +137,7 @@ const LandingPage = () => {
             variant="outline"
             size="sm"
             onClick={() => i18n.changeLanguage(i18n.language === 'fr' ? 'en' : 'fr')}
-            className="medieval-banner"
+            className="bg-red-800 text-yellow-200 border-yellow-600 hover:bg-red-700 font-cinzel font-semibold px-6 py-2"
           >
             <Globe className="h-4 w-4 mr-2" />
             {i18n.language === 'fr' ? 'English' : 'Français'}
