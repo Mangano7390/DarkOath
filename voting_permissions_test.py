@@ -272,14 +272,17 @@ class VotingPermissionsTest:
                            "- All voting restrictions working correctly" if overall_success else "- CRITICAL: Voting permissions still have issues")
 
     def verify_vote_counting(self):
-        """Verify that vote counting works correctly with filtered voters"""
+        """Verify that vote counting works correctly with only 3 eligible voters"""
         print(f"\n📊 Testing vote counting logic")
+        
+        # Wait a moment for vote processing
+        time.sleep(1)
         
         # Get final game state to check vote results
         success, game_state = self.make_request(
             'GET',
             f'rooms/{self.room_code}/game_state',
-            params={"player_id": self.existing_player_id}
+            params={"player_id": self.players[0]['id']}
         )
         
         if not success:
@@ -288,13 +291,26 @@ class VotingPermissionsTest:
         votes = game_state.get('votes', {})
         phase = game_state.get('phase')
         
-        print(f"   Current votes: {len(votes)}")
+        print(f"   Votes recorded: {len(votes)}")
         print(f"   Current phase: {phase}")
         
         # Check if voting completed and moved to next phase
-        vote_counting_works = len(votes) > 0
-        return self.log_test("Vote counting verification", vote_counting_works,
-                           f"- {len(votes)} votes recorded, phase: {phase}")
+        # Should have moved to LEGIS_REGENT (if government elected) or NOMINATION (if rejected)
+        voting_completed = phase in ['LEGIS_REGENT', 'NOMINATION']
+        vote_count_correct = len(votes) == 3  # Only 3 eligible voters
+        
+        success = voting_completed and vote_count_correct
+        
+        if voting_completed:
+            if phase == 'LEGIS_REGENT':
+                print(f"   ✅ Government elected - moved to LEGIS_REGENT phase")
+            elif phase == 'NOMINATION':
+                print(f"   ✅ Government rejected - moved to next regent")
+        else:
+            print(f"   ❌ Voting did not complete properly - still in {phase} phase")
+        
+        return self.log_test("Vote counting verification", success,
+                           f"- {len(votes)} votes recorded, completed: {voting_completed}, phase: {phase}")
 
     def run_all_tests(self):
         """Run all voting permissions tests"""
