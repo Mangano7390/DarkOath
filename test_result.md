@@ -101,3 +101,64 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+user_problem_statement: Fix the bug where the Régent and Chambellan can vote, and ensure legislative cards are displayed during the LEGIS_REGENT phase.
+
+backend:
+  - task: "VOTE action permissions validation"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "Backend correctly allows voting, frontend handles permission filtering"
+
+frontend:
+  - task: "Fix VotePanel missing mySeat prop bug"
+    implemented: true
+    working: false
+    file: "frontend/src/components/GameInterface.js" 
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: false
+          agent: "user"
+          comment: "Regent and Chambellan incorrectly allowed to vote due to missing mySeat prop"
+        - working: true
+          agent: "main"
+          comment: "Added mySeat prop to VotePanel component to fix voting permissions"
+
+  - task: "Legislative cards display during LEGIS_REGENT phase"
+    implemented: false
+    working: false
+    file: "frontend/src/components/LegislativePanel.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: false
+          agent: "user"
+          comment: "Cards not displayed during LEGIS_REGENT phase - shows 'En attente des cartes...'"
+
+metadata:
+  created_by: "main_agent"
+  version: "1.0"
+  test_sequence: 1
+  run_ui: false
+
+test_plan:
+  current_focus:
+    - "Fix VotePanel missing mySeat prop bug"
+    - "Legislative cards display during LEGIS_REGENT phase"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+    -agent: "main"
+    -message: "Fixed the voting permissions bug by adding the missing mySeat prop to VotePanel component. This was causing all players including Regent and Chambellan to be able to vote. Ready to test this fix and then address the legislative cards display issue."
