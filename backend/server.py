@@ -319,11 +319,17 @@ async def handle_game_action(room_code: str, player_id: str, action_type: str, p
             })
             
         elif action_type == "VOTE":
-            # Anyone can vote during VOTE phase
+            # Only non-government players can vote during VOTE phase
             if game_state.turn.phase != Phase.VOTE:
                 raise HTTPException(status_code=400, detail="Wrong phase for voting")
             if not player.alive:
                 raise HTTPException(status_code=400, detail="Dead players cannot vote")
+            
+            # Check if player is regent or nominee - they cannot vote
+            if player.seat == game_state.turn.regent_seat:
+                raise HTTPException(status_code=400, detail="Regent cannot vote")
+            if player.seat == game_state.turn.nominee_seat:
+                raise HTTPException(status_code=400, detail="Nominee cannot vote")
             
             vote = payload.get("vote")
             if vote not in ["oui", "non"]:
