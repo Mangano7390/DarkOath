@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
 
-const VotePanel = ({ players, regentSeat, nomineeSeat, votes, myVote, onVote }) => {
+const VotePanel = ({ players, regentSeat, nomineeSeat, votes, myVote, mySeat, onVote }) => {
   const regent = players.find(p => p.seat === regentSeat);
   const nominee = players.find(p => p.seat === nomineeSeat);
   const alivePlayers = players.filter(p => p.alive);
