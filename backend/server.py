@@ -132,8 +132,8 @@ class WebSocketManager:
                 p.connected = True
                 return True
         
-        # Only check room capacity for new players
-        if len(game_state.players) >= 5:
+        # Only check room capacity for new players - now supports up to 10 players
+        if len(game_state.players) >= 10:
             return False
         
         # Add new player
@@ -147,11 +147,29 @@ class WebSocketManager:
         if not game_state or len(game_state.players) < 5:
             return False
         
-        # Assign roles for 5 players: 3 LOYAL, 1 CONJURE, 1 USURPATEUR
-        roles = [Role.LOYAL, Role.LOYAL, Role.LOYAL, Role.CONJURE, Role.USURPATEUR]
+        player_count = len(game_state.players)
+        
+        # Assign roles based on player count according to the rules
+        if player_count == 5:
+            roles = [Role.LOYAL, Role.LOYAL, Role.LOYAL, Role.CONJURE, Role.USURPATEUR]
+        elif player_count == 6:
+            roles = [Role.LOYAL, Role.LOYAL, Role.LOYAL, Role.LOYAL, Role.CONJURE, Role.USURPATEUR]
+        elif player_count == 7:
+            roles = [Role.LOYAL, Role.LOYAL, Role.LOYAL, Role.LOYAL, Role.CONJURE, Role.CONJURE, Role.USURPATEUR]
+        elif player_count == 8:
+            roles = [Role.LOYAL, Role.LOYAL, Role.LOYAL, Role.LOYAL, Role.LOYAL, Role.CONJURE, Role.CONJURE, Role.USURPATEUR]
+        elif player_count == 9:
+            roles = [Role.LOYAL, Role.LOYAL, Role.LOYAL, Role.LOYAL, Role.LOYAL, Role.CONJURE, Role.CONJURE, Role.CONJURE, Role.USURPATEUR]
+        elif player_count == 10:
+            roles = [Role.LOYAL, Role.LOYAL, Role.LOYAL, Role.LOYAL, Role.LOYAL, Role.LOYAL, Role.CONJURE, Role.CONJURE, Role.CONJURE, Role.USURPATEUR]
+        else:
+            return False
+        
+        # Shuffle roles randomly
         random.shuffle(roles)
         
-        for i, player in enumerate(game_state.players):
+        # Assign roles to players
+        for i, player in enumerate(game_state.players[:player_count]):
             player.role = roles[i]
         
         game_state.status = "in_progress"
