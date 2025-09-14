@@ -316,8 +316,16 @@ class VotingPermissionsTest:
         """Run all voting permissions tests"""
         print("🏰 SECRETUS REGNUM - VOTING PERMISSIONS BUG FIX TEST")
         print("=" * 60)
-        print(f"Testing room: {self.room_code}")
-        print(f"Existing player: {self.existing_player_id}")
+        print("TESTING REQUIREMENTS:")
+        print("1. Create NEW test room (old FJRTMA may be inconsistent)")
+        print("2. Add exactly 5 players and start game")
+        print("3. Test nomination phase: Regent nominates seat 2")
+        print("4. Test voting permissions:")
+        print("   - Regent (seat 1) should get HTTP 400: 'Regent cannot vote'")
+        print("   - Nominee (seat 2) should get HTTP 400: 'Nominee cannot vote'")
+        print("   - Other players (seats 3,4,5) should vote successfully")
+        print("5. Test vote counting: Only 3 votes needed to complete")
+        print("6. Test vote progress: Shows 3 total needed, not 5")
         print("=" * 60)
         
         # Run tests in sequence
