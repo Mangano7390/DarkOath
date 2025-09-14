@@ -126,6 +126,18 @@ backend:
           agent: "testing"
           comment: "✅ VOTING PERMISSIONS BUG FIX VERIFIED! Created new test room OPTREH with 5 players. Tested all requirements: 1) Regent (seat 1) correctly blocked with HTTP 400 'Regent cannot vote', 2) Nominee (seat 2) correctly blocked with HTTP 400 'Nominee cannot vote', 3) All 3 eligible voters (seats 3,4,5) successfully voted, 4) Vote counting works correctly - game moved to LEGIS_REGENT phase after exactly 3 votes (not 5), 5) Backend logs confirm proper 400/200 responses. All critical voting restrictions are working correctly."
 
+  - task: "Legislative phase card drawing and DISCARD action"
+    implemented: true
+    working: false
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "IMPLEMENTED: Added legislative_cards field to TurnState, implemented card drawing when government is elected (3 cards from deck), updated game_state API to show cards only to relevant players, and implemented DISCARD action handler for both LEGIS_REGENT and LEGIS_CHAMBELLAN phases with proper track updates and phase transitions."
+
 frontend:
   - task: "Fix VotePanel missing mySeat prop bug"
     implemented: true
