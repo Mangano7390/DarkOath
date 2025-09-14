@@ -14,6 +14,7 @@ import './styles/medieval.css';
 import axios from 'axios';
 import io from 'socket.io-client';
 import GameInterface from './components/GameInterface';
+import MedievalGameRoom from './components/MedievalGameRoom';
 import SimpleDemo from './components/SimpleDemo';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
