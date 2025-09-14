@@ -421,16 +421,16 @@ const RoleDisplay = ({ role }) => {
   const RoleIcon = roleInfo.icon;
   
   return (
-    <Card className={`bg-${roleInfo.color}-50 border-${roleInfo.color}-200`}>
+    <Card className="game-info-parchment">
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm">Votre Rôle</CardTitle>
+        <CardTitle className="text-sm font-cinzel">Votre Rôle</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="flex items-center space-x-3">
           <RoleIcon className={`h-8 w-8 text-${roleInfo.color}-600`} />
           <div>
-            <p className={`font-bold text-${roleInfo.color}-800`}>{roleInfo.name}</p>
-            <p className={`text-xs text-${roleInfo.color}-600`}>{roleInfo.description}</p>
+            <p className={`font-bold text-${roleInfo.color}-800 font-cinzel`}>{roleInfo.name}</p>
+            <p className={`text-xs text-${roleInfo.color}-600 font-fell`}>{roleInfo.description}</p>
           </div>
         </div>
       </CardContent>
