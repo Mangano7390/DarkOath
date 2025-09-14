@@ -352,6 +352,17 @@ async def handle_game_action(room_code: str, player_id: str, action_type: str, p
                     game_state.turn.phase = Phase.LEGIS_REGENT
                     game_state.tracks.crisis = 0  # Reset crisis on successful election
                     
+                    # Draw 3 cards from deck for the regent to examine
+                    if len(game_state.deck) >= 3:
+                        game_state.turn.legislative_cards = game_state.deck[:3]
+                        game_state.deck = game_state.deck[3:]
+                        game_state.turn.deck_count = len(game_state.deck)
+                    else:
+                        # Handle edge case where deck is almost empty
+                        game_state.turn.legislative_cards = game_state.deck.copy()
+                        game_state.deck = []
+                        game_state.turn.deck_count = 0
+                    
                     # Set previous government
                     game_state.turn.prev_government = {
                         "regent": game_state.turn.regent_seat,
