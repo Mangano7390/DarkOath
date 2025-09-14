@@ -93,7 +93,7 @@ export default function Board({
             {[0, 1, 2, 3].map((level) => (
               <g key={level} transform={`translate(${(level - 1.5) * 70}, 0)`}>
                 <CrisisToken 
-                  level={level as 0 | 1 | 2 | 3}
+                  level={level}
                   className={crisis >= level ? '' : 'opacity-30'}
                 />
                 <text 
