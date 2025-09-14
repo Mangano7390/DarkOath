@@ -64,7 +64,16 @@ const VotePanel = ({ players, regentSeat, nomineeSeat, votes, myVote, mySeat, on
           </div>
 
           {/* Voting Buttons */}
-          {!myVote ? (
+          {!canIVote ? (
+            <div className="text-center p-4 bg-yellow-100 rounded-lg border border-yellow-200">
+              <p className="font-medium text-yellow-800 mb-2">
+                Vous ne pouvez pas voter
+              </p>
+              <p className="text-sm text-yellow-700">
+                Les membres du gouvernement proposé ne peuvent pas voter.
+              </p>
+            </div>
+          ) : !myVote ? (
             <div className="space-y-3">
               <p className="text-center font-medium text-purple-900">
                 Votez pour ou contre ce gouvernement :
