@@ -9,6 +9,9 @@ import { ScrollArea } from './ui/scroll-area';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
+import NominationPanel from './NominationPanel';
+import VotePanel from './VotePanel';
+import LegislativePanel from './LegislativePanel';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
