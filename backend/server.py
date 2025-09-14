@@ -468,27 +468,6 @@ async def get_game_state(room_code: str, player_id: str):
         "version": game_state.version,
         "legislative_cards": legislative_cards
     }
-async def get_game_state(room_code: str, player_id: str):
-    """Get current game state for a specific player"""
-    game_state = manager.get_game_state(room_code)
-    if not game_state:
-        raise HTTPException(status_code=404, detail="Room not found")
-    
-    # Find the player
-    player = next((p for p in game_state.players if p.id == player_id), None)
-    if not player:
-        raise HTTPException(status_code=404, detail="Player not found")
-    
-    return {
-        "status": game_state.status,
-        "phase": game_state.turn.phase,
-        "regent_seat": game_state.turn.regent_seat,
-        "nominee_seat": game_state.turn.nominee_seat,
-        "tracks": game_state.tracks.dict(),
-        "crisis": game_state.tracks.crisis,
-        "your_role": player.role if player.role else None,
-        "players": [{"id": p.id, "name": p.name, "seat": p.seat, "alive": p.alive, "connected": p.connected} for p in game_state.players]
-    }
 @api_router.post("/rooms/{room_code}/start")
 async def start_game(room_code: str):
     success = manager.start_game(room_code)
