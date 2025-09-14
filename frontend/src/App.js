@@ -292,7 +292,7 @@ const Lobby = ({ roomCode }) => {
     console.log('Current players:', players.length);
     
     if (players.length < 5) {
-      alert(`Impossible de démarrer - il faut 5 joueurs (actuellement ${players.length})`);
+      alert(`Impossible de démarrer - il faut au minimum 5 joueurs (actuellement ${players.length})`);
       return;
     }
     
