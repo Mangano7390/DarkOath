@@ -187,6 +187,18 @@ const ChatComponent = ({ roomCode, currentPlayerId, currentPlayerName }) => {
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
 
+  // Initialize chat with system message
+  useEffect(() => {
+    const systemMessage = {
+      id: 'system-1',
+      player_name: 'Système',
+      message: 'La séance du conseil royal a commencé. Que les délibérations débutent !',
+      timestamp: new Date().toISOString(),
+      type: 'system'
+    };
+    setMessages([systemMessage]);
+  }, []);
+
   const sendMessage = async () => {
     if (!newMessage.trim() || isSending) return;
 
@@ -200,21 +212,22 @@ const ChatComponent = ({ roomCode, currentPlayerId, currentPlayerName }) => {
       });
       
       if (response.data.success) {
+        // Add message to local state immediately
+        const newMsg = {
+          id: Date.now(),
+          player_name: currentPlayerName,
+          message: newMessage,
+          timestamp: new Date().toISOString(),
+          type: 'player'
+        };
+        setMessages(prev => [...prev, newMsg]);
         setNewMessage('');
+        console.log('Message sent successfully:', newMessage);
       }
       
     } catch (error) {
       console.error('Error sending message:', error);
-      // Fallback: add message locally if API fails
-      const fallbackMsg = {
-        id: Date.now(),
-        player_name: currentPlayerName,
-        message: newMessage,
-        timestamp: new Date().toISOString(),
-        type: 'player'
-      };
-      setMessages(prev => [...prev, fallbackMsg]);  
-      setNewMessage('');
+      alert('Erreur lors de l\'envoi du message: ' + (error.response?.data?.detail || error.message));
     } finally {
       setIsSending(false);
     }
@@ -226,30 +239,6 @@ const ChatComponent = ({ roomCode, currentPlayerId, currentPlayerName }) => {
       sendMessage();
     }
   };
-
-  // Initialize with system message
-  useEffect(() => {
-    const initMessages = [
-      { 
-        id: 1, 
-        player_name: 'Système', 
-        message: 'La partie a commencé ! Bonne chance à tous.', 
-        timestamp: new Date().toISOString(), 
-        type: 'system' 
-      }
-    ];
-    setMessages(initMessages);
-  }, []);
-
-  // Simulate receiving messages from other players (since WebSocket is not working)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      // This would normally be handled by WebSocket, but for now we'll simulate it
-      // In a real implementation, this would listen to WebSocket messages or poll an API
-    }, 5000);
-    
-    return () => clearInterval(interval);
-  }, [roomCode]);
 
   return (
     <Card className="chat-parchment h-80 flex flex-col">
