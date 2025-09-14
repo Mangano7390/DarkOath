@@ -578,7 +578,7 @@ const GameInterface = ({ roomCode }) => {
         />
         
         {/* Main Game Area */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Left Column - Role & Tracks */}
           <div className="space-y-4">
             <RoleDisplay role={playerRole} />
@@ -588,18 +588,18 @@ const GameInterface = ({ roomCode }) => {
             />
           </div>
           
-          {/* Center Column - Game Actions & Chat */}
+          {/* Center Column - Game Actions */}
           <div className="space-y-4">
             {/* Game Actions */}
-            <Card>
+            <Card className="chat-parchment">
               <CardHeader>
-                <CardTitle className="text-lg">Actions de Jeu</CardTitle>
+                <CardTitle className="text-lg font-cinzel">Actions de Jeu</CardTitle>
               </CardHeader>
               <CardContent>
                 {/* Debug Info */}
-                <div className="mb-4 p-3 bg-gray-100 rounded text-xs">
-                  <p><strong>Debug:</strong> Phase: {gameState.phase} | Régent: Siège {gameState.regent_seat} | Nominee: {gameState.nominee_seat || 'Aucun'}</p>
-                  <p>Joueurs vivants: {gameState.players?.filter(p => p.alive).length || 0}</p>
+                <div className="mb-4 p-3 bg-amber-100 rounded text-xs">
+                  <p className="font-fell"><strong>Debug:</strong> Phase: {gameState.phase} | Régent: Siège {gameState.regent_seat} | Nominee: {gameState.nominee_seat || 'Aucun'}</p>
+                  <p className="font-fell">Joueurs vivants: {gameState.players?.filter(p => p.alive).length || 0}</p>
                 </div>
 
                 {/* Phase-specific actions */}
@@ -673,35 +673,38 @@ const GameInterface = ({ roomCode }) => {
                 {!['NOMINATION', 'VOTE', 'LEGIS_REGENT', 'LEGIS_CHAMBELLAN'].includes(gameState.phase) && (
                   <div className="text-center p-6">
                     <Clock className="h-12 w-12 text-amber-600 mx-auto mb-4" />
-                    <p className="text-amber-800 text-lg mb-4">
+                    <p className="text-amber-800 text-lg mb-4 font-cinzel">
                       Phase: {gameState.phase}
                     </p>
-                    <p className="text-amber-600 text-sm">
+                    <p className="text-amber-600 text-sm font-fell">
                       Actions en cours de développement pour cette phase
                     </p>
                   </div>
                 )}
               </CardContent>
             </Card>
+          </div>
 
+          {/* Right Column - Chat + Table */}
+          <div className="lg:col-span-2 space-y-4">
             {/* Chat Component */}
             <ChatComponent 
               roomCode={roomCode}
               currentPlayerId={currentPlayerId}
               currentPlayerName={currentPlayerName}
             />
-          </div>
-
-          {/* Right Column - Medieval Round Table */}
-          <div className="lg:col-span-2 flex justify-center items-start">
-            <MedievalTable 
-              players={gameState.players?.map(player => ({
-                seat: player.seat,
-                name: player.name + (player.id === currentPlayerId ? ' (Vous)' : ''),
-                active: player.seat === gameState.regent_seat || player.seat === gameState.nominee_seat
-              })) || []}
-              size={600}
-            />
+            
+            {/* Medieval Round Table */}
+            <div className="flex justify-center items-start">
+              <MedievalTable 
+                players={gameState.players?.map(player => ({
+                  seat: player.seat,
+                  name: player.name + (player.id === currentPlayerId ? ' (Vous)' : ''),
+                  active: player.seat === gameState.regent_seat || player.seat === gameState.nominee_seat
+                })) || []}
+                size={500}
+              />
+            </div>
           </div>
         </div>
       </div>
