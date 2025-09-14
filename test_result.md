@@ -102,7 +102,7 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: Fix the bug where the Régent and Chambellan can vote, and ensure legislative cards are displayed during the LEGIS_REGENT phase.
+user_problem_statement: Test the recently fixed chat system endpoints and WebSocket broadcasting functionality.
 
 backend:
   - task: "VOTE action permissions validation"
