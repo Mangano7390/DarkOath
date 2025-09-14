@@ -179,6 +179,10 @@ class WebSocketManager:
 manager = WebSocketManager()
 
 # API Routes
+@api_router.get("/")
+async def root():
+    return {"message": "Secretus Regnum API"}
+
 @api_router.post("/auth/anonymous")
 async def create_anonymous_user(name: str):
     user_id = str(uuid.uuid4())
