@@ -302,7 +302,7 @@ const LandingPage = () => {
                     <Button 
                       onClick={joinRoom}
                       disabled={!playerName.trim() || !roomCode.trim()}
-                      className="w-full bg-iron-accent hover:bg-seal-red-dark text-white font-cinzel font-semibold text-lg py-6 border-2 border-gold-accent transition-all duration-300 hover:scale-105"
+                      className="w-full bg-red-800 hover:bg-red-900 text-white font-cinzel font-semibold text-lg py-6 border-2 border-yellow-600 transition-all duration-300 hover:scale-105"
                     >
                       <Sword className="h-5 w-5 mr-2" />
                       Rallier le royaume {roomCode}
