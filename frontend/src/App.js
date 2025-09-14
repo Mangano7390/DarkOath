@@ -23,21 +23,30 @@ const LandingPage = () => {
   const [roomCode, setRoomCode] = useState('');
 
   const createRoom = async () => {
-    if (!playerName.trim()) return;
+    console.log('createRoom called with playerName:', playerName);
+    if (!playerName.trim()) {
+      console.log('No player name provided');
+      return;
+    }
     
     try {
+      console.log('Creating anonymous user...');
       // Create anonymous user
       const userResponse = await axios.post(`${API}/auth/anonymous?name=${encodeURIComponent(playerName)}`);
+      console.log('User response:', userResponse.data);
       const { userId } = userResponse.data;
       
+      console.log('Creating room...');
       // Create room
       const roomResponse = await axios.post(`${API}/rooms`);
+      console.log('Room response:', roomResponse.data);
       const { code } = roomResponse.data;
       
       // Store user data in localStorage
       localStorage.setItem('userId', userId);
       localStorage.setItem('playerName', playerName);
       
+      console.log('Navigating to lobby:', `/lobby/${code}`);
       navigate(`/lobby/${code}`);
     } catch (error) {
       console.error('Error creating room:', error);
