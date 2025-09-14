@@ -265,7 +265,151 @@ async def send_chat_message(room_code: str, player_id: str, message: str):
     
     return {"success": True}
 
-@api_router.get("/rooms/{room_code}/game_state")
+@api_router.post("/rooms/{room_code}/action")
+async def handle_game_action(room_code: str, player_id: str, action_type: str, payload: dict = {}):
+    """Handle game actions like nomination, voting, legislative actions"""
+    game_state = manager.get_game_state(room_code)
+    if not game_state:
+        raise HTTPException(status_code=404, detail="Room not found")
+    
+    # Find the acting player
+    player = next((p for p in game_state.players if p.id == player_id), None)
+    if not player:
+        raise HTTPException(status_code=404, detail="Player not found")
+    
+    try:
+        if action_type == "NOMINATE":
+            # Only regent can nominate during NOMINATION phase
+            if game_state.turn.phase != Phase.NOMINATION:
+                raise HTTPException(status_code=400, detail="Wrong phase for nomination")
+            if player.seat != game_state.turn.regent_seat:
+                raise HTTPException(status_code=400, detail="Only regent can nominate")
+            
+            nominee_seat = payload.get("nomineeSeat")
+            if not nominee_seat:
+                raise HTTPException(status_code=400, detail="Missing nominee seat")
+            
+            # Check if nominee is valid
+            nominee = next((p for p in game_state.players if p.seat == nominee_seat), None)
+            if not nominee or not nominee.alive:
+                raise HTTPException(status_code=400, detail="Invalid nominee")
+            
+            # Check if nominee was in previous government
+            if game_state.turn.prev_government:
+                prev_gov = game_state.turn.prev_government
+                if nominee_seat == prev_gov.get("regent") or nominee_seat == prev_gov.get("chambellan"):
+                    raise HTTPException(status_code=400, detail="Nominee was in previous government")
+            
+            # Can't nominate self
+            if nominee_seat == game_state.turn.regent_seat:
+                raise HTTPException(status_code=400, detail="Cannot nominate self")
+            
+            # Update game state
+            game_state.turn.nominee_seat = nominee_seat
+            game_state.turn.phase = Phase.VOTE
+            game_state.turn.votes = {}  # Reset votes
+            game_state.version += 1
+            
+            # Broadcast update
+            await manager.broadcast_to_room(room_code, {
+                "type": "game_update",
+                "phase": game_state.turn.phase,
+                "nominee_seat": nominee_seat,
+                "version": game_state.version
+            })
+            
+        elif action_type == "VOTE":
+            # Anyone can vote during VOTE phase
+            if game_state.turn.phase != Phase.VOTE:
+                raise HTTPException(status_code=400, detail="Wrong phase for voting")
+            if not player.alive:
+                raise HTTPException(status_code=400, detail="Dead players cannot vote")
+            
+            vote = payload.get("vote")
+            if vote not in ["oui", "non"]:
+                raise HTTPException(status_code=400, detail="Invalid vote")
+            
+            # Record vote
+            game_state.turn.votes[player_id] = vote
+            
+            # Check if all alive players have voted
+            alive_players = [p for p in game_state.players if p.alive]
+            if len(game_state.turn.votes) >= len(alive_players):
+                # Count votes
+                yes_votes = sum(1 for v in game_state.turn.votes.values() if v == "oui")
+                no_votes = len(game_state.turn.votes) - yes_votes
+                
+                if yes_votes > no_votes:
+                    # Government elected - move to legislative phase
+                    game_state.turn.phase = Phase.LEGIS_REGENT
+                    game_state.tracks.crisis = 0  # Reset crisis on successful election
+                    
+                    # Set previous government
+                    game_state.turn.prev_government = {
+                        "regent": game_state.turn.regent_seat,
+                        "chambellan": game_state.turn.nominee_seat
+                    }
+                else:
+                    # Government rejected - crisis increases
+                    game_state.tracks.crisis += 1
+                    
+                    if game_state.tracks.crisis >= 3:
+                        # Auto-adopt top card
+                        if len(game_state.deck) > 0:
+                            top_card = game_state.deck.pop(0)
+                            if top_card == DecreeType.LOYAL:
+                                game_state.tracks.loyal += 1
+                            else:
+                                game_state.tracks.conjure += 1
+                        game_state.tracks.crisis = 0
+                    
+                    # Move to next regent
+                    current_seat = game_state.turn.regent_seat
+                    alive_seats = [p.seat for p in game_state.players if p.alive]
+                    alive_seats.sort()
+                    current_index = alive_seats.index(current_seat)
+                    next_index = (current_index + 1) % len(alive_seats)
+                    game_state.turn.regent_seat = alive_seats[next_index]
+                    game_state.turn.phase = Phase.NOMINATION
+                
+                game_state.turn.nominee_seat = None
+                game_state.turn.votes = {}
+                game_state.version += 1
+                
+                # Check win conditions
+                winner = manager.check_win_conditions(game_state)
+                if winner:
+                    game_state.winner = winner
+                    game_state.turn.phase = Phase.ENDGAME
+                
+                await manager.broadcast_to_room(room_code, {
+                    "type": "vote_result",
+                    "result": "elected" if yes_votes > no_votes else "rejected",
+                    "yes_votes": yes_votes,
+                    "no_votes": no_votes,
+                    "new_phase": game_state.turn.phase,
+                    "tracks": game_state.tracks.dict(),
+                    "regent_seat": game_state.turn.regent_seat,
+                    "winner": winner,
+                    "version": game_state.version
+                })
+            else:
+                # Just broadcast vote count update
+                await manager.broadcast_to_room(room_code, {
+                    "type": "vote_progress",
+                    "votes_count": len(game_state.turn.votes),
+                    "total_needed": len(alive_players)
+                })
+        
+        else:
+            raise HTTPException(status_code=400, detail="Unknown action type")
+            
+        return {"success": True, "version": game_state.version}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Action failed: {str(e)}")
 async def get_game_state(room_code: str, player_id: str):
     """Get current game state for a specific player"""
     game_state = manager.get_game_state(room_code)
