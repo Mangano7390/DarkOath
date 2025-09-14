@@ -358,6 +358,14 @@ const Lobby = ({ roomCode }) => {
 const Game = ({ roomCode }) => {
   const { t } = useTranslation();
   
+  console.log('Game component rendered with roomCode:', roomCode);
+  
+  // Check if roomCode exists
+  if (!roomCode) {
+    console.error('No roomCode provided to Game component');
+    return <div>Error: No room code</div>;
+  }
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-900 via-amber-800 to-orange-900 p-4">
       <div className="max-w-6xl mx-auto">
@@ -371,6 +379,12 @@ const Game = ({ roomCode }) => {
             <Crown className="h-24 w-24 text-amber-600 mx-auto mb-6" />
             <p className="text-2xl text-amber-800">
               {t('game.comingSoon')}
+            </p>
+            <p className="text-lg text-amber-700 mt-4">
+              Room Code: {roomCode}
+            </p>
+            <p className="text-sm text-amber-600 mt-2">
+              Game component loaded successfully!
             </p>
           </CardContent>
         </Card>
