@@ -1,0 +1,114 @@
+import i18n from 'i18next';
+import { initReactI18next } from 'react-i18next';
+
+const resources = {
+  fr: {
+    translation: {
+      subtitle: "Un jeu de déduction sociale médiéval",
+      
+      gameDescription: {
+        title: "À propos du jeu",
+        text: "Dans Secretus Regnum, incarnez un noble dans un royaume en péril. Les Chevaliers Loyaux tentent de préserver la stabilité du royaume, tandis que les Conjurés et leur mystérieux Usurpateur conspirent pour prendre le pouvoir. Qui pouvez-vous faire confiance ?"
+      },
+      
+      roles: {
+        loyal: "Chevaliers Loyaux",
+        loyalDesc: "Défendez le royaume et démasquez les traîtres",
+        conjure: "Conjurés",
+        conjureDesc: "Répandez le chaos et aidez l'Usurpateur",
+        usurpateur: "Usurpateur",
+        usurpateurDesc: "Prenez le pouvoir en secret"
+      },
+      
+      actions: {
+        createRoom: "Créer une salle",
+        joinRoom: "Rejoindre une salle",
+        readRules: "Lire les règles"
+      },
+      
+      form: {
+        playerName: "Votre nom",
+        playerNamePlaceholder: "Entrez votre nom...",
+        roomCode: "Code de la salle"
+      },
+      
+      lobby: {
+        title: "Salon d'attente",
+        code: "Code",
+        players: "joueurs",
+        playersList: "Liste des joueurs",
+        waitingPlayer: "En attente d'un joueur...",
+        connected: "Connecté",
+        disconnected: "Déconnecté",
+        startGame: "Commencer la partie",
+        waitingForPlayers: "En attente de {{needed}} joueur(s) supplémentaire(s)"
+      },
+      
+      game: {
+        title: "Partie en cours",
+        comingSoon: "Interface de jeu en développement..."
+      }
+    }
+  },
+  en: {
+    translation: {
+      subtitle: "A medieval social deduction game",
+      
+      gameDescription: {
+        title: "About the game",
+        text: "In Secretus Regnum, play as a noble in a kingdom in peril. Loyal Knights try to preserve the kingdom's stability, while Conspirators and their mysterious Usurper plot to seize power. Who can you trust?"
+      },
+      
+      roles: {
+        loyal: "Loyal Knights",  
+        loyalDesc: "Defend the kingdom and unmask traitors",
+        conjure: "Conspirators",
+        conjureDesc: "Spread chaos and help the Usurper",
+        usurpateur: "Usurper",
+        usurpateurDesc: "Seize power in secret"
+      },
+      
+      actions: {
+        createRoom: "Create Room",
+        joinRoom: "Join Room", 
+        readRules: "Read Rules"
+      },
+      
+      form: {
+        playerName: "Your name",
+        playerNamePlaceholder: "Enter your name...",
+        roomCode: "Room code"
+      },
+      
+      lobby: {
+        title: "Lobby",
+        code: "Code", 
+        players: "players",
+        playersList: "Players list",
+        waitingPlayer: "Waiting for player...",
+        connected: "Connected",
+        disconnected: "Disconnected", 
+        startGame: "Start Game",
+        waitingForPlayers: "Waiting for {{needed}} more player(s)"
+      },
+      
+      game: {
+        title: "Game in Progress",
+        comingSoon: "Game interface in development..."
+      }
+    }
+  }
+};
+
+i18n
+  .use(initReactI18next)
+  .init({
+    resources,
+    lng: 'fr',
+    fallbackLng: 'fr',
+    interpolation: {
+      escapeValue: false
+    }
+  });
+
+export default i18n;

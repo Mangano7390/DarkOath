@@ -1,34 +1,191 @@
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@400;500;600&display=swap');
+
+/* Custom medieval theme */
+.font-serif {
+  font-family: 'Playfair Display', serif;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
-    }
+/* Prevent universal transitions that break transforms */
+* {
+  box-sizing: border-box;
 }
 
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
+/* Smooth transitions for interactive elements only */
+button {
+  transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
 }
 
-.App-link {
-    color: #61dafb;
+input {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-@keyframes App-logo-spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
+/* Medieval parchment texture */
+.parchment {
+  background-image: 
+    radial-gradient(circle at 25% 25%, rgba(139, 69, 19, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 75% 75%, rgba(160, 82, 45, 0.1) 0%, transparent 50%);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c2a47c;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a0845c;
+}
+
+/* Medieval button hover effects */
+.medieval-button {
+  position: relative;
+  overflow: hidden;
+}
+
+.medieval-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.medieval-button:hover::before {
+  left: 100%;
+}
+
+/* Card entrance animations */
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slideInUp 0.6s ease-out;
+}
+
+/* Responsive design improvements */
+@media (max-width: 768px) {
+  .responsive-text {
+    font-size: 1.25rem;
+  }
+  
+  .responsive-padding {
+    padding: 1rem;
+  }
+}
+
+/* Focus styles for accessibility */
+button:focus,
+input:focus {
+  outline: 2px solid #d97706;
+  outline-offset: 2px;
+}
+
+/* Loading spinner for game states */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Medieval decorative elements */
+.decorative-border {
+  border-image: repeating-linear-gradient(
+    45deg,
+    #d97706,
+    #d97706 5px,
+    transparent 5px,
+    transparent 10px
+  ) 1;
+}
+
+/* Game table specific styles */
+.game-table {
+  background: 
+    radial-gradient(ellipse at center, rgba(139, 69, 19, 0.1) 0%, transparent 70%),
+    linear-gradient(135deg, #f3e8d0 0%, #e6d4b5 100%);
+}
+
+/* Player seat styling */
+.player-seat {
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+.player-seat:hover {
+  border-color: #d97706;
+  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3);
+}
+
+.player-seat.active {
+  border-color: #dc2626;
+  box-shadow: 0 0 20px rgba(220, 38, 38, 0.4);
+}
+
+/* Decree track styling */
+.decree-track {
+  background: linear-gradient(to right, #3b82f6 0%, #ef4444 100%);
+  height: 12px;
+  border-radius: 6px;
+  position: relative;
+}
+
+.decree-marker {
+  position: absolute;
+  top: -4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  transition: all 0.3s ease;
+}
+
+.decree-marker.loyal {
+  background: #3b82f6;
+}
+
+.decree-marker.conjure {
+  background: #ef4444;
+}
+
+/* Chat styling */
+.chat-message {
+  animation: slideInUp 0.3s ease-out;
+  padding: 0.5rem;
+  margin: 0.25rem 0;
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(4px);
+}
+
+.chat-message.system {
+  background: rgba(59, 130, 246, 0.2);
+  font-style: italic;
+}
+
+.chat-message.player {
+  background: rgba(139, 69, 19, 0.2);
 }

@@ -1,54 +1,394 @@
-import { useEffect } from "react";
-import "./App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import axios from "axios";
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
+import { Crown, Sword, Shield, Users, Globe } from 'lucide-react';
+import { Button } from './components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
+import { Input } from './components/ui/input';
+import { Label } from './components/ui/label';
+import { Badge } from './components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
+import { useTranslation } from 'react-i18next';
+import './i18n';
+import axios from 'axios';
+import io from 'socket.io-client';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-const Home = () => {
-  const helloWorldApi = async () => {
+// Landing Page Component
+const LandingPage = () => {
+  const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
+  const [playerName, setPlayerName] = useState('');
+  const [roomCode, setRoomCode] = useState('');
+
+  const createRoom = async () => {
+    if (!playerName.trim()) return;
+    
     try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
+      // Create anonymous user
+      const userResponse = await axios.post(`${API}/auth/anonymous?name=${encodeURIComponent(playerName)}`);
+      const { userId } = userResponse.data;
+      
+      // Create room
+      const roomResponse = await axios.post(`${API}/rooms`);
+      const { code } = roomResponse.data;
+      
+      // Store user data in localStorage
+      localStorage.setItem('userId', userId);
+      localStorage.setItem('playerName', playerName);
+      
+      navigate(`/lobby/${code}`);
+    } catch (error) {
+      console.error('Error creating room:', error);
     }
   };
 
-  useEffect(() => {
-    helloWorldApi();
-  }, []);
+  const joinRoom = async () => {
+    if (!playerName.trim() || !roomCode.trim()) return;
+    
+    try {
+      // Create anonymous user
+      const userResponse = await axios.post(`${API}/auth/anonymous?name=${encodeURIComponent(playerName)}`);
+      const { userId } = userResponse.data;
+      
+      // Check if room exists
+      await axios.get(`${API}/rooms/${roomCode.toUpperCase()}`);
+      
+      // Store user data in localStorage
+      localStorage.setItem('userId', userId);
+      localStorage.setItem('playerName', playerName);
+      
+      navigate(`/lobby/${roomCode.toUpperCase()}`);
+    } catch (error) {
+      console.error('Error joining room:', error);
+    }
+  };
 
   return (
-    <div>
-      <header className="App-header">
-        <a
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
+    <div className="min-h-screen bg-gradient-to-br from-amber-900 via-amber-800 to-orange-900 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%23000000" fill-opacity="0.1"%3E%3Ccircle cx="30" cy="30" r="1"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-20"></div>
+      
+      <Card className="w-full max-w-4xl bg-amber-50/95 backdrop-blur-sm border-amber-200 shadow-2xl">
+        <CardHeader className="text-center space-y-4">
+          <div className="flex justify-center items-center space-x-4">
+            <Crown className="h-16 w-16 text-amber-600" />
+            <div>
+              <CardTitle className="text-4xl font-bold text-amber-900 font-serif">
+                Secretus Regnum
+              </CardTitle>
+              <CardDescription className="text-xl text-amber-700 mt-2">
+                {t('subtitle')}
+              </CardDescription>
+            </div>
+          </div>
+          
+          {/* Language Switcher */}
+          <div className="flex justify-center">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => i18n.changeLanguage(i18n.language === 'fr' ? 'en' : 'fr')}
+              className="bg-amber-100 border-amber-300 text-amber-800 hover:bg-amber-200"
+            >
+              <Globe className="h-4 w-4 mr-2" />
+              {i18n.language === 'fr' ? 'English' : 'Français'}
+            </Button>
+          </div>
+        </CardHeader>
+
+        <CardContent className="space-y-6">
+          {/* Game Description */}
+          <div className="bg-amber-100/50 p-6 rounded-lg border border-amber-200">
+            <h3 className="text-2xl font-bold text-amber-900 mb-4 flex items-center">
+              <Shield className="h-6 w-6 mr-2" />
+              {t('gameDescription.title')}
+            </h3>
+            <p className="text-amber-800 text-lg leading-relaxed mb-4">
+              {t('gameDescription.text')}
+            </p>
+            
+            <div className="grid md:grid-cols-3 gap-4">
+              <div className="text-center p-4 bg-blue-100 rounded-lg border border-blue-200">
+                <Shield className="h-8 w-8 text-blue-600 mx-auto mb-2" />
+                <h4 className="font-bold text-blue-800">{t('roles.loyal')}</h4>
+                <p className="text-sm text-blue-700">{t('roles.loyalDesc')}</p>
+              </div>
+              <div className="text-center p-4 bg-red-100 rounded-lg border border-red-200">
+                <Sword className="h-8 w-8 text-red-600 mx-auto mb-2" />
+                <h4 className="font-bold text-red-800">{t('roles.conjure')}</h4>
+                <p className="text-sm text-red-700">{t('roles.conjureDesc')}</p>
+              </div>
+              <div className="text-center p-4 bg-purple-100 rounded-lg border border-purple-200">
+                <Crown className="h-8 w-8 text-purple-600 mx-auto mb-2" />
+                <h4 className="font-bold text-purple-800">{t('roles.usurpateur')}</h4>
+                <p className="text-sm text-purple-700">{t('roles.usurpateurDesc')}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Join/Create Section */}
+          <Tabs defaultValue="create" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 bg-amber-100">
+              <TabsTrigger value="create" className="data-[state=active]:bg-amber-200">
+                {t('actions.createRoom')}
+              </TabsTrigger>
+              <TabsTrigger value="join" className="data-[state=active]:bg-amber-200">
+                {t('actions.joinRoom')}
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="create" className="space-y-4">
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="create-name" className="text-amber-900">
+                    {t('form.playerName')}
+                  </Label>
+                  <Input
+                    id="create-name"
+                    value={playerName}
+                    onChange={(e) => setPlayerName(e.target.value)}
+                    placeholder={t('form.playerNamePlaceholder')}
+                    className="bg-white border-amber-300 focus:border-amber-500"
+                    maxLength={20}
+                  />
+                </div>
+                <Button 
+                  onClick={createRoom}
+                  disabled={!playerName.trim()}
+                  className="w-full bg-amber-600 hover:bg-amber-700 text-white text-lg py-6"
+                >
+                  <Users className="h-5 w-5 mr-2" />
+                  {t('actions.createRoom')}
+                </Button>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="join" className="space-y-4">
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="join-name" className="text-amber-900">
+                    {t('form.playerName')}
+                  </Label>
+                  <Input
+                    id="join-name"
+                    value={playerName}
+                    onChange={(e) => setPlayerName(e.target.value)}
+                    placeholder={t('form.playerNamePlaceholder')}
+                    className="bg-white border-amber-300 focus:border-amber-500"
+                    maxLength={20}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="room-code" className="text-amber-900">
+                    {t('form.roomCode')}
+                  </Label>
+                  <Input
+                    id="room-code"
+                    value={roomCode}
+                    onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+                    placeholder="ABCDEF"
+                    className="bg-white border-amber-300 focus:border-amber-500 font-mono text-center text-lg"
+                    maxLength={6}
+                  />
+                </div>
+                <Button 
+                  onClick={joinRoom}
+                  disabled={!playerName.trim() || !roomCode.trim()}
+                  className="w-full bg-amber-600 hover:bg-amber-700 text-white text-lg py-6"
+                >
+                  <Sword className="h-5 w-5 mr-2" />
+                  {t('actions.joinRoom')}
+                </Button>
+              </div>
+            </TabsContent>
+          </Tabs>
+
+          {/* Rules Link */}
+          <div className="text-center">
+            <Button variant="link" className="text-amber-700 hover:text-amber-900">
+              {t('actions.readRules')}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
 
-function App() {
+// Lobby Component
+const Lobby = ({ roomCode }) => {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const [players, setPlayers] = useState([]);
+  const [gameStarted, setGameStarted] = useState(false);
+  
+  useEffect(() => {
+    const joinRoom = async () => {
+      const userId = localStorage.getItem('userId');
+      const playerName = localStorage.getItem('playerName');
+      
+      if (!userId || !playerName) {
+        navigate('/');
+        return;
+      }
+      
+      try {
+        await axios.post(`${API}/rooms/${roomCode}/join?player_id=${userId}&player_name=${encodeURIComponent(playerName)}`);
+        
+        // Get room info
+        const response = await axios.get(`${API}/rooms/${roomCode}`);
+        setPlayers(response.data.players);
+        
+      } catch (error) {
+        console.error('Error joining room:', error);
+        navigate('/');
+      }
+    };
+    
+    joinRoom();
+  }, [roomCode, navigate]);
+
+  const startGame = async () => {
+    try {
+      await axios.post(`${API}/rooms/${roomCode}/start`);
+      setGameStarted(true);
+      navigate(`/game/${roomCode}`);
+    } catch (error) {
+      console.error('Error starting game:', error);
+    }
+  };
+
   return (
-    <div className="App">
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+    <div className="min-h-screen bg-gradient-to-br from-amber-900 via-amber-800 to-orange-900 p-4">
+      <div className="max-w-4xl mx-auto">
+        <Card className="bg-amber-50/95 backdrop-blur-sm border-amber-200 shadow-xl">
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle className="text-3xl text-amber-900 font-serif">
+                  {t('lobby.title')}
+                </CardTitle>
+                <CardDescription className="text-xl text-amber-700">
+                  {t('lobby.code')}: <span className="font-mono font-bold">{roomCode}</span>
+                </CardDescription>
+              </div>
+              <Badge variant="secondary" className="text-lg px-4 py-2">
+                {players.length}/5 {t('lobby.players')}
+              </Badge>
+            </div>
+          </CardHeader>
+          
+          <CardContent className="space-y-6">
+            {/* Players List */}
+            <div className="grid gap-4">
+              <h3 className="text-xl font-bold text-amber-900">{t('lobby.playersList')}</h3>
+              <div className="grid gap-2">
+                {[...Array(5)].map((_, index) => {
+                  const player = players[index];
+                  return (
+                    <div
+                      key={index}
+                      className={`p-4 rounded-lg border-2 ${
+                        player 
+                          ? 'bg-green-100 border-green-300 text-green-800' 
+                          : 'bg-gray-100 border-gray-300 text-gray-500'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 rounded-full bg-amber-200 flex items-center justify-center">
+                          {index + 1}
+                        </div>
+                        <span className="font-medium">
+                          {player ? player.name : t('lobby.waitingPlayer')}
+                        </span>
+                        {player && (
+                          <Badge variant={player.connected ? "default" : "destructive"}>
+                            {player.connected ? t('lobby.connected') : t('lobby.disconnected')}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Start Game Button */}
+            {players.length === 5 && (
+              <Button 
+                onClick={startGame}
+                className="w-full bg-green-600 hover:bg-green-700 text-white text-xl py-6"
+              >
+                <Crown className="h-6 w-6 mr-2" />
+                {t('lobby.startGame')}
+              </Button>
+            )}
+            
+            {players.length < 5 && (
+              <div className="text-center p-6 bg-amber-100 rounded-lg">
+                <p className="text-amber-800 text-lg">
+                  {t('lobby.waitingForPlayers', { needed: 5 - players.length })}
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
+};
+
+// Game Component (placeholder)
+const Game = ({ roomCode }) => {
+  const { t } = useTranslation();
+  
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-amber-900 via-amber-800 to-orange-900 p-4">
+      <div className="max-w-6xl mx-auto">
+        <Card className="bg-amber-50/95 backdrop-blur-sm border-amber-200 shadow-xl">
+          <CardHeader>
+            <CardTitle className="text-3xl text-amber-900 font-serif text-center">
+              {t('game.title')} - {roomCode}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-center p-12">
+            <Crown className="h-24 w-24 text-amber-600 mx-auto mb-6" />
+            <p className="text-2xl text-amber-800">
+              {t('game.comingSoon')}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+// Main App Component
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/lobby/:roomCode" element={<LobbyWrapper />} />
+        <Route path="/game/:roomCode" element={<GameWrapper />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }
+
+// Wrapper components to extract params
+const LobbyWrapper = () => {
+  const { roomCode } = useParams();
+  return <Lobby roomCode={roomCode} />;
+};
+
+const GameWrapper = () => {
+  const { roomCode } = useParams();
+  return <Game roomCode={roomCode} />;
+};
+
+// Import useParams hook
+import { useParams } from 'react-router-dom';
 
 export default App;
