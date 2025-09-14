@@ -315,10 +315,10 @@ const LandingPage = () => {
             {/* Footer */}
             <div className="text-center mt-12">
               <div className="ornate-divider"></div>
-              <p className="font-fell text-medieval-brown/70 text-sm">
+              <p className="font-fell text-amber-900/70 text-sm">
                 🏰 Un jeu de déduction sociale pour 5-10 joueurs 🏰
               </p>
-              <Button variant="link" className="font-fell text-gold-accent hover:text-iron-accent mt-2">
+              <Button variant="link" className="font-fell text-yellow-600 hover:text-red-800 mt-2">
                 📜 Lire les règles du royaume
               </Button>
             </div>
