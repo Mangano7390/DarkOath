@@ -40,14 +40,14 @@ const GamePhase = ({ phase, regentSeat, nomineeSeat, players }) => {
   const nominee = nomineeSeat ? players.find(p => p.seat === nomineeSeat) : null;
   
   return (
-    <Card className="bg-gradient-to-r from-amber-100 to-orange-100 border-amber-300">
+    <Card className="game-info-parchment">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <PhaseIcon className={`h-6 w-6 text-${phaseInfo.color}-600`} />
-            <CardTitle className="text-lg text-amber-900">{phaseInfo.text}</CardTitle>
+            <CardTitle className="text-lg text-amber-900 font-cinzel">{phaseInfo.text}</CardTitle>
           </div>
-          <Badge variant="outline" className="bg-white">
+          <Badge variant="outline" className="bg-amber-100 font-cinzel">
             Tour en cours
           </Badge>
         </div>
