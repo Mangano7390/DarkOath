@@ -12,6 +12,8 @@ import axios from 'axios';
 import NominationPanel from './NominationPanel';
 import VotePanel from './VotePanel';
 import LegislativePanel from './LegislativePanel';
+import MedievalTable from './MedievalTable.js';
+import '../styles/medieval-room.css';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
