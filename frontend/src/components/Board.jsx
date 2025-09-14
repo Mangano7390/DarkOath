@@ -3,15 +3,6 @@ import { colors, sizes } from '../lib/theme';
 import { Slot, CrisisToken, PowerToken } from './Tokens';
 import '../styles/cards.css';
 
-interface BoardProps {
-  loyalCount?: number;    // 0..5
-  conjureCount?: number;  // 0..6
-  crisis?: 0 | 1 | 2 | 3;
-  width?: number;         // responsive width
-  onSlotClick?: (type: 'loyal' | 'conjure', index: number) => void;
-  className?: string;
-}
-
 export default function Board({ 
   loyalCount = 0,
   conjureCount = 0,
@@ -19,7 +10,7 @@ export default function Board({
   width = sizes.boardW,
   onSlotClick,
   className = ''
-}: BoardProps) {
+}) {
   const aspectRatio = sizes.boardH / sizes.boardW;
   const height = width * aspectRatio;
 
