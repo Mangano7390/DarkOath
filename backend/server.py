@@ -287,6 +287,7 @@ async def get_game_state(room_code: str, player_id: str):
         "your_role": player.role if player.role else None,
         "players": [{"id": p.id, "name": p.name, "seat": p.seat, "alive": p.alive, "connected": p.connected} for p in game_state.players]
     }
+@api_router.post("/rooms/{room_code}/start")
 async def start_game(room_code: str):
     success = manager.start_game(room_code)
     if not success:
