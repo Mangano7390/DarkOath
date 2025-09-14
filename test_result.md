@@ -143,16 +143,19 @@ frontend:
           comment: "Added mySeat prop to VotePanel component to fix voting permissions"
 
   - task: "Legislative cards display during LEGIS_REGENT phase"
-    implemented: false
+    implemented: true
     working: false
     file: "frontend/src/components/LegislativePanel.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
         - working: false
           agent: "user"
           comment: "Cards not displayed during LEGIS_REGENT phase - shows 'En attente des cartes...'"
+        - working: true
+          agent: "main"
+          comment: "FIXED: Added legislative_cards field to TurnState model, implemented card drawing logic when moving to LEGIS_REGENT phase (draws 3 cards from deck), updated game_state API endpoint to include legislative_cards only for relevant players, and implemented DISCARD action handler for both LEGIS_REGENT and LEGIS_CHAMBELLAN phases."
 
 metadata:
   created_by: "main_agent"
