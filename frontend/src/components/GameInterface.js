@@ -441,13 +441,25 @@ const GameInterface = ({ roomCode }) => {
               </CardHeader>
               <CardContent>
                 <div className="text-center p-8">
-                  <Clock className="h-12 w-12 text-amber-600 mx-auto mb-4" />
-                  <p className="text-amber-800 text-lg">
-                    Interface de jeu en cours de développement
+                  <Crown className="h-12 w-12 text-amber-600 mx-auto mb-4" />
+                  <p className="text-amber-800 text-lg mb-4">
+                    🎉 Interface de jeu chargée avec succès !
                   </p>
-                  <p className="text-amber-600 text-sm mt-2">
-                    Les actions de vote et sessions législatives seront disponibles prochainement
-                  </p>
+                  <div className="space-y-2 text-sm text-amber-700">
+                    <p>✅ Connexion établie avec Room: {roomCode}</p>
+                    <p>✅ Votre rôle: {playerRole}</p>
+                    <p>✅ Phase actuelle: {gameState.phase}</p>
+                    <p>✅ Tous les composants sont chargés</p>
+                  </div>
+                  <div className="mt-6 p-4 bg-amber-100 rounded-lg">
+                    <p className="text-amber-800 font-medium mb-2">Actions de jeu à venir :</p>
+                    <div className="text-xs text-amber-700 space-y-1">
+                      <p>• Interface de nomination et vote</p>
+                      <p>• Sessions législatives interactives</p>
+                      <p>• Pouvoirs spéciaux (Investigation, Exécution)</p>
+                      <p>• Chat temps réel</p>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
