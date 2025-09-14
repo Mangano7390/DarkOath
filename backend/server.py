@@ -123,14 +123,18 @@ class WebSocketManager:
 
     def add_player(self, room_code: str, player_id: str, player_name: str) -> bool:
         game_state = self.get_game_state(room_code)
-        if not game_state or len(game_state.players) >= 5:
+        if not game_state:
             return False
         
-        # Check if player already exists
+        # Check if player already exists first (allow reconnection even if room is full)
         for p in game_state.players:
             if p.id == player_id:
                 p.connected = True
                 return True
+        
+        # Only check room capacity for new players
+        if len(game_state.players) >= 5:
+            return False
         
         # Add new player
         seat = len(game_state.players) + 1
