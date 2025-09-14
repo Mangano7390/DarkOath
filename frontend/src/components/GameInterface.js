@@ -192,21 +192,29 @@ const ChatComponent = ({ roomCode, currentPlayerId, currentPlayerName }) => {
 
     setIsSending(true);
     try {
-      await axios.post(`${API}/rooms/${roomCode}/chat?player_id=${currentPlayerId}&message=${encodeURIComponent(newMessage)}`);
+      const response = await axios.post(`${API}/rooms/${roomCode}/chat`, null, {
+        params: {
+          player_id: currentPlayerId,
+          message: newMessage
+        }
+      });
       
-      // Add message immediately to local state for instant feedback
-      const newMsg = {
+      if (response.data.success) {
+        setNewMessage('');
+      }
+      
+    } catch (error) {
+      console.error('Error sending message:', error);
+      // Fallback: add message locally if API fails
+      const fallbackMsg = {
         id: Date.now(),
         player_name: currentPlayerName,
         message: newMessage,
         timestamp: new Date().toISOString(),
         type: 'player'
       };
-      setMessages(prev => [...prev, newMsg]);
+      setMessages(prev => [...prev, fallbackMsg]);  
       setNewMessage('');
-      
-    } catch (error) {
-      console.error('Error sending message:', error);
     } finally {
       setIsSending(false);
     }
