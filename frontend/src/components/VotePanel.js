@@ -8,9 +8,14 @@ import { Progress } from './ui/progress';
 const VotePanel = ({ players, regentSeat, nomineeSeat, votes, myVote, mySeat, onVote }) => {
   const regent = players.find(p => p.seat === regentSeat);
   const nominee = players.find(p => p.seat === nomineeSeat);
+  
+  // Le gouvernement proposé ne peut pas voter
+  const canIVote = mySeat !== regentSeat && mySeat !== nomineeSeat;
+  
   const alivePlayers = players.filter(p => p.alive);
+  const eligibleVoters = alivePlayers.filter(p => p.seat !== regentSeat && p.seat !== nomineeSeat);
   const totalVotes = Object.keys(votes).length;
-  const votesNeeded = alivePlayers.length;
+  const votesNeeded = eligibleVoters.length;
   
   const yesVotes = Object.values(votes).filter(v => v === 'oui').length;
   const noVotes = Object.values(votes).filter(v => v === 'non').length;
