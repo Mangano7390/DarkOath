@@ -17,12 +17,33 @@ import SimpleDemo from './components/SimpleDemo';
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-// Landing Page Component
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, useNavigate, useParams } from 'react-router-dom';
+import { Crown, Sword, Shield, Users, Globe, Music, Volume2, VolumeX } from 'lucide-react';
+import { Button } from './components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
+import { Input } from './components/ui/input';
+import { Label } from './components/ui/label';
+import { Badge } from './components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
+import { useTranslation } from 'react-i18next';
+import './i18n';
+import './styles/medieval.css';
+import axios from 'axios';
+import io from 'socket.io-client';
+import GameInterface from './components/GameInterface';
+import SimpleDemo from './components/SimpleDemo';
+
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const API = `${BACKEND_URL}/api`;
+
+// Landing Page Component with Medieval Design
 const LandingPage = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [playerName, setPlayerName] = useState('');
   const [roomCode, setRoomCode] = useState('');
+  const [musicEnabled, setMusicEnabled] = useState(false);
 
   const createRoom = async () => {
     console.log('createRoom called with playerName:', playerName);
@@ -77,152 +98,251 @@ const LandingPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-900 via-amber-800 to-orange-900 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiMwMDAwMDAiIGZpbGwtb3BhY2l0eT0iMC4xIj48Y2lyY2xlIGN4PSIzMCIgY3k9IjMwIiByPSIxIi8+PC9nPjwvZz48L3N2Zz4=')] opacity-20"></div>
-      
-      <Card className="w-full max-w-4xl bg-amber-50/95 backdrop-blur-sm border-amber-200 shadow-2xl">
-        <CardHeader className="text-center space-y-4">
-          <div className="flex justify-center items-center space-x-4">
-            <Crown className="h-16 w-16 text-amber-600" />
-            <div>
-              <CardTitle className="text-4xl font-bold text-amber-900 font-serif">
-                Secretus Regnum
-              </CardTitle>
-              <CardDescription className="text-xl text-amber-700 mt-2">
-                {t('subtitle')}
-              </CardDescription>
-            </div>
-          </div>
-          
-          {/* Language Switcher */}
-          <div className="flex justify-center">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => i18n.changeLanguage(i18n.language === 'fr' ? 'en' : 'fr')}
-              className="bg-amber-100 border-amber-300 text-amber-800 hover:bg-amber-200"
-            >
-              <Globe className="h-4 w-4 mr-2" />
-              {i18n.language === 'fr' ? 'English' : 'Français'}
-            </Button>
-          </div>
-        </CardHeader>
+    <div className="min-h-screen medieval-parchment relative overflow-hidden">
+      {/* Animated background effects */}
+      <div className="absolute inset-0 opacity-5">
+        <div className="absolute top-10 left-10 torch-flicker">🔥</div>
+        <div className="absolute top-20 right-20 torch-flicker" style={{animationDelay: '1s'}}>🔥</div>
+        <div className="absolute bottom-20 left-16 torch-flicker" style={{animationDelay: '2s'}}>🔥</div>
+        <div className="absolute bottom-10 right-10 torch-flicker" style={{animationDelay: '0.5s'}}>🔥</div>
+      </div>
 
-        <CardContent className="space-y-6">
-          {/* Game Description */}
-          <div className="bg-amber-100/50 p-6 rounded-lg border border-amber-200">
-            <h3 className="text-2xl font-bold text-amber-900 mb-4 flex items-center">
-              <Shield className="h-6 w-6 mr-2" />
-              {t('gameDescription.title')}
-            </h3>
-            <p className="text-amber-800 text-lg leading-relaxed mb-4">
-              {t('gameDescription.text')}
+      {/* Hero Image Section */}
+      <div className="relative h-80 overflow-hidden">
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{
+            backgroundImage: `linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.6)), url('https://images.unsplash.com/photo-1518709268805-4e9042af9f23?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2MzR8MHwxfHNlYXJjaHwxfHxtZWRpZXZhbCUyMGNhc3RsZXxlbnwwfHx8fDE3NTc4ODg2NDR8MA&ixlib=rb-4.1.0&q=85')`
+          }}
+        />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="text-center text-white">
+            <div className="flex items-center justify-center space-x-6 mb-6">
+              <div className="heraldic-shield animate-pulse"></div>
+              <div>
+                <h1 className="font-uncial text-6xl mb-2 embossed-text text-white drop-shadow-lg">
+                  Secretus Regnum
+                </h1>
+                <p className="font-fell text-xl italic opacity-90">
+                  Un royaume en péril. Les trahisons se murmurent dans l'ombre.
+                </p>
+              </div>
+              <div className="heraldic-shield animate-pulse" style={{animationDelay: '1s'}}></div>
+            </div>
+            <p className="font-fell text-lg max-w-2xl mx-auto leading-relaxed">
+              Saurez-vous préserver la Couronne ou laisser l'Usurpateur s'en emparer ?
             </p>
-            
-            <div className="grid md:grid-cols-3 gap-4">
-              <div className="text-center p-4 bg-blue-100 rounded-lg border border-blue-200">
-                <Shield className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-                <h4 className="font-bold text-blue-800">{t('roles.loyal')}</h4>
-                <p className="text-sm text-blue-700">{t('roles.loyalDesc')}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        {/* Music Control */}
+        <div className="absolute top-4 right-4 z-10">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setMusicEnabled(!musicEnabled)}
+            className="bg-black/20 border-white/30 text-white hover:bg-black/30"
+          >
+            {musicEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+          </Button>
+        </div>
+
+        {/* Language Switcher */}
+        <div className="flex justify-center mb-8">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => i18n.changeLanguage(i18n.language === 'fr' ? 'en' : 'fr')}
+            className="medieval-banner"
+          >
+            <Globe className="h-4 w-4 mr-2" />
+            {i18n.language === 'fr' ? 'English' : 'Français'}
+          </Button>
+        </div>
+
+        {/* Main Content Card */}
+        <Card className="worn-border medieval-parchment shadow-2xl">
+          <CardContent className="p-8">
+            {/* Game Description */}
+            <div className="text-center mb-8">
+              <h2 className="font-cinzel text-3xl font-bold text-medieval-brown mb-4 embossed-text">
+                ⚔️ À propos du jeu ⚔️
+              </h2>
+              <div className="ornate-divider"></div>
+              <p className="font-fell text-lg text-medieval-brown leading-relaxed max-w-4xl mx-auto">
+                Dans Secretus Regnum, incarnez un noble dans un royaume en péril. Les Chevaliers Loyaux 
+                tentent de préserver la stabilité du royaume, tandis que les Conjurés et leur mystérieux 
+                Usurpateur conspirent pour prendre le pouvoir. Qui pouvez-vous faire confiance ?
+              </p>
+            </div>
+
+            {/* Faction Cards */}
+            <div className="grid md:grid-cols-3 gap-6 mb-12">
+              <div className="role-card bg-blue-50">
+                <div className="text-center">
+                  <div className="w-16 h-16 mx-auto mb-4 bg-blue-600 rounded-full flex items-center justify-center">
+                    <Shield className="h-8 w-8 text-white" />
+                  </div>
+                  <h3 className="font-cinzel text-xl font-bold text-blue-800 mb-2">Chevaliers Loyaux</h3>
+                  <p className="font-fell text-blue-700">Défendez le royaume et démasquez les traîtres</p>
+                  <div className="mt-4 text-sm text-blue-600 font-semibold">
+                    🛡️ Victoire: 5 Décrets Loyaux
+                  </div>
+                </div>
               </div>
-              <div className="text-center p-4 bg-red-100 rounded-lg border border-red-200">
-                <Sword className="h-8 w-8 text-red-600 mx-auto mb-2" />
-                <h4 className="font-bold text-red-800">{t('roles.conjure')}</h4>
-                <p className="text-sm text-red-700">{t('roles.conjureDesc')}</p>
+
+              <div className="role-card bg-red-50">
+                <div className="text-center">
+                  <div className="w-16 h-16 mx-auto mb-4 bg-red-600 rounded-full flex items-center justify-center">
+                    <Sword className="h-8 w-8 text-white" />
+                  </div>
+                  <h3 className="font-cinzel text-xl font-bold text-red-800 mb-2">Conjurés</h3>
+                  <p className="font-fell text-red-700">Répandez le chaos et aidez l'Usurpateur</p>
+                  <div className="mt-4 text-sm text-red-600 font-semibold">
+                    ⚔️ Victoire: 6 Décrets Conjurés
+                  </div>
+                </div>
               </div>
-              <div className="text-center p-4 bg-purple-100 rounded-lg border border-purple-200">
-                <Crown className="h-8 w-8 text-purple-600 mx-auto mb-2" />
-                <h4 className="font-bold text-purple-800">{t('roles.usurpateur')}</h4>
-                <p className="text-sm text-purple-700">{t('roles.usurpateurDesc')}</p>
+
+              <div className="role-card bg-purple-50">
+                <div className="text-center">
+                  <div className="w-16 h-16 mx-auto mb-4 bg-purple-600 rounded-full flex items-center justify-center">
+                    <Crown className="h-8 w-8 text-white" />
+                  </div>
+                  <h3 className="font-cinzel text-xl font-bold text-purple-800 mb-2">Usurpateur</h3>
+                  <p className="font-fell text-purple-700">Prenez le pouvoir en secret</p>
+                  <div className="mt-4 text-sm text-purple-600 font-semibold">
+                    👑 Victoire: Devenir Chambellan
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Join/Create Section */}
-          <Tabs defaultValue="create" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 bg-amber-100">
-              <TabsTrigger value="create" className="data-[state=active]:bg-amber-200">
-                {t('actions.createRoom')}
-              </TabsTrigger>
-              <TabsTrigger value="join" className="data-[state=active]:bg-amber-200">
-                {t('actions.joinRoom')}
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="create" className="space-y-4">
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="create-name" className="text-amber-900">
-                    {t('form.playerName')}
-                  </Label>
-                  <Input
-                    id="create-name"
-                    value={playerName}
-                    onChange={(e) => setPlayerName(e.target.value)}
-                    placeholder={t('form.playerNamePlaceholder')}
-                    className="bg-white border-amber-300 focus:border-amber-500"
-                    maxLength={20}
-                  />
-                </div>
-                <Button 
-                  onClick={createRoom}
-                  disabled={!playerName.trim()}
-                  className="w-full bg-amber-600 hover:bg-amber-700 text-white text-lg py-6"
-                >
-                  <Users className="h-5 w-5 mr-2" />
-                  {t('actions.createRoom')}
-                </Button>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="join" className="space-y-4">
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="join-name" className="text-amber-900">
-                    {t('form.playerName')}
-                  </Label>
-                  <Input
-                    id="join-name"
-                    value={playerName}
-                    onChange={(e) => setPlayerName(e.target.value)}
-                    placeholder={t('form.playerNamePlaceholder')}
-                    className="bg-white border-amber-300 focus:border-amber-500"
-                    maxLength={20}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="room-code" className="text-amber-900">
-                    {t('form.roomCode')}
-                  </Label>
-                  <Input
-                    id="room-code"
-                    value={roomCode}
-                    onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                    placeholder="ABCDEF"
-                    className="bg-white border-amber-300 focus:border-amber-500 font-mono text-center text-lg"
-                    maxLength={6}
-                  />
-                </div>
-                <Button 
-                  onClick={joinRoom}
-                  disabled={!playerName.trim() || !roomCode.trim()}
-                  className="w-full bg-amber-600 hover:bg-amber-700 text-white text-lg py-6"
-                >
-                  <Sword className="h-5 w-5 mr-2" />
-                  {t('actions.joinRoom')}
-                </Button>
-              </div>
-            </TabsContent>
-          </Tabs>
+            <div className="ornate-divider"></div>
 
-          {/* Rules Link */}
-          <div className="text-center">
-            <Button variant="link" className="text-amber-700 hover:text-amber-900">
-              {t('actions.readRules')}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+            {/* Join/Create Section */}
+            <Tabs defaultValue="create" className="w-full max-w-2xl mx-auto">
+              <TabsList className="grid w-full grid-cols-2 bg-amber-100 border-2 border-gold-accent">
+                <TabsTrigger 
+                  value="create" 
+                  className="font-cinzel font-semibold data-[state=active]:bg-gold-accent data-[state=active]:text-white"
+                >
+                  🏰 Créer une salle
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="join"
+                  className="font-cinzel font-semibold data-[state=active]:bg-gold-accent data-[state=active]:text-white"
+                >
+                  ⚔️ Rejoindre une salle
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="create" className="space-y-6 mt-8">
+                <div className="text-center">
+                  <h3 className="font-cinzel text-2xl font-bold text-medieval-brown mb-4">
+                    Créer un nouveau royaume
+                  </h3>
+                  <p className="font-fell text-medieval-brown mb-6">
+                    Fondez votre propre royaume et invitez vos compagnons d'armes
+                  </p>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="create-name" className="font-cinzel font-semibold text-medieval-brown">
+                        Votre nom de noble
+                      </Label>
+                      <Input
+                        id="create-name"
+                        value={playerName}
+                        onChange={(e) => setPlayerName(e.target.value)}
+                        placeholder="Entrez votre nom..."
+                        className="parchment-input font-fell text-center"
+                        maxLength={20}
+                      />
+                    </div>
+                    
+                    <div className="flex justify-center py-4">
+                      <button 
+                        onClick={createRoom}
+                        disabled={!playerName.trim()}
+                        className="wax-seal disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <div className="text-center">
+                          <Users className="h-6 w-6 mx-auto mb-1" />
+                          <div>Créer</div>
+                          <div>Royaume</div>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="join" className="space-y-6 mt-8">
+                <div className="text-center">
+                  <h3 className="font-cinzel text-2xl font-bold text-medieval-brown mb-4">
+                    Rejoindre un royaume
+                  </h3>
+                  <p className="font-fell text-medieval-brown mb-6">
+                    Un seigneur vous a-t-il invité dans son château ?
+                  </p>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="join-name" className="font-cinzel font-semibold text-medieval-brown">
+                        Votre nom de noble
+                      </Label>
+                      <Input
+                        id="join-name"
+                        value={playerName}
+                        onChange={(e) => setPlayerName(e.target.value)}
+                        placeholder="Entrez votre nom..."
+                        className="parchment-input font-fell text-center"
+                        maxLength={20}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="room-code" className="font-cinzel font-semibold text-medieval-brown">
+                        Code du royaume
+                      </Label>
+                      <Input
+                        id="room-code"
+                        value={roomCode}
+                        onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+                        placeholder="ABCDEF"
+                        className="parchment-input font-mono text-center text-lg font-bold tracking-widest"
+                        maxLength={6}
+                      />
+                    </div>
+                    
+                    <Button 
+                      onClick={joinRoom}
+                      disabled={!playerName.trim() || !roomCode.trim()}
+                      className="w-full bg-iron-accent hover:bg-seal-red-dark text-white font-cinzel font-semibold text-lg py-6 border-2 border-gold-accent transition-all duration-300 hover:scale-105"
+                    >
+                      <Sword className="h-5 w-5 mr-2" />
+                      Rallier le royaume {roomCode}
+                    </Button>
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+
+            {/* Footer */}
+            <div className="text-center mt-12">
+              <div className="ornate-divider"></div>
+              <p className="font-fell text-medieval-brown/70 text-sm">
+                🏰 Un jeu de déduction sociale pour 5-10 joueurs 🏰
+              </p>
+              <Button variant="link" className="font-fell text-gold-accent hover:text-iron-accent mt-2">
+                📜 Lire les règles du royaume
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };
