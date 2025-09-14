@@ -34,7 +34,7 @@ export default function GameDemo() {
             <Board 
               loyalCount={loyalCount}
               conjureCount={conjureCount}
-              crisis={crisis as 0 | 1 | 2 | 3}
+              crisis={crisis}
               width={1000}
               onSlotClick={(type, index) => {
                 console.log(`Clicked ${type} slot ${index}`);
