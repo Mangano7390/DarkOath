@@ -149,11 +149,11 @@ const LandingPage = () => {
           <CardContent className="p-8">
             {/* Game Description */}
             <div className="text-center mb-8">
-              <h2 className="font-cinzel text-3xl font-bold text-medieval-brown mb-4 embossed-text">
+              <h2 className="font-cinzel text-3xl font-bold text-amber-900 mb-4 embossed-text">
                 ⚔️ À propos du jeu ⚔️
               </h2>
               <div className="ornate-divider"></div>
-              <p className="font-fell text-lg text-medieval-brown leading-relaxed max-w-4xl mx-auto">
+              <p className="font-fell text-lg text-amber-900 leading-relaxed max-w-4xl mx-auto">
                 Dans Secretus Regnum, incarnez un noble dans un royaume en péril. Les Chevaliers Loyaux 
                 tentent de préserver la stabilité du royaume, tandis que les Conjurés et leur mystérieux 
                 Usurpateur conspirent pour prendre le pouvoir. Qui pouvez-vous faire confiance ?
