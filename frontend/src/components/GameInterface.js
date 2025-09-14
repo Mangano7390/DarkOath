@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Crown, Sword, Shield, Users, Clock, Vote, Gavel, Eye, Skull } from 'lucide-react';
+import { Crown, Sword, Shield, Users, Clock, Vote, Gavel, Eye, Skull, Send, MessageCircle } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
+import { Input } from './ui/input';
+import { ScrollArea } from './ui/scroll-area';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
