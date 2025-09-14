@@ -132,29 +132,26 @@ class VotingPermissionsTest:
         """Test nomination phase - regent nominates seat 2"""
         print(f"\n👑 Testing nomination phase")
         
-        # Find the regent (seat 1) player ID
-        regent_player = None
-        for player in self.players:
-            if player.get('seat') == 1:
-                regent_player = player
-                break
+        # Regent is seat 1 (Alice)
+        regent_player = self.players[0]  # Alice, seat 1
+        nominee_seat = 2  # Bob, seat 2
         
-        if not regent_player:
-            # Use existing player as regent (should be seat 1)
-            regent_player = {"id": self.existing_player_id, "name": "Test Player"}
-        
-        print(f"   Regent: {regent_player.get('name', 'Unknown')} (ID: {regent_player['id']})")
+        print(f"   Regent: {regent_player['name']} (seat {regent_player['seat']}, ID: {regent_player['id']})")
+        print(f"   Nominating seat: {nominee_seat}")
         
         # Regent nominates seat 2
         success, response = self.make_request(
             'POST',
             f'rooms/{self.room_code}/action',
-            data={"nomineeSeat": 2},
+            data={"nomineeSeat": nominee_seat},
             params={"player_id": regent_player['id'], "action_type": "NOMINATE"}
         )
         
         if not success:
             return self.log_test("Nomination action", False, "- Failed to nominate seat 2")
+        
+        # Wait a moment for state update
+        time.sleep(0.5)
         
         # Verify game moved to VOTE phase
         success, game_state = self.make_request(
@@ -167,11 +164,11 @@ class VotingPermissionsTest:
             return self.log_test("Get game state after nomination", False, "- Failed to get game state")
         
         phase = game_state.get('phase')
-        nominee_seat = game_state.get('nominee_seat')
+        nominee_seat_actual = game_state.get('nominee_seat')
         
-        success = (phase == 'VOTE' and nominee_seat == 2)
+        success = (phase == 'VOTE' and nominee_seat_actual == nominee_seat)
         return self.log_test("Nomination verification", success,
-                           f"- Phase: {phase}, Nominee seat: {nominee_seat}")
+                           f"- Phase: {phase}, Nominee seat: {nominee_seat_actual}")
 
     def voting_permissions_test(self):
         """Test the critical voting permissions bug fix"""
