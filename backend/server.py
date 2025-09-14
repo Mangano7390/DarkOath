@@ -368,6 +368,9 @@ async def handle_game_action(room_code: str, player_id: str, action_type: str, p
                         "regent": game_state.turn.regent_seat,
                         "chambellan": game_state.turn.nominee_seat
                     }
+                    
+                    # Clear votes but keep nominee_seat for legislative phase
+                    game_state.turn.votes = {}
                 else:
                     # Government rejected - crisis increases
                     game_state.tracks.crisis += 1
@@ -390,9 +393,10 @@ async def handle_game_action(room_code: str, player_id: str, action_type: str, p
                     next_index = (current_index + 1) % len(alive_seats)
                     game_state.turn.regent_seat = alive_seats[next_index]
                     game_state.turn.phase = Phase.NOMINATION
-                
-                game_state.turn.nominee_seat = None
-                game_state.turn.votes = {}
+                    
+                    # Clear nominee and votes for rejected government
+                    game_state.turn.nominee_seat = None
+                    game_state.turn.votes = {}
                 game_state.version += 1
                 
                 # Check win conditions
