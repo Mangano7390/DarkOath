@@ -520,19 +520,33 @@ const GameInterface = ({ roomCode }) => {
   }
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-900 via-amber-800 to-orange-900 p-4">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <Card className="bg-amber-50/95 backdrop-blur-sm border-amber-200">
+    <div className="medieval-room">
+      {/* Atmospheric elements */}
+      <div className="torch-light"></div>
+      <div className="torch-light"></div>
+      <div className="torch-light"></div>
+      <div className="torch-light"></div>
+      
+      {/* Wall decorations */}
+      <div className="wall-decoration">⚔️</div>
+      <div className="wall-decoration">🛡️</div>
+      <div className="wall-decoration">🗡️</div>
+      
+      {/* Castle window view */}
+      <div className="castle-window"></div>
+      
+      <div className="max-w-7xl mx-auto space-y-6 p-4 relative z-10">
+        {/* Header - Style parchemin */}
+        <Card className="game-info-parchment">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-2xl text-amber-900 font-serif">
+                <CardTitle className="text-2xl text-amber-900 font-cinzel">
                   Secretus Regnum
                 </CardTitle>
-                <p className="text-amber-700">Room: {roomCode}</p>
+                <p className="text-amber-700 font-fell">Room: {roomCode}</p>
               </div>
-              <Badge variant="outline" className="bg-amber-100">
+              <Badge variant="outline" className="bg-amber-100 font-cinzel">
                 Partie en cours
               </Badge>
             </div>
