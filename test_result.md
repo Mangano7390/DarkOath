@@ -106,16 +106,19 @@ user_problem_statement: Fix the bug where the Régent and Chambellan can vote, a
 
 backend:
   - task: "VOTE action permissions validation"
-    implemented: true
-    working: true
+    implemented: false
+    working: false
     file: "backend/server.py"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
     needs_retesting: false
     status_history:
         - working: true
           agent: "main"
           comment: "Backend correctly allows voting, frontend handles permission filtering"
+        - working: false
+          agent: "testing"
+          comment: "CRITICAL BUG CONFIRMED: Backend allows regent (seat 1) and nominee (seat 2) to vote. Lines 321-402 in server.py have no voting permission checks. The comment 'Anyone can vote during VOTE phase' shows the bug. Backend must validate that regent and nominee cannot vote during VOTE phase."
 
 frontend:
   - task: "Fix VotePanel missing mySeat prop bug"
