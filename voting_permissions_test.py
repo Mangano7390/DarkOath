@@ -2,6 +2,7 @@ import requests
 import sys
 import json
 import uuid
+import time
 from datetime import datetime
 
 class VotingPermissionsTest:
@@ -10,9 +11,8 @@ class VotingPermissionsTest:
         self.api_url = f"{base_url}/api"
         self.tests_run = 0
         self.tests_passed = 0
-        self.room_code = "FJRTMA"
-        self.existing_player_id = "f70f1427-ccbc-4084-88a6-00a14a49bcba"
-        self.players = []
+        self.room_code = None  # Will create a new room
+        self.players = []  # List of {id, name, seat}
         
     def log_test(self, name, success, details=""):
         """Log test results"""
