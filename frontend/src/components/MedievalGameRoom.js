@@ -76,8 +76,9 @@ const MedievalGameRoom = ({ roomCode }) => {
     };
   }, [roomCode, currentPlayerId]);
 
-  // Initialize chat messages
+  // Initialize chat messages and WebSocket connection
   useEffect(() => {
+    // Initialize with system message
     const initMessages = [
       { 
         id: 1, 
@@ -88,7 +89,54 @@ const MedievalGameRoom = ({ roomCode }) => {
       }
     ];
     setMessages(initMessages);
-  }, []);
+
+    // Set up WebSocket connection for real-time chat
+    if (currentPlayerId && roomCode) {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsHost = BACKEND_URL.replace('http://', '').replace('https://', '');
+      const wsUrl = `${protocol}//${wsHost}/ws/${roomCode}/${currentPlayerId}`;
+      
+      try {
+        const ws = new WebSocket(wsUrl);
+        
+        ws.onopen = () => {
+          console.log('WebSocket connected for chat');
+        };
+        
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'chat_message') {
+              const newMessage = {
+                id: Date.now() + Math.random(),
+                player_name: data.player_name,
+                message: data.message,
+                timestamp: data.timestamp,
+                type: 'player'
+              };
+              setMessages(prev => [...prev, newMessage]);
+            }
+          } catch (error) {
+            console.error('Error parsing WebSocket message:', error);
+          }
+        };
+        
+        ws.onclose = () => {
+          console.log('WebSocket disconnected');
+        };
+        
+        ws.onerror = (error) => {
+          console.error('WebSocket error:', error);
+        };
+        
+        return () => {
+          ws.close();
+        };
+      } catch (error) {
+        console.error('Failed to establish WebSocket connection:', error);
+      }
+    }
+  }, [roomCode, currentPlayerId]);
 
   // Send chat message
   const sendMessage = async () => {
@@ -96,21 +144,29 @@ const MedievalGameRoom = ({ roomCode }) => {
 
     setIsSending(true);
     try {
-      await axios.post(`${API}/rooms/${roomCode}/chat?player_id=${currentPlayerId}&message=${encodeURIComponent(newMessage)}`);
+      const response = await axios.post(`${API}/rooms/${roomCode}/chat`, null, {
+        params: {
+          player_id: currentPlayerId,
+          message: newMessage
+        }
+      });
       
-      // Add message immediately to local state for instant feedback
-      const newMsg = {
+      if (response.data.success) {
+        setNewMessage('');
+      }
+      
+    } catch (error) {
+      console.error('Error sending message:', error);
+      // Fallback: add message locally if API fails
+      const fallbackMsg = {
         id: Date.now(),
         player_name: currentPlayerName,
         message: newMessage,
         timestamp: new Date().toISOString(),
         type: 'player'
       };
-      setMessages(prev => [...prev, newMsg]);
+      setMessages(prev => [...prev, fallbackMsg]);
       setNewMessage('');
-      
-    } catch (error) {
-      console.error('Error sending message:', error);
     } finally {
       setIsSending(false);
     }
