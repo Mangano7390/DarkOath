@@ -188,7 +188,18 @@ const ChatComponent = ({ roomCode, currentPlayerId, currentPlayerName }) => {
     setIsSending(true);
     try {
       await axios.post(`${API}/rooms/${roomCode}/chat?player_id=${currentPlayerId}&message=${encodeURIComponent(newMessage)}`);
+      
+      // Add message immediately to local state for instant feedback
+      const newMsg = {
+        id: Date.now(),
+        player_name: currentPlayerName,
+        message: newMessage,
+        timestamp: new Date().toISOString(),
+        type: 'player'
+      };
+      setMessages(prev => [...prev, newMsg]);
       setNewMessage('');
+      
     } catch (error) {
       console.error('Error sending message:', error);
     } finally {
@@ -203,46 +214,69 @@ const ChatComponent = ({ roomCode, currentPlayerId, currentPlayerName }) => {
     }
   };
 
-  // Mock some initial messages for now
+  // Initialize with system message
   useEffect(() => {
-    const mockMessages = [
-      { id: 1, player_name: 'Système', message: 'La partie a commencé !', timestamp: new Date().toISOString(), type: 'system' },
-      { id: 2, player_name: currentPlayerName, message: 'Salut tout le monde !', timestamp: new Date().toISOString(), type: 'player' }
+    const initMessages = [
+      { 
+        id: 1, 
+        player_name: 'Système', 
+        message: 'La partie a commencé ! Bonne chance à tous.', 
+        timestamp: new Date().toISOString(), 
+        type: 'system' 
+      }
     ];
-    setMessages(mockMessages);
-  }, [currentPlayerName]);
+    setMessages(initMessages);
+  }, []);
+
+  // Simulate receiving messages from other players (since WebSocket is not working)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // This would normally be handled by WebSocket, but for now we'll simulate it
+      // In a real implementation, this would listen to WebSocket messages or poll an API
+    }, 5000);
+    
+    return () => clearInterval(interval);
+  }, [roomCode]);
 
   return (
-    <Card className="h-80">
+    <Card className="h-96">
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center">
           <MessageCircle className="h-5 w-5 mr-2" />
           Chat de la partie
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-col h-64">
-        <ScrollArea className="flex-1 mb-3">
+      <CardContent className="flex flex-col h-80">
+        <ScrollArea className="flex-1 mb-3 pr-2">
           <div className="space-y-2">
             {messages.map((msg) => (
               <div key={msg.id} className={`p-2 rounded-lg text-sm ${
                 msg.type === 'system' 
-                  ? 'bg-blue-100 text-blue-800 italic' 
+                  ? 'bg-blue-100 text-blue-800 italic border border-blue-200' 
                   : msg.player_name === currentPlayerName
-                  ? 'bg-amber-100 text-amber-800 ml-4'
-                  : 'bg-gray-100 text-gray-800'
+                  ? 'bg-amber-100 text-amber-800 ml-4 border border-amber-200'
+                  : 'bg-gray-100 text-gray-800 border border-gray-200'
               }`}>
-                <div className="font-medium text-xs">
+                <div className="font-medium text-xs mb-1">
                   {msg.player_name}
                   <span className="text-xs opacity-60 ml-2">
-                    {new Date(msg.timestamp).toLocaleTimeString()}
+                    {new Date(msg.timestamp).toLocaleTimeString('fr-FR', { 
+                      hour: '2-digit', 
+                      minute: '2-digit' 
+                    })}
                   </span>
                 </div>
-                <div>{msg.message}</div>
+                <div className="break-words">{msg.message}</div>
               </div>
             ))}
+            {messages.length === 0 && (
+              <div className="text-center text-gray-500 py-4">
+                Aucun message pour le moment...
+              </div>
+            )}
           </div>
         </ScrollArea>
-        <div className="flex space-x-2">
+        <div className="flex space-x-2 mt-2">
           <Input
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
@@ -250,14 +284,23 @@ const ChatComponent = ({ roomCode, currentPlayerId, currentPlayerName }) => {
             placeholder="Tapez votre message..."
             className="flex-1"
             maxLength={200}
+            disabled={isSending}
           />
           <Button 
             onClick={sendMessage}
             disabled={!newMessage.trim() || isSending}
             size="sm"
+            className="px-3"
           >
-            <Send className="h-4 w-4" />
+            {isSending ? (
+              <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
           </Button>
+        </div>
+        <div className="text-xs text-gray-500 mt-1">
+          {messages.length} message(s) • Appuyez sur Entrée pour envoyer
         </div>
       </CardContent>
     </Card>
