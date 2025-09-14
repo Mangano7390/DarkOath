@@ -58,41 +58,49 @@ class VotingPermissionsTest:
             return False, {}
 
     def setup_test_scenario(self):
-        """Setup the test scenario with 5 players in room FJRTMA"""
-        print(f"\n🏰 Setting up test scenario for room {self.room_code}")
+        """Create a NEW test room and add exactly 5 players"""
+        print(f"\n🏰 Creating NEW test room (as requested - old room may be inconsistent)")
         
-        # Check if room exists and get current state
-        success, room_data = self.make_request('GET', f'rooms/{self.room_code}')
+        # Create a new room
+        success, room_data = self.make_request('POST', 'rooms')
         if not success:
-            return self.log_test("Room existence check", False, "- Room FJRTMA not found")
+            return self.log_test("Create new room", False, "- Failed to create room")
         
-        current_players = room_data.get('players', [])
-        print(f"   Current players in room: {len(current_players)}")
+        self.room_code = room_data.get('code')
+        print(f"   Created new room: {self.room_code}")
         
-        # Store existing players
-        self.players = current_players.copy()
+        # Create exactly 5 players as specified in requirements
+        player_names = ["Alice", "Bob", "Charlie", "Diana", "Eve"]
         
-        # Add 4 more players to reach minimum of 5
-        players_to_add = [
-            {"id": str(uuid.uuid4()), "name": "Alice"},
-            {"id": str(uuid.uuid4()), "name": "Bob"}, 
-            {"id": str(uuid.uuid4()), "name": "Charlie"},
-            {"id": str(uuid.uuid4()), "name": "Diana"}
-        ]
-        
-        for player in players_to_add:
+        for i, name in enumerate(player_names):
+            # Create anonymous user
+            user_success, user_data = self.make_request(
+                'POST', 
+                'auth/anonymous',
+                params={"name": name}
+            )
+            if not user_success:
+                return self.log_test("Create user", False, f"- Failed to create user {name}")
+            
+            player_id = user_data.get('userId')
+            
+            # Join room
             success, _ = self.make_request(
                 'POST', 
                 f'rooms/{self.room_code}/join',
-                params={"player_id": player["id"], "player_name": player["name"]}
+                params={"player_id": player_id, "player_name": name}
             )
             if success:
-                self.players.append(player)
-                print(f"   Added player: {player['name']} (ID: {player['id']})")
+                self.players.append({
+                    "id": player_id, 
+                    "name": name, 
+                    "seat": i + 1
+                })
+                print(f"   Added player: {name} (seat {i+1}, ID: {player_id})")
             else:
-                return self.log_test("Add players", False, f"- Failed to add {player['name']}")
+                return self.log_test("Add players", False, f"- Failed to add {name}")
         
-        return self.log_test("Setup test scenario", len(self.players) >= 5, f"- {len(self.players)} players ready")
+        return self.log_test("Setup test scenario", len(self.players) == 5, f"- {len(self.players)} players ready")
 
     def start_game_test(self):
         """Test starting the game"""
