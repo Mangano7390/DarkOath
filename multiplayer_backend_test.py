@@ -5,7 +5,7 @@ import time
 from datetime import datetime
 
 class MultiplayerAPITester:
-    def __init__(self, base_url="https://kingdom-betrayal-1.preview.emergentagent.com"):
+    def __init__(self, base_url="https://throne-scheme.preview.emergentagent.com"):
         self.base_url = base_url
         self.api_url = f"{base_url}/api"
         self.tests_run = 0
