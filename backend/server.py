@@ -444,6 +444,15 @@ async def get_game_state(room_code: str, player_id: str):
     if not player:
         raise HTTPException(status_code=404, detail="Player not found")
     
+    # Determine if player can see legislative cards
+    legislative_cards = []
+    if game_state.turn.phase == Phase.LEGIS_REGENT and player.seat == game_state.turn.regent_seat:
+        # Regent can see the cards during LEGIS_REGENT phase
+        legislative_cards = game_state.turn.legislative_cards
+    elif game_state.turn.phase == Phase.LEGIS_CHAMBELLAN and player.seat == game_state.turn.nominee_seat:
+        # Chambellan can see the cards during LEGIS_CHAMBELLAN phase
+        legislative_cards = game_state.turn.legislative_cards
+    
     return {
         "status": game_state.status,
         "phase": game_state.turn.phase,
@@ -456,7 +465,8 @@ async def get_game_state(room_code: str, player_id: str):
         "your_role": player.role if player.role else None,
         "players": [{"id": p.id, "name": p.name, "seat": p.seat, "alive": p.alive, "connected": p.connected} for p in game_state.players],
         "winner": game_state.winner,
-        "version": game_state.version
+        "version": game_state.version,
+        "legislative_cards": legislative_cards
     }
 async def get_game_state(room_code: str, player_id: str):
     """Get current game state for a specific player"""
