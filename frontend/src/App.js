@@ -331,7 +331,7 @@ const Lobby = ({ roomCode }) => {
                 </CardDescription>
               </div>
               <Badge variant="secondary" className="text-lg px-4 py-2">
-                {players.length}/5 {t('lobby.players')}
+                {players.length}/10 {t('lobby.players')}
               </Badge>
             </div>
           </CardHeader>
