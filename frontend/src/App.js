@@ -350,7 +350,7 @@ const Lobby = ({ roomCode }) => {
                 <div className="grid gap-4">
                   <h3 className="text-xl font-bold text-amber-900">{t('lobby.playersList')}</h3>
                   <div className="grid gap-2">
-                    {[...Array(5)].map((_, index) => {
+                    {[...Array(10)].map((_, index) => {
                       const player = players[index];
                       return (
                         <div
@@ -381,14 +381,14 @@ const Lobby = ({ roomCode }) => {
                 </div>
 
                 {/* Start Game Button */}
-                {players.length === 5 && (
+                {players.length >= 5 && (
                   <div className="space-y-4">
                     <div className="text-center p-4 bg-green-100 rounded-lg border border-green-300">
                       <p className="text-green-800 text-lg font-semibold">
-                        ✅ Tous les joueurs sont connectés !
+                        ✅ Assez de joueurs pour commencer !
                       </p>
                       <p className="text-green-700 text-sm">
-                        Vous pouvez maintenant démarrer la partie
+                        {players.length} joueur(s) connecté(s) - Minimum 5, Maximum 10
                       </p>
                     </div>
                     <Button 
@@ -396,7 +396,7 @@ const Lobby = ({ roomCode }) => {
                       className="w-full bg-green-600 hover:bg-green-700 text-white text-xl py-6"
                     >
                       <Crown className="h-6 w-6 mr-2" />
-                      {t('lobby.startGame')}
+                      {t('lobby.startGame')} ({players.length} joueurs)
                     </Button>
                   </div>
                 )}
@@ -407,13 +407,13 @@ const Lobby = ({ roomCode }) => {
                       {t('lobby.waitingForPlayers', { needed: 5 - players.length })}
                     </p>
                     <p className="text-amber-700 text-sm mt-2">
-                      {players.length}/5 joueurs connectés
+                      {players.length}/10 joueurs connectés (Minimum: 5)
                     </p>
                     <div className="mt-4">
                       <div className="w-full bg-amber-200 rounded-full h-3">
                         <div 
                           className="bg-amber-600 h-3 rounded-full transition-all duration-300"
-                          style={{ width: `${(players.length / 5) * 100}%` }}
+                          style={{ width: `${(Math.max(players.length, 5) / 10) * 100}%` }}
                         ></div>
                       </div>
                     </div>
