@@ -260,6 +260,13 @@ const Lobby = ({ roomCode }) => {
 
   const startGame = async () => {
     console.log('startGame called for room:', roomCode);
+    console.log('Current players:', players.length);
+    
+    if (players.length < 5) {
+      alert(`Impossible de démarrer - il faut 5 joueurs (actuellement ${players.length})`);
+      return;
+    }
+    
     try {
       console.log('Calling start game API...');
       const response = await axios.post(`${API}/rooms/${roomCode}/start`);
@@ -271,6 +278,12 @@ const Lobby = ({ roomCode }) => {
     } catch (error) {
       console.error('Error starting game:', error);
       console.error('Error details:', error.response?.data);
+      
+      if (error.response?.status === 400) {
+        alert('Impossible de démarrer le jeu - vérifiez que tous les joueurs sont connectés');
+      } else {
+        alert('Erreur lors du démarrage du jeu');
+      }
     }
   };
 
