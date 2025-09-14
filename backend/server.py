@@ -583,32 +583,7 @@ async def start_game(room_code: str):
     
     return {"success": True}
 
-# Chat endpoint
-@api_router.post("/rooms/{room_code}/chat")
-async def send_chat_message(room_code: str, player_id: str, message: str):
-    """Send a chat message to all players in the room"""
-    game_state = manager.get_game_state(room_code)
-    if not game_state:
-        raise HTTPException(status_code=404, detail="Room not found")
-    
-    # Find the player
-    player = next((p for p in game_state.players if p.id == player_id), None)
-    if not player:
-        raise HTTPException(status_code=404, detail="Player not found")
-    
-    # Create chat message
-    chat_message = {
-        "type": "chat_message",
-        "player_id": player_id,
-        "player_name": player.name,
-        "message": message,
-        "timestamp": datetime.now().isoformat()
-    }
-    
-    # Broadcast to all players in the room
-    await manager.broadcast_to_room(room_code, chat_message)
-    
-    return {"success": True}
+# Duplicate chat endpoint removed - using the first implementation
 
 # Get chat history endpoint
 @api_router.get("/rooms/{room_code}/chat")
