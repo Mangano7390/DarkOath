@@ -239,10 +239,7 @@ metadata:
   run_ui: false
 
 test_plan:
-  current_focus:
-    - "Medieval interface and chat system integration"
-    - "Fix VotePanel missing mySeat prop bug"
-    - "Legislative cards display during LEGIS_REGENT phase"
+  current_focus: []
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
