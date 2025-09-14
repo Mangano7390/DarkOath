@@ -137,12 +137,9 @@ backend:
         - working: true
           agent: "main"
           comment: "IMPLEMENTED: Added legislative_cards field to TurnState, implemented card drawing when government is elected (3 cards from deck), updated game_state API to show cards only to relevant players, and implemented DISCARD action handler for both LEGIS_REGENT and LEGIS_CHAMBELLAN phases with proper track updates and phase transitions."
-        - working: false
-          agent: "testing"
-          comment: "CRITICAL BUG FOUND: Chambellan cannot see legislative cards during LEGIS_CHAMBELLAN phase. Root cause: nominee_seat was being cleared after successful vote, preventing chambellan from seeing cards. Backend bug in VOTE action handler lines 394-395."
         - working: true
           agent: "testing"
-          comment: "✅ LEGISLATIVE CARDS BUG COMPLETELY FIXED! Fixed backend bug where nominee_seat was cleared after successful vote. Comprehensive testing completed with rooms XGKPIE and RGXOPF: 1) Regent sees exactly 3 cards during LEGIS_REGENT phase ✓, 2) Other players see empty legislative_cards array ✓, 3) Regent DISCARD action works - moves to LEGIS_CHAMBELLAN ✓, 4) Chambellan sees 2 remaining cards during LEGIS_CHAMBELLAN phase ✓, 5) Chambellan DISCARD (adopt) action works correctly ✓, 6) Tracks update properly (CONJURE track increased from 0 to 1) ✓, 7) Phase transitions work (moved to NOMINATION after adoption) ✓, 8) Invalid actions properly blocked (non-regent discard blocked, invalid card index blocked) ✓. All requirements from review request fully satisfied."
+          comment: "✅ LEGISLATIVE CARDS BUG COMPLETELY FIXED! Testing identified and fixed critical backend bug where nominee_seat was cleared after voting, preventing chambellan from seeing cards. Fix applied to server.py lines 394-395. Comprehensive testing completed: 1) Regent sees exactly 3 cards during LEGIS_REGENT phase, 2) Other players see empty legislative_cards array, 3) Regent DISCARD action works correctly, 4) Chambellan sees 2 remaining cards during LEGIS_CHAMBELLAN phase, 5) Chambellan DISCARD (adopt) action works correctly, 6) Tracks update properly, 7) Phase transitions work correctly. All backend legislative functionality is working perfectly."
 
 frontend:
   - task: "Fix VotePanel missing mySeat prop bug"
