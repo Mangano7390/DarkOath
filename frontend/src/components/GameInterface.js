@@ -271,7 +271,7 @@ const PlayersList = ({ players, currentPlayerId, regentSeat, deadPlayers }) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">Joueurs ({players.length}/5)</CardTitle>
+        <CardTitle className="text-lg">Joueurs ({players.length})</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-2">
