@@ -510,38 +510,36 @@ const GameInterface = ({ roomCode }) => {
             />
           </div>
           
-          {/* Center Column - Game Actions */}
+          {/* Center Column - Game Actions & Chat */}
           <div className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Actions de Jeu</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-center p-8">
+                <div className="text-center p-6">
                   <Crown className="h-12 w-12 text-amber-600 mx-auto mb-4" />
                   <p className="text-amber-800 text-lg mb-4">
                     🎉 Interface de jeu chargée avec succès !
                   </p>
                   <div className="space-y-2 text-sm text-amber-700">
-                    <p>✅ Connexion établie avec Room: {roomCode}</p>
+                    <p>✅ Room: {roomCode}</p>
                     <p>✅ Votre rôle: {playerRole}</p>
-                    <p>✅ Phase actuelle: {gameState.phase}</p>
-                    <p>✅ Tous les composants sont chargés</p>
-                  </div>
-                  <div className="mt-6 p-4 bg-amber-100 rounded-lg">
-                    <p className="text-amber-800 font-medium mb-2">Actions de jeu à venir :</p>
-                    <div className="text-xs text-amber-700 space-y-1">
-                      <p>• Interface de nomination et vote</p>
-                      <p>• Sessions législatives interactives</p>
-                      <p>• Pouvoirs spéciaux (Investigation, Exécution)</p>
-                      <p>• Chat temps réel</p>
-                    </div>
+                    <p>✅ Phase: {gameState.phase}</p>
+                    <p>✅ Joueurs: {gameState.players?.length || 0}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
+
+            {/* Chat Component */}
+            <ChatComponent 
+              roomCode={roomCode}
+              currentPlayerId={currentPlayerId}
+              currentPlayerName={currentPlayerName}
+            />
           </div>
-          
+
           {/* Right Column - Players */}
           <div>
             <PlayersList 
