@@ -599,6 +599,7 @@ const GameInterface = ({ roomCode }) => {
                     nomineeSeat={gameState.nominee_seat}
                     votes={gameState.votes || {}}
                     myVote={gameState.votes?.[currentPlayerId]}
+                    mySeat={gameState.players?.find(p => p.id === currentPlayerId)?.seat}
                     onVote={async (vote) => {
                       console.log('Voting:', vote);
                       try {
