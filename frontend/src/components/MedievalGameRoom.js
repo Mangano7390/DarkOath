@@ -12,6 +12,7 @@ import '../styles/medieval-room.css';
 import NominationPanel from './NominationPanel';
 import VotePanel from './VotePanel';
 import LegislativePanel from './LegislativePanel';
+import MedievalTable from './MedievalTable';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
