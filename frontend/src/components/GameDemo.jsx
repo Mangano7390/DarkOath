@@ -74,7 +74,7 @@ export default function GameDemo() {
               Conjuré +
             </button>
             <button 
-              onClick={() => setCrisis(prev => ((prev + 1) % 4) as 0 | 1 | 2 | 3)}
+              onClick={() => setCrisis(prev => ((prev + 1) % 4))}
               className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700"
             >
               Crise: {crisis}
