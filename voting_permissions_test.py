@@ -114,7 +114,7 @@ class VotingPermissionsTest:
         success, game_state = self.make_request(
             'GET', 
             f'rooms/{self.room_code}/game_state',
-            params={"player_id": self.existing_player_id}
+            params={"player_id": self.players[0]['id']}  # Use first player
         )
         
         if not success:
