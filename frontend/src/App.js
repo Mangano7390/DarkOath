@@ -1,21 +1,3 @@
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, useNavigate, useParams } from 'react-router-dom';
-import { Crown, Sword, Shield, Users, Globe } from 'lucide-react';
-import { Button } from './components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
-import { Input } from './components/ui/input';
-import { Label } from './components/ui/label';
-import { Badge } from './components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
-import { useTranslation } from 'react-i18next';
-import './i18n';
-import axios from 'axios';
-import io from 'socket.io-client';
-import GameInterface from './components/GameInterface';
-import SimpleDemo from './components/SimpleDemo';
-
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
 
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useParams } from 'react-router-dom';
