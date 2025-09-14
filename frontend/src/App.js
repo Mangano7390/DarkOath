@@ -12,7 +12,7 @@ import './i18n';
 import axios from 'axios';
 import io from 'socket.io-client';
 import GameInterface from './components/GameInterface';
-import GameDemo from './components/GameDemo';
+import SimpleDemo from './components/SimpleDemo';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
