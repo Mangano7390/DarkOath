@@ -676,13 +676,15 @@ const GameInterface = ({ roomCode }) => {
             />
           </div>
 
-          {/* Right Column - Players */}
-          <div>
-            <PlayersList 
-              players={gameState.players || []}
-              currentPlayerId={currentPlayerId}
-              regentSeat={gameState.regent_seat}
-              deadPlayers={[]}
+          {/* Right Column - Medieval Round Table */}
+          <div className="lg:col-span-2 flex justify-center items-start">
+            <MedievalTable 
+              players={gameState.players?.map(player => ({
+                seat: player.seat,
+                name: player.name + (player.id === currentPlayerId ? ' (Vous)' : ''),
+                active: player.seat === gameState.regent_seat || player.seat === gameState.nominee_seat
+              })) || []}
+              size={600}
             />
           </div>
         </div>
