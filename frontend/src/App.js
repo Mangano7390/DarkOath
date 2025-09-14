@@ -451,7 +451,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<LandingPage />} />
-        <Route path="/demo" element={<GameDemo />} />
+        <Route path="/demo" element={<SimpleDemo />} />
         <Route path="/lobby/:roomCode" element={<LobbyWrapper />} />
         <Route path="/game/:roomCode" element={<GameWrapper />} />
       </Routes>
