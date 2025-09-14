@@ -401,11 +401,13 @@ async def handle_game_action(room_code: str, player_id: str, action_type: str, p
                     "version": game_state.version
                 })
             else:
-                # Just broadcast vote count update
+                # Just broadcast vote count update with eligible voters count
+                alive_players = [p for p in game_state.players if p.alive]
+                eligible_voters = [p for p in alive_players if p.seat != game_state.turn.regent_seat and p.seat != game_state.turn.nominee_seat]
                 await manager.broadcast_to_room(room_code, {
                     "type": "vote_progress",
                     "votes_count": len(game_state.turn.votes),
-                    "total_needed": len(alive_players)
+                    "total_needed": len(eligible_voters)
                 })
         
         else:
