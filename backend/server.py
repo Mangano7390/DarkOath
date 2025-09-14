@@ -67,6 +67,7 @@ class TurnState(BaseModel):
     votes: Dict[str, str] = {}
     deck_count: int = 17
     discard_count: int = 0
+    legislative_cards: List[DecreeType] = []  # Cards currently being considered by regent/chambellan
 
 class GameState(BaseModel):
     room_code: str
