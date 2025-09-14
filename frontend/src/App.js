@@ -246,17 +246,27 @@ const LandingPage = () => {
                     </div>
                     
                     <div className="flex justify-center py-4">
-                      <button 
-                        onClick={createRoom}
-                        disabled={!playerName.trim()}
-                        className="wax-seal disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <div className="text-center">
-                          <Users className="h-6 w-6 mx-auto mb-1" />
-                          <div>Créer</div>
-                          <div>Royaume</div>
-                        </div>
-                      </button>
+                      <div className="relative">
+                        <button 
+                          onClick={createRoom}
+                          disabled={!playerName.trim()}
+                          className="w-32 h-32 rounded-full bg-gradient-to-br from-red-800 to-red-900 border-4 border-red-900 text-white font-cinzel font-bold text-sm uppercase tracking-wider shadow-2xl transform transition-all duration-300 hover:scale-105 hover:shadow-red-800/50 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex flex-col items-center justify-center"
+                          style={{
+                            boxShadow: `
+                              0 0 0 4px rgba(139, 21, 56, 0.3),
+                              0 6px 20px rgba(139, 21, 56, 0.4),
+                              inset 0 2px 4px rgba(255, 255, 255, 0.2),
+                              inset 0 -2px 4px rgba(0, 0, 0, 0.3)
+                            `
+                          }}
+                        >
+                          <Users className="h-8 w-8 mb-1" />
+                          <div className="text-xs leading-tight">
+                            <div>CRÉER</div>
+                            <div>ROYAUME</div>
+                          </div>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
