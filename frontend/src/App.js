@@ -223,10 +223,10 @@ const LandingPage = () => {
               
               <TabsContent value="create" className="space-y-6 mt-8">
                 <div className="text-center">
-                  <h3 className="font-cinzel text-2xl font-bold text-medieval-brown mb-4">
+                  <h3 className="font-cinzel text-2xl font-bold text-amber-900 mb-4">
                     Créer un nouveau royaume
                   </h3>
-                  <p className="font-fell text-medieval-brown mb-6">
+                  <p className="font-fell text-amber-900 mb-6">
                     Fondez votre propre royaume et invitez vos compagnons d'armes
                   </p>
                   
