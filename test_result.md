@@ -170,3 +170,5 @@ agent_communication:
     -message: "Fixed the voting permissions bug by adding the missing mySeat prop to VotePanel component. This was causing all players including Regent and Chambellan to be able to vote. Ready to test this fix and then address the legislative cards display issue."
     -agent: "testing"
     -message: "CRITICAL BACKEND BUG FOUND: Tested room FJRTMA with 5 players. Backend allows regent (seat 1) and nominee (seat 2) to vote, which violates game rules. The VOTE action handler in server.py (lines 321-402) has no permission validation. Frontend fix alone is insufficient - backend MUST enforce voting restrictions. All 5 players voted and government was elected when only 3 should have been allowed to vote."
+    -agent: "main"
+    -message: "BACKEND BUG FIXED: Updated server.py VOTE action handler to validate that regent and nominee cannot vote. Added checks at lines 325-329. Also fixed vote counting logic to only count eligible voters (lines 336-338) and updated vote progress broadcast (lines 399-403). Both frontend and backend now properly enforce voting permissions. Ready for retesting."
