@@ -338,9 +338,10 @@ async def handle_game_action(room_code: str, player_id: str, action_type: str, p
             # Record vote
             game_state.turn.votes[player_id] = vote
             
-            # Check if all alive players have voted
+            # Check if all eligible players have voted (excluding regent and nominee)
             alive_players = [p for p in game_state.players if p.alive]
-            if len(game_state.turn.votes) >= len(alive_players):
+            eligible_voters = [p for p in alive_players if p.seat != game_state.turn.regent_seat and p.seat != game_state.turn.nominee_seat]
+            if len(game_state.turn.votes) >= len(eligible_voters):
                 # Count votes
                 yes_votes = sum(1 for v in game_state.turn.votes.values() if v == "oui")
                 no_votes = len(game_state.turn.votes) - yes_votes
