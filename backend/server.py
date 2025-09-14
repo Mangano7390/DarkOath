@@ -422,6 +422,97 @@ async def handle_game_action(room_code: str, player_id: str, action_type: str, p
                     "total_needed": len(eligible_voters)
                 })
         
+        elif action_type == "DISCARD":
+            # Handle legislative card discard during LEGIS_REGENT or LEGIS_CHAMBELLAN phase
+            if game_state.turn.phase == Phase.LEGIS_REGENT:
+                # Only regent can discard during LEGIS_REGENT phase
+                if player.seat != game_state.turn.regent_seat:
+                    raise HTTPException(status_code=400, detail="Only regent can discard during this phase")
+                
+                card_index = payload.get("cardId")
+                if card_index is None or card_index < 0 or card_index >= len(game_state.turn.legislative_cards):
+                    raise HTTPException(status_code=400, detail="Invalid card index")
+                
+                # Discard the selected card
+                discarded_card = game_state.turn.legislative_cards.pop(card_index)
+                game_state.discard.append(discarded_card)
+                game_state.turn.discard_count = len(game_state.discard)
+                
+                # Move to LEGIS_CHAMBELLAN phase (2 cards remain for chambellan)
+                game_state.turn.phase = Phase.LEGIS_CHAMBELLAN
+                game_state.version += 1
+                
+                await manager.broadcast_to_room(room_code, {
+                    "type": "phase_change",
+                    "new_phase": game_state.turn.phase,
+                    "version": game_state.version
+                })
+                
+            elif game_state.turn.phase == Phase.LEGIS_CHAMBELLAN:
+                # Only chambellan can discard during LEGIS_CHAMBELLAN phase
+                if player.seat != game_state.turn.nominee_seat:
+                    raise HTTPException(status_code=400, detail="Only chambellan can discard during this phase") 
+                
+                card_index = payload.get("cardId")
+                if card_index is None or card_index < 0 or card_index >= len(game_state.turn.legislative_cards):
+                    raise HTTPException(status_code=400, detail="Invalid card index")
+                
+                # The chosen card is adopted, the other is discarded
+                adopted_card = game_state.turn.legislative_cards.pop(card_index)
+                discarded_card = game_state.turn.legislative_cards.pop(0)  # Remaining card is discarded
+                
+                # Update tracks based on adopted card
+                if adopted_card == DecreeType.LOYAL:
+                    game_state.tracks.loyal += 1
+                else:
+                    game_state.tracks.conjure += 1
+                
+                # Add discarded card to discard pile
+                game_state.discard.append(discarded_card)
+                game_state.turn.discard_count = len(game_state.discard)
+                
+                # Clear legislative cards
+                game_state.turn.legislative_cards = []
+                
+                # Check for powers and win conditions
+                winner = manager.check_win_conditions(game_state)
+                if winner:
+                    game_state.winner = winner
+                    game_state.turn.phase = Phase.ENDGAME
+                else:
+                    # Check for executive powers based on conjure track
+                    if game_state.tracks.conjure >= 2 and not game_state.powers.get("investigation_unlocked"):
+                        game_state.powers["investigation_unlocked"] = True
+                        game_state.turn.phase = Phase.POWER
+                    elif game_state.tracks.conjure >= 4 and not game_state.powers.get("executed_once"):
+                        game_state.powers["execution_unlocked"] = True  
+                        game_state.turn.phase = Phase.POWER
+                    else:
+                        # Move to next regent and new nomination phase
+                        current_seat = game_state.turn.regent_seat
+                        alive_seats = [p.seat for p in game_state.players if p.alive]
+                        alive_seats.sort()
+                        current_index = alive_seats.index(current_seat)
+                        next_index = (current_index + 1) % len(alive_seats)
+                        game_state.turn.regent_seat = alive_seats[next_index]
+                        game_state.turn.phase = Phase.NOMINATION
+                
+                game_state.turn.nominee_seat = None
+                game_state.turn.votes = {}
+                game_state.version += 1
+                
+                await manager.broadcast_to_room(room_code, {
+                    "type": "legislation_enacted",
+                    "adopted_card": adopted_card,
+                    "new_tracks": game_state.tracks.dict(),
+                    "new_phase": game_state.turn.phase,
+                    "regent_seat": game_state.turn.regent_seat,
+                    "winner": winner,
+                    "version": game_state.version
+                })
+            else:
+                raise HTTPException(status_code=400, detail="Wrong phase for card discard")
+        
         else:
             raise HTTPException(status_code=400, detail="Unknown action type")
             
