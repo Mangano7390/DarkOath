@@ -107,11 +107,11 @@ user_problem_statement: Fix the bug where the Régent and Chambellan can vote, a
 backend:
   - task: "VOTE action permissions validation"
     implemented: true
-    working: false
+    working: true
     file: "backend/server.py"
     stuck_count: 1
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: true
           agent: "main"
@@ -122,6 +122,9 @@ backend:
         - working: true
           agent: "main"
           comment: "FIXED: Added validation to prevent regent and nominee from voting. Updated vote counting logic to only count eligible voters (excluding regent and nominee). Backend now properly enforces voting permissions."
+        - working: true
+          agent: "testing"
+          comment: "✅ VOTING PERMISSIONS BUG FIX VERIFIED! Created new test room OPTREH with 5 players. Tested all requirements: 1) Regent (seat 1) correctly blocked with HTTP 400 'Regent cannot vote', 2) Nominee (seat 2) correctly blocked with HTTP 400 'Nominee cannot vote', 3) All 3 eligible voters (seats 3,4,5) successfully voted, 4) Vote counting works correctly - game moved to LEGIS_REGENT phase after exactly 3 votes (not 5), 5) Backend logs confirm proper 400/200 responses. All critical voting restrictions are working correctly."
 
 frontend:
   - task: "Fix VotePanel missing mySeat prop bug"
