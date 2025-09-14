@@ -336,78 +336,92 @@ const Lobby = ({ roomCode }) => {
           </CardHeader>
           
           <CardContent className="space-y-6">
-            {/* Players List */}
-            <div className="grid gap-4">
-              <h3 className="text-xl font-bold text-amber-900">{t('lobby.playersList')}</h3>
-              <div className="grid gap-2">
-                {[...Array(5)].map((_, index) => {
-                  const player = players[index];
-                  return (
-                    <div
-                      key={index}
-                      className={`p-4 rounded-lg border-2 ${
-                        player 
-                          ? 'bg-green-100 border-green-300 text-green-800' 
-                          : 'bg-gray-100 border-gray-300 text-gray-500'
-                      }`}
-                    >
-                      <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 rounded-full bg-amber-200 flex items-center justify-center">
-                          {index + 1}
-                        </div>
-                        <span className="font-medium">
-                          {player ? player.name : t('lobby.waitingPlayer')}
-                        </span>
-                        {player && (
-                          <Badge variant={player.connected ? "default" : "destructive"}>
-                            {player.connected ? t('lobby.connected') : t('lobby.disconnected')}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Start Game Button */}
-            {players.length === 5 && (
-              <div className="space-y-4">
-                <div className="text-center p-4 bg-green-100 rounded-lg border border-green-300">
-                  <p className="text-green-800 text-lg font-semibold">
-                    ✅ Tous les joueurs sont connectés !
-                  </p>
-                  <p className="text-green-700 text-sm">
-                    Vous pouvez maintenant démarrer la partie
-                  </p>
-                </div>
-                <Button 
-                  onClick={startGame}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white text-xl py-6"
-                >
-                  <Crown className="h-6 w-6 mr-2" />
-                  {t('lobby.startGame')}
-                </Button>
+            {loading && (
+              <div className="text-center p-6">
+                <div className="animate-spin h-8 w-8 border-4 border-amber-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+                <p className="text-amber-800">Chargement du salon...</p>
               </div>
             )}
             
-            {players.length < 5 && (
-              <div className="text-center p-6 bg-amber-100 rounded-lg">
-                <p className="text-amber-800 text-lg">
-                  {t('lobby.waitingForPlayers', { needed: 5 - players.length })}
-                </p>
-                <p className="text-amber-700 text-sm mt-2">
-                  {players.length}/5 joueurs connectés
-                </p>
-                <div className="mt-4">
-                  <div className="w-full bg-amber-200 rounded-full h-3">
-                    <div 
-                      className="bg-amber-600 h-3 rounded-full transition-all duration-300"
-                      style={{ width: `${(players.length / 5) * 100}%` }}
-                    ></div>
+            {!loading && (
+              <>
+                {/* Players List */}
+                <div className="grid gap-4">
+                  <h3 className="text-xl font-bold text-amber-900">{t('lobby.playersList')}</h3>
+                  <div className="grid gap-2">
+                    {[...Array(5)].map((_, index) => {
+                      const player = players[index];
+                      return (
+                        <div
+                          key={index}
+                          className={`p-4 rounded-lg border-2 ${
+                            player 
+                              ? 'bg-green-100 border-green-300 text-green-800' 
+                              : 'bg-gray-100 border-gray-300 text-gray-500'
+                          }`}
+                        >
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 rounded-full bg-amber-200 flex items-center justify-center">
+                              {index + 1}
+                            </div>
+                            <span className="font-medium">
+                              {player ? player.name : t('lobby.waitingPlayer')}
+                            </span>
+                            {player && (
+                              <Badge variant={player.connected ? "default" : "destructive"}>
+                                {player.connected ? t('lobby.connected') : t('lobby.disconnected')}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-              </div>
+
+                {/* Start Game Button */}
+                {players.length === 5 && (
+                  <div className="space-y-4">
+                    <div className="text-center p-4 bg-green-100 rounded-lg border border-green-300">
+                      <p className="text-green-800 text-lg font-semibold">
+                        ✅ Tous les joueurs sont connectés !
+                      </p>
+                      <p className="text-green-700 text-sm">
+                        Vous pouvez maintenant démarrer la partie
+                      </p>
+                    </div>
+                    <Button 
+                      onClick={startGame}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white text-xl py-6"
+                    >
+                      <Crown className="h-6 w-6 mr-2" />
+                      {t('lobby.startGame')}
+                    </Button>
+                  </div>
+                )}
+                
+                {players.length < 5 && (
+                  <div className="text-center p-6 bg-amber-100 rounded-lg">
+                    <p className="text-amber-800 text-lg">
+                      {t('lobby.waitingForPlayers', { needed: 5 - players.length })}
+                    </p>
+                    <p className="text-amber-700 text-sm mt-2">
+                      {players.length}/5 joueurs connectés
+                    </p>
+                    <div className="mt-4">
+                      <div className="w-full bg-amber-200 rounded-full h-3">
+                        <div 
+                          className="bg-amber-600 h-3 rounded-full transition-all duration-300"
+                          style={{ width: `${(players.length / 5) * 100}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                    <p className="text-amber-600 text-xs mt-2">
+                      Partagez ce code avec vos amis : <span className="font-mono font-bold">{roomCode}</span>
+                    </p>
+                  </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>
