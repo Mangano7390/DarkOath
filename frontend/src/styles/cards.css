@@ -1,0 +1,109 @@
+/* Utility classes for cards and game components */
+
+.card-shadow {
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3), 
+              0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.4), 
+              0 6px 15px rgba(0, 0, 0, 0.3);
+}
+
+.parchment-texture {
+  background-image: 
+    radial-gradient(circle at 25% 25%, rgba(139, 69, 19, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 75% 75%, rgba(160, 82, 45, 0.1) 0%, transparent 50%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(0, 0, 0, 0.05) 100%);
+}
+
+.brass-texture {
+  background: linear-gradient(135deg, #D4AF37 0%, #B8860B 30%, #DAA520 70%, #CD853F 100%);
+  background-size: 200% 200%;
+  animation: brass-shimmer 3s ease-in-out infinite;
+}
+
+@keyframes brass-shimmer {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.seal-glow {
+  filter: drop-shadow(0 0 8px rgba(199, 168, 105, 0.5));
+}
+
+.medieval-border {
+  border: 2px solid;
+  border-image: linear-gradient(45deg, 
+    rgba(199, 168, 105, 0.8) 0%, 
+    rgba(176, 141, 87, 0.6) 50%, 
+    rgba(199, 168, 105, 0.8) 100%) 1;
+}
+
+.crisis-pulse {
+  animation: crisis-glow 2s ease-in-out infinite;
+}
+
+@keyframes crisis-glow {
+  0%, 100% { 
+    box-shadow: 0 0 10px rgba(211, 84, 0, 0.3);
+  }
+  50% { 
+    box-shadow: 0 0 20px rgba(211, 84, 0, 0.6), 
+                0 0 30px rgba(211, 84, 0, 0.4);
+  }
+}
+
+.text-medieval {
+  font-family: "Times New Roman", "Playfair Display", serif;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.text-game-ui {
+  font-family: "Inter", -apple-system, sans-serif;
+  font-weight: 500;
+}
+
+/* Responsive card sizing */
+@media (max-width: 640px) {
+  .card-responsive {
+    width: 180px !important;
+    height: calc(180px * 352 / 252) !important;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  .card-responsive {
+    width: 220px !important;
+    height: calc(220px * 352 / 252) !important;
+  }
+}
+
+.slot-active {
+  animation: slot-fill 0.3s ease-out;
+}
+
+@keyframes slot-fill {
+  0% { 
+    transform: scale(0.8); 
+    opacity: 0.6; 
+  }
+  50% { 
+    transform: scale(1.1); 
+  }
+  100% { 
+    transform: scale(1); 
+    opacity: 1; 
+  }
+}
+
+/* Utility for better text contrast on parchment */
+.text-on-parchment {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
