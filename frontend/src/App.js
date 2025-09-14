@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import './i18n';
 import axios from 'axios';
 import io from 'socket.io-client';
+import GameInterface from './components/GameInterface';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -430,10 +431,8 @@ const Lobby = ({ roomCode }) => {
   );
 };
 
-// Game Component (placeholder)
+// Game Component - Now uses GameInterface
 const Game = ({ roomCode }) => {
-  const { t } = useTranslation();
-  
   console.log('Game component rendered with roomCode:', roomCode);
   
   // Check if roomCode exists
@@ -442,31 +441,7 @@ const Game = ({ roomCode }) => {
     return <div>Error: No room code</div>;
   }
   
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-900 via-amber-800 to-orange-900 p-4">
-      <div className="max-w-6xl mx-auto">
-        <Card className="bg-amber-50/95 backdrop-blur-sm border-amber-200 shadow-xl">
-          <CardHeader>
-            <CardTitle className="text-3xl text-amber-900 font-serif text-center">
-              {t('game.title')} - {roomCode}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-center p-12">
-            <Crown className="h-24 w-24 text-amber-600 mx-auto mb-6" />
-            <p className="text-2xl text-amber-800">
-              {t('game.comingSoon')}
-            </p>
-            <p className="text-lg text-amber-700 mt-4">
-              Room Code: {roomCode}
-            </p>
-            <p className="text-sm text-amber-600 mt-2">
-              Game component loaded successfully!
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
+  return <GameInterface roomCode={roomCode} />;
 };
 
 // Main App Component

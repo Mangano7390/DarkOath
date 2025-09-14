@@ -1,0 +1,482 @@
+import React, { useState, useEffect } from 'react';
+import { Crown, Sword, Shield, Users, Clock, Vote, Gavel, Eye, Skull } from 'lucide-react';
+import { Button } from './ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Badge } from './ui/badge';
+import { Progress } from './ui/progress';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { useTranslation } from 'react-i18next';
+import axios from 'axios';
+
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const API = `${BACKEND_URL}/api`;
+
+// Game Phase Component
+const GamePhase = ({ phase, regentSeat, nomineeSeat, players }) => {
+  const { t } = useTranslation();
+  
+  const getPhaseDisplay = (phase) => {
+    switch(phase) {
+      case 'NOMINATION': return { text: 'Nomination du Chambellan', icon: Crown, color: 'blue' };
+      case 'VOTE': return { text: 'Vote pour le gouvernement', icon: Vote, color: 'purple' };
+      case 'LEGIS_REGENT': return { text: 'Session législative - Régent', icon: Gavel, color: 'amber' };
+      case 'LEGIS_CHAMBELLAN': return { text: 'Session législative - Chambellan', icon: Gavel, color: 'amber' };
+      case 'POWER': return { text: 'Pouvoir du Régent', icon: Eye, color: 'red' };
+      default: return { text: 'Phase inconnue', icon: Clock, color: 'gray' };
+    }
+  };
+  
+  const phaseInfo = getPhaseDisplay(phase);
+  const PhaseIcon = phaseInfo.icon;
+  
+  const regent = players.find(p => p.seat === regentSeat);
+  const nominee = nomineeSeat ? players.find(p => p.seat === nomineeSeat) : null;
+  
+  return (
+    <Card className="bg-gradient-to-r from-amber-100 to-orange-100 border-amber-300">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <PhaseIcon className={`h-6 w-6 text-${phaseInfo.color}-600`} />
+            <CardTitle className="text-lg text-amber-900">{phaseInfo.text}</CardTitle>
+          </div>
+          <Badge variant="outline" className="bg-white">
+            Tour en cours
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-0">
+        <div className="flex space-x-6">
+          <div className="flex items-center space-x-2">
+            <Crown className="h-4 w-4 text-yellow-600" />
+            <span className="text-sm font-medium">
+              Régent: {regent ? regent.name : 'N/A'}
+            </span>
+          </div>
+          {nominee && (
+            <div className="flex items-center space-x-2">
+              <Users className="h-4 w-4 text-blue-600" />
+              <span className="text-sm font-medium">
+                Chambellan proposé: {nominee.name}
+              </span>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+// Decree Track Component
+const DecreeTrack = ({ tracks, powers }) => {
+  const { t } = useTranslation();
+  
+  const loyalMarkers = Array.from({ length: 5 }, (_, i) => i < tracks.loyal);
+  const conjureMarkers = Array.from({ length: 6 }, (_, i) => i < tracks.conjure);
+  
+  const getPowerIcon = (index) => {
+    switch(index) {
+      case 1: return { icon: Eye, text: 'Investigation', unlocked: tracks.conjure >= 2 };
+      case 2: return { icon: Crown, text: 'Élection Spéciale', unlocked: tracks.conjure >= 3 };
+      case 3: return { icon: Skull, text: 'Exécution', unlocked: tracks.conjure >= 4 };
+      case 4: return { icon: Skull, text: 'Exécution', unlocked: tracks.conjure >= 5 };
+      default: return null;
+    }
+  };
+  
+  return (
+    <div className="space-y-4">
+      {/* Loyal Track */}
+      <Card className="bg-blue-50 border-blue-200">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center space-x-2">
+            <Shield className="h-4 w-4 text-blue-600" />
+            <span>Décrets Loyaux</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex space-x-2">
+            {loyalMarkers.map((filled, index) => (
+              <div
+                key={index}
+                className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold ${
+                  filled 
+                    ? 'bg-blue-600 border-blue-600 text-white' 
+                    : 'border-blue-300 text-blue-300'
+                }`}
+              >
+                {index + 1}
+              </div>
+            ))}
+            <div className="ml-4 text-sm text-blue-700 font-medium flex items-center">
+              {tracks.loyal}/5 pour la victoire
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      
+      {/* Conjure Track */}
+      <Card className="bg-red-50 border-red-200">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center space-x-2">
+            <Sword className="h-4 w-4 text-red-600" />
+            <span>Décrets Conjurés</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex space-x-2">
+            {conjureMarkers.map((filled, index) => {
+              const power = getPowerIcon(index + 1);
+              return (
+                <div key={index} className="relative">
+                  <div
+                    className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold ${
+                      filled 
+                        ? 'bg-red-600 border-red-600 text-white' 
+                        : 'border-red-300 text-red-300'
+                    }`}
+                  >
+                    {index + 1}
+                  </div>
+                  {power && (
+                    <div className={`absolute -bottom-6 left-1/2 transform -translate-x-1/2 ${
+                      power.unlocked ? 'text-red-600' : 'text-gray-400'
+                    }`}>
+                      <power.icon className="h-3 w-3" />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            <div className="ml-4 text-sm text-red-700 font-medium flex items-center">
+              {tracks.conjure}/6 pour la victoire
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      
+      {/* Crisis Track */}
+      <Card className="bg-gray-50 border-gray-200">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">Piste de Crise</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center space-x-2">
+            <Progress value={(tracks.crisis / 3) * 100} className="flex-1" />
+            <span className="text-sm font-medium">{tracks.crisis}/3</span>
+          </div>
+          <p className="text-xs text-gray-600 mt-1">
+            3 échecs consécutifs → Adoption automatique
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+// Players List Component
+const PlayersList = ({ players, currentPlayerId, regentSeat, deadPlayers }) => {
+  const { t } = useTranslation();
+  
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">Joueurs ({players.length}/5)</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-2">
+          {players.map((player) => (
+            <div
+              key={player.id}
+              className={`flex items-center justify-between p-3 rounded-lg border ${
+                player.id === currentPlayerId 
+                  ? 'bg-amber-100 border-amber-300' 
+                  : player.alive
+                  ? 'bg-white border-gray-200'
+                  : 'bg-gray-100 border-gray-300'
+              }`}
+            >
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 rounded-full bg-amber-200 flex items-center justify-center text-sm font-bold">
+                  {player.seat}
+                </div>
+                <div>
+                  <p className={`font-medium ${!player.alive ? 'line-through text-gray-500' : ''}`}>
+                    {player.name}
+                    {player.id === currentPlayerId && ' (Vous)'}
+                  </p>
+                  <div className="flex items-center space-x-2">
+                    {player.seat === regentSeat && (
+                      <Badge variant="secondary" className="text-xs">
+                        <Crown className="h-3 w-3 mr-1" />
+                        Régent
+                      </Badge>
+                    )}
+                    {!player.alive && (
+                      <Badge variant="destructive" className="text-xs">
+                        <Skull className="h-3 w-3 mr-1" />
+                        Éliminé
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className={`w-2 h-2 rounded-full ${
+                  player.connected ? 'bg-green-500' : 'bg-red-500'
+                }`} />
+                <span className="text-xs text-gray-500">
+                  {player.connected ? 'En ligne' : 'Hors ligne'}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+// Role Display Component
+const RoleDisplay = ({ role }) => {
+  const { t } = useTranslation();
+  
+  if (!role) return null;
+  
+  const getRoleInfo = (role) => {
+    switch(role) {
+      case 'LOYAL': 
+        return { 
+          name: 'Chevalier Loyal', 
+          color: 'blue', 
+          icon: Shield,
+          description: 'Défendez le royaume et démasquez les traîtres'
+        };
+      case 'CONJURE': 
+        return { 
+          name: 'Conjuré', 
+          color: 'red', 
+          icon: Sword,
+          description: 'Répandez le chaos et aidez l\'Usurpateur'
+        };
+      case 'USURPATEUR': 
+        return { 
+          name: 'Usurpateur', 
+          color: 'purple', 
+          icon: Crown,
+          description: 'Prenez le pouvoir en secret'
+        };
+      default: 
+        return { name: 'Inconnu', color: 'gray', icon: Users, description: '' };
+    }
+  };
+  
+  const roleInfo = getRoleInfo(role);
+  const RoleIcon = roleInfo.icon;
+  
+  return (
+    <Card className={`bg-${roleInfo.color}-50 border-${roleInfo.color}-200`}>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm">Votre Rôle</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center space-x-3">
+          <RoleIcon className={`h-8 w-8 text-${roleInfo.color}-600`} />
+          <div>
+            <p className={`font-bold text-${roleInfo.color}-800`}>{roleInfo.name}</p>
+            <p className={`text-xs text-${roleInfo.color}-600`}>{roleInfo.description}</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+// Main Game Interface Component
+const GameInterface = ({ roomCode }) => {
+  const { t } = useTranslation();
+  const [gameState, setGameState] = useState(null);
+  const [playerRole, setPlayerRole] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  const currentPlayerId = localStorage.getItem('userId');
+  
+  // Connect to WebSocket for real-time updates
+  useEffect(() => {
+    const connectWebSocket = () => {
+      if (!currentPlayerId) return;
+      
+      const wsUrl = `${BACKEND_URL.replace('https://', 'wss://').replace('http://', 'ws://')}/ws/${roomCode}/${currentPlayerId}`;
+      console.log('Connecting to WebSocket:', wsUrl);
+      
+      const ws = new WebSocket(wsUrl);
+      
+      ws.onopen = () => {
+        console.log('WebSocket connected');
+        setError(null);
+      };
+      
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        console.log('WebSocket message received:', data);
+        
+        if (data.type === 'game_state') {
+          setGameState(data.state);
+          setPlayerRole(data.state.your_role);
+          setLoading(false);
+        } else if (data.type === 'game_started') {
+          // Game state update
+          setGameState(prev => ({
+            ...prev,
+            phase: data.phase,
+            regent_seat: data.regent_seat,
+            tracks: data.tracks
+          }));
+        }
+      };
+      
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        setError('Erreur de connexion WebSocket');
+      };
+      
+      ws.onclose = () => {
+        console.log('WebSocket disconnected');
+        // Try to reconnect after 3 seconds
+        setTimeout(connectWebSocket, 3000);
+      };
+      
+      return ws;
+    };
+    
+    const ws = connectWebSocket();
+    
+    return () => {
+      if (ws) {
+        ws.close();
+      }
+    };
+  }, [roomCode, currentPlayerId]);
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-amber-900 via-amber-800 to-orange-900 flex items-center justify-center">
+        <Card className="bg-amber-50/95 backdrop-blur-sm border-amber-200 shadow-xl p-8">
+          <div className="text-center">
+            <div className="animate-spin h-8 w-8 border-4 border-amber-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-amber-800 text-lg">Connexion à la partie...</p>
+            <p className="text-amber-600 text-sm mt-2">Room: {roomCode}</p>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+  
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-amber-900 via-amber-800 to-orange-900 flex items-center justify-center">
+        <Card className="bg-red-50/95 backdrop-blur-sm border-red-200 shadow-xl p-8">
+          <div className="text-center">
+            <p className="text-red-800 text-lg mb-4">Erreur de connexion</p>
+            <p className="text-red-600 text-sm">{error}</p>
+            <Button 
+              onClick={() => window.location.reload()} 
+              className="mt-4 bg-red-600 hover:bg-red-700"
+            >
+              Recharger
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+  
+  if (!gameState) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-amber-900 via-amber-800 to-orange-900 flex items-center justify-center">
+        <Card className="bg-amber-50/95 backdrop-blur-sm border-amber-200 shadow-xl p-8">
+          <div className="text-center">
+            <p className="text-amber-800 text-lg">Impossible de charger l'état du jeu</p>
+            <p className="text-amber-600">Room: {roomCode}</p>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-amber-900 via-amber-800 to-orange-900 p-4">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header */}
+        <Card className="bg-amber-50/95 backdrop-blur-sm border-amber-200">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-2xl text-amber-900 font-serif">
+                  Secretus Regnum
+                </CardTitle>
+                <p className="text-amber-700">Room: {roomCode}</p>
+              </div>
+              <Badge variant="outline" className="bg-amber-100">
+                Partie en cours
+              </Badge>
+            </div>
+          </CardHeader>
+        </Card>
+        
+        {/* Game Phase */}
+        <GamePhase 
+          phase={gameState.phase}
+          regentSeat={gameState.regent_seat}
+          nomineeSeat={gameState.nominee_seat}
+          players={gameState.players || []}
+        />
+        
+        {/* Main Game Area */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column - Role & Tracks */}
+          <div className="space-y-4">
+            <RoleDisplay role={playerRole} />
+            <DecreeTrack 
+              tracks={gameState.tracks || { loyal: 0, conjure: 0, crisis: 0 }}
+              powers={gameState.powers || {}}
+            />
+          </div>
+          
+          {/* Center Column - Game Actions */}
+          <div className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Actions de Jeu</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center p-8">
+                  <Clock className="h-12 w-12 text-amber-600 mx-auto mb-4" />
+                  <p className="text-amber-800 text-lg">
+                    Interface de jeu en cours de développement
+                  </p>
+                  <p className="text-amber-600 text-sm mt-2">
+                    Les actions de vote et sessions législatives seront disponibles prochainement
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          
+          {/* Right Column - Players */}
+          <div>
+            <PlayersList 
+              players={gameState.players || []}
+              currentPlayerId={currentPlayerId}
+              regentSeat={gameState.regent_seat}
+              deadPlayers={[]}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default GameInterface;

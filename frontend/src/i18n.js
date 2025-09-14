@@ -46,7 +46,32 @@ const resources = {
       
       game: {
         title: "Partie en cours",
-        comingSoon: "Interface de jeu en développement..."
+        comingSoon: "Interface de jeu en développement...",
+        
+        // New game interface translations
+        phases: {
+          nomination: "Nomination du Chambellan",
+          vote: "Vote pour le gouvernement", 
+          legis_regent: "Session législative - Régent",
+          legis_chambellan: "Session législative - Chambellan",
+          power: "Pouvoir du Régent"
+        },
+        
+        roles: {
+          loyal: "Chevalier Loyal",
+          conjure: "Conjuré", 
+          usurpateur: "Usurpateur"
+        },
+        
+        actions: {
+          nominate: "Nominer",
+          vote: "Voter",
+          yes: "Oui",
+          no: "Non",
+          investigate: "Investigation",
+          execute: "Exécution",
+          specialElection: "Élection Spéciale"
+        }
       }
     }
   },
@@ -94,7 +119,32 @@ const resources = {
       
       game: {
         title: "Game in Progress",
-        comingSoon: "Game interface in development..."
+        comingSoon: "Game interface in development...",
+        
+        // New game interface translations
+        phases: {
+          nomination: "Chancellor Nomination",
+          vote: "Government Vote",
+          legis_regent: "Legislative Session - Regent", 
+          legis_chambellan: "Legislative Session - Chancellor",
+          power: "Regent Power"
+        },
+        
+        roles: {
+          loyal: "Loyal Knight",
+          conjure: "Conspirator",
+          usurpateur: "Usurper"
+        },
+        
+        actions: {
+          nominate: "Nominate",
+          vote: "Vote", 
+          yes: "Yes",
+          no: "No",
+          investigate: "Investigation",
+          execute: "Execution", 
+          specialElection: "Special Election"
+        }
       }
     }
   }
