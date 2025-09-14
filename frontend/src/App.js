@@ -545,7 +545,7 @@ const Lobby = ({ roomCode }) => {
   );
 };
 
-// Game Component - Now uses MedievalGameRoom
+// Game Component - Uses original GameInterface that was working
 const Game = ({ roomCode }) => {
   console.log('Game component rendered with roomCode:', roomCode);
   
@@ -555,7 +555,7 @@ const Game = ({ roomCode }) => {
     return <div>Error: No room code</div>;
   }
   
-  return <MedievalGameRoom roomCode={roomCode} />;
+  return <GameInterface roomCode={roomCode} />;
 };
 
 // Main App Component
