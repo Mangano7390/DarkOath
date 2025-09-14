@@ -242,7 +242,51 @@ async def join_room(room_code: str, player_id: str, player_name: str):
     
     return {"success": True}
 
-@api_router.post("/rooms/{room_code}/start")
+@api_router.post("/rooms/{room_code}/chat")
+async def send_chat_message(room_code: str, player_id: str, message: str):
+    """Send a chat message to all players in the room"""
+    game_state = manager.get_game_state(room_code)
+    if not game_state:
+        raise HTTPException(status_code=404, detail="Room not found")
+    
+    # Find the player
+    player = next((p for p in game_state.players if p.id == player_id), None)
+    if not player:
+        raise HTTPException(status_code=404, detail="Player not found")
+    
+    # Broadcast chat message
+    await manager.broadcast_to_room(room_code, {
+        "type": "chat_message",
+        "player_id": player_id,
+        "player_name": player.name,
+        "message": message,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    })
+    
+    return {"success": True}
+
+@api_router.get("/rooms/{room_code}/game_state")
+async def get_game_state(room_code: str, player_id: str):
+    """Get current game state for a specific player"""
+    game_state = manager.get_game_state(room_code)
+    if not game_state:
+        raise HTTPException(status_code=404, detail="Room not found")
+    
+    # Find the player
+    player = next((p for p in game_state.players if p.id == player_id), None)
+    if not player:
+        raise HTTPException(status_code=404, detail="Player not found")
+    
+    return {
+        "status": game_state.status,
+        "phase": game_state.turn.phase,
+        "regent_seat": game_state.turn.regent_seat,
+        "nominee_seat": game_state.turn.nominee_seat,
+        "tracks": game_state.tracks.dict(),
+        "crisis": game_state.tracks.crisis,
+        "your_role": player.role if player.role else None,
+        "players": [{"id": p.id, "name": p.name, "seat": p.seat, "alive": p.alive, "connected": p.connected} for p in game_state.players]
+    }
 async def start_game(room_code: str):
     success = manager.start_game(room_code)
     if not success:
