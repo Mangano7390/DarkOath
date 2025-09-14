@@ -231,23 +231,42 @@ const Lobby = ({ roomCode }) => {
   const navigate = useNavigate();
   const [players, setPlayers] = useState([]);
   const [gameStarted, setGameStarted] = useState(false);
+  const [loading, setLoading] = useState(true);
+  
+  // Function to refresh room state
+  const refreshRoomState = async () => {
+    try {
+      const response = await axios.get(`${API}/rooms/${roomCode}`);
+      console.log('Room state updated:', response.data);
+      setPlayers(response.data.players);
+      return response.data;
+    } catch (error) {
+      console.error('Error refreshing room state:', error);
+      return null;
+    }
+  };
   
   useEffect(() => {
     const joinRoom = async () => {
       const userId = localStorage.getItem('userId');
       const playerName = localStorage.getItem('playerName');
       
+      console.log('Lobby component mounted for room:', roomCode);
+      console.log('User data:', { userId, playerName });
+      
       if (!userId || !playerName) {
+        console.log('No user data found, redirecting to home');
         navigate('/');
         return;
       }
       
       try {
+        console.log('Joining room...');
         await axios.post(`${API}/rooms/${roomCode}/join?player_id=${userId}&player_name=${encodeURIComponent(playerName)}`);
         
-        // Get room info
-        const response = await axios.get(`${API}/rooms/${roomCode}`);
-        setPlayers(response.data.players);
+        console.log('Successfully joined room, getting initial state...');
+        await refreshRoomState();
+        setLoading(false);
         
       } catch (error) {
         console.error('Error joining room:', error);
@@ -256,6 +275,15 @@ const Lobby = ({ roomCode }) => {
     };
     
     joinRoom();
+    
+    // Set up polling to refresh room state every 2 seconds 
+    const interval = setInterval(async () => {
+      await refreshRoomState();
+    }, 2000);
+    
+    return () => {
+      clearInterval(interval);
+    };
   }, [roomCode, navigate]);
 
   const startGame = async () => {
