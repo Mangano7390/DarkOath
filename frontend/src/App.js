@@ -344,13 +344,23 @@ const Lobby = ({ roomCode }) => {
 
             {/* Start Game Button */}
             {players.length === 5 && (
-              <Button 
-                onClick={startGame}
-                className="w-full bg-green-600 hover:bg-green-700 text-white text-xl py-6"
-              >
-                <Crown className="h-6 w-6 mr-2" />
-                {t('lobby.startGame')}
-              </Button>
+              <div className="space-y-4">
+                <div className="text-center p-4 bg-green-100 rounded-lg border border-green-300">
+                  <p className="text-green-800 text-lg font-semibold">
+                    ✅ Tous les joueurs sont connectés !
+                  </p>
+                  <p className="text-green-700 text-sm">
+                    Vous pouvez maintenant démarrer la partie
+                  </p>
+                </div>
+                <Button 
+                  onClick={startGame}
+                  className="w-full bg-green-600 hover:bg-green-700 text-white text-xl py-6"
+                >
+                  <Crown className="h-6 w-6 mr-2" />
+                  {t('lobby.startGame')}
+                </Button>
+              </div>
             )}
             
             {players.length < 5 && (
@@ -358,6 +368,17 @@ const Lobby = ({ roomCode }) => {
                 <p className="text-amber-800 text-lg">
                   {t('lobby.waitingForPlayers', { needed: 5 - players.length })}
                 </p>
+                <p className="text-amber-700 text-sm mt-2">
+                  {players.length}/5 joueurs connectés
+                </p>
+                <div className="mt-4">
+                  <div className="w-full bg-amber-200 rounded-full h-3">
+                    <div 
+                      className="bg-amber-600 h-3 rounded-full transition-all duration-300"
+                      style={{ width: `${(players.length / 5) * 100}%` }}
+                    ></div>
+                  </div>
+                </div>
               </div>
             )}
           </CardContent>
