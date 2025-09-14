@@ -259,12 +259,18 @@ const Lobby = ({ roomCode }) => {
   }, [roomCode, navigate]);
 
   const startGame = async () => {
+    console.log('startGame called for room:', roomCode);
     try {
-      await axios.post(`${API}/rooms/${roomCode}/start`);
+      console.log('Calling start game API...');
+      const response = await axios.post(`${API}/rooms/${roomCode}/start`);
+      console.log('Start game API response:', response.data);
       setGameStarted(true);
+      console.log('Navigating to game:', `/game/${roomCode}`);
       navigate(`/game/${roomCode}`);
+      console.log('Navigation completed');
     } catch (error) {
       console.error('Error starting game:', error);
+      console.error('Error details:', error.response?.data);
     }
   };
 
