@@ -321,14 +321,16 @@ const MedievalGameRoom = ({ roomCode }) => {
         </div>
       </div>
 
-      {/* Main Round Table */}
-      <div className="round-table-container">
-        <div className="round-table">
-          <div className="table-surface-details"></div>
-          
-          {/* Render all players around the table */}
-          {gameState.players?.map((player, index) => renderPlayerSeat(player, index))}
-        </div>
+      {/* Main Round Table - Using the new SVG component */}
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+        <MedievalTable 
+          players={gameState.players?.map(player => ({
+            seat: player.seat,
+            name: player.name + (player.id === currentPlayerId ? ' (Vous)' : ''),
+            active: player.seat === gameState.regent_seat || player.seat === gameState.nominee_seat
+          })) || []}
+          size={600}
+        />
       </div>
 
       {/* Chat Parchment */}
