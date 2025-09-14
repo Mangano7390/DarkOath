@@ -295,72 +295,32 @@ const RoleDisplay = ({ role }) => {
 // Main Game Interface Component
 const GameInterface = ({ roomCode }) => {
   const { t } = useTranslation();
-  const [gameState, setGameState] = useState(null);
-  const [playerRole, setPlayerRole] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [gameState, setGameState] = useState({
+    status: 'in_progress',
+    phase: 'NOMINATION',
+    regent_seat: 1,
+    nominee_seat: null,
+    tracks: { loyal: 0, conjure: 0, crisis: 0 },
+    players: [
+      { id: 'player1', name: 'Joueur 1', seat: 1, alive: true, connected: true },
+      { id: 'player2', name: 'Joueur 2', seat: 2, alive: true, connected: true },
+      { id: 'player3', name: 'Joueur 3', seat: 3, alive: true, connected: true },
+      { id: 'player4', name: 'Joueur 4', seat: 4, alive: true, connected: true },
+      { id: 'player5', name: 'Joueur 5', seat: 5, alive: true, connected: true }
+    ]
+  });
+  const [playerRole, setPlayerRole] = useState('LOYAL');
+  const [loading, setLoading] = useState(false); // Set to false to skip loading
   const [error, setError] = useState(null);
   
-  const currentPlayerId = localStorage.getItem('userId');
+  const currentPlayerId = localStorage.getItem('userId') || 'player1';
   
-  // Connect to WebSocket for real-time updates (fallback to polling)
+  // Simple effect that just sets the data
   useEffect(() => {
-    const loadGameState = async () => {
-      if (!currentPlayerId) return;
-      
-      try {
-        console.log('Loading initial game state...');
-        // For now, create a mock game state since WebSocket is not working
-        const mockGameState = {
-          status: 'in_progress',
-          phase: 'NOMINATION',
-          regent_seat: 1,
-          nominee_seat: null,
-          tracks: { loyal: 0, conjure: 0, crisis: 0 },
-          players: [
-            { id: currentPlayerId, name: 'Vous', seat: 1, alive: true, connected: true },
-            { id: 'player2', name: 'Joueur 2', seat: 2, alive: true, connected: true },
-            { id: 'player3', name: 'Joueur 3', seat: 3, alive: true, connected: true },
-            { id: 'player4', name: 'Joueur 4', seat: 4, alive: true, connected: true },
-            { id: 'player5', name: 'Joueur 5', seat: 5, alive: true, connected: true }
-          ]
-        };
-        
-        setGameState(mockGameState);
-        setPlayerRole('LOYAL'); // Mock role for now
-        setLoading(false);
-        setError(null);
-        
-      } catch (error) {
-        console.error('Error loading game state:', error);
-        setError('Erreur lors du chargement de l\'état du jeu');
-        setLoading(false);
-      }
-    };
-    
-    // Load initial state
-    loadGameState();
-    
-    // Set up polling to refresh game state every 3 seconds
-    const interval = setInterval(loadGameState, 3000);
-    
-    return () => {
-      clearInterval(interval);
-    };
-  }, [roomCode, currentPlayerId]);
-  
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-900 via-amber-800 to-orange-900 flex items-center justify-center">
-        <Card className="bg-amber-50/95 backdrop-blur-sm border-amber-200 shadow-xl p-8">
-          <div className="text-center">
-            <div className="animate-spin h-8 w-8 border-4 border-amber-600 border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-amber-800 text-lg">Connexion à la partie...</p>
-            <p className="text-amber-600 text-sm mt-2">Room: {roomCode}</p>
-          </div>
-        </Card>
-      </div>
-    );
-  }
+    console.log('GameInterface loaded for room:', roomCode);
+    setLoading(false);
+    setError(null);
+  }, [roomCode]);
   
   if (error) {
     return (
@@ -375,19 +335,6 @@ const GameInterface = ({ roomCode }) => {
             >
               Recharger
             </Button>
-          </div>
-        </Card>
-      </div>
-    );
-  }
-  
-  if (!gameState) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-900 via-amber-800 to-orange-900 flex items-center justify-center">
-        <Card className="bg-amber-50/95 backdrop-blur-sm border-amber-200 shadow-xl p-8">
-          <div className="text-center">
-            <p className="text-amber-800 text-lg">Impossible de charger l'état du jeu</p>
-            <p className="text-amber-600">Room: {roomCode}</p>
           </div>
         </Card>
       </div>
