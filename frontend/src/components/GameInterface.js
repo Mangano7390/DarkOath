@@ -252,27 +252,28 @@ const ChatComponent = ({ roomCode, currentPlayerId, currentPlayerName }) => {
   }, [roomCode]);
 
   return (
-    <Card className="h-96">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg flex items-center">
-          <MessageCircle className="h-5 w-5 mr-2" />
-          Chat de la partie
+    <Card className="chat-parchment h-80 flex flex-col">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-lg flex items-center space-x-2 font-cinzel">
+          <MessageCircle className="h-5 w-5" />
+          <span>Parchemin des Délibérations</span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-col h-80">
-        <ScrollArea className="flex-1 mb-3 pr-2">
+      <CardContent className="flex-1 flex flex-col space-y-3 p-3">
+        {/* Messages Area */}
+        <ScrollArea className="flex-1 pr-2">
           <div className="space-y-2">
             {messages.map((msg) => (
-              <div key={msg.id} className={`p-2 rounded-lg text-sm ${
+              <div key={msg.id} className={`p-2 rounded-lg text-sm font-fell ${
                 msg.type === 'system' 
-                  ? 'bg-blue-100 text-blue-800 italic border border-blue-200' 
+                  ? 'bg-amber-100 text-amber-800 italic border border-amber-300' 
                   : msg.player_name === currentPlayerName
-                  ? 'bg-amber-100 text-amber-800 ml-4 border border-amber-200'
-                  : 'bg-gray-100 text-gray-800 border border-gray-200'
+                  ? 'bg-yellow-100 text-yellow-800 ml-2 border border-yellow-300'
+                  : 'bg-gray-100 text-gray-800 border border-gray-300'
               }`}>
-                <div className="font-medium text-xs mb-1">
+                <div className="font-cinzel font-semibold text-xs mb-1">
                   {msg.player_name}
-                  <span className="text-xs opacity-60 ml-2">
+                  <span className="text-xs opacity-60 ml-2 font-fell">
                     {new Date(msg.timestamp).toLocaleTimeString('fr-FR', { 
                       hour: '2-digit', 
                       minute: '2-digit' 
@@ -289,13 +290,15 @@ const ChatComponent = ({ roomCode, currentPlayerId, currentPlayerName }) => {
             )}
           </div>
         </ScrollArea>
-        <div className="flex space-x-2 mt-2">
+        
+        {/* Input Area */}
+        <div className="flex space-x-2">
           <Input
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Tapez votre message..."
-            className="flex-1"
+            placeholder="Écrivez votre message..."
+            className="flex-1 bg-amber-50 border-amber-300 font-fell"
             maxLength={200}
             disabled={isSending}
           />
@@ -303,7 +306,7 @@ const ChatComponent = ({ roomCode, currentPlayerId, currentPlayerName }) => {
             onClick={sendMessage}
             disabled={!newMessage.trim() || isSending}
             size="sm"
-            className="px-3"
+            className="px-3 bg-amber-600 hover:bg-amber-700 font-cinzel"
           >
             {isSending ? (
               <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
@@ -311,9 +314,6 @@ const ChatComponent = ({ roomCode, currentPlayerId, currentPlayerName }) => {
               <Send className="h-4 w-4" />
             )}
           </Button>
-        </div>
-        <div className="text-xs text-gray-500 mt-1">
-          {messages.length} message(s) • Appuyez sur Entrée pour envoyer
         </div>
       </CardContent>
     </Card>
