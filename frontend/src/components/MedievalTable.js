@@ -6,10 +6,7 @@ const MedievalTable = ({ players, size = 500 }) => {
 
   return (
     <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} className="mx-auto">
-      {/* Fond */}
-      <rect width={size} height={size} fill="#1e1b16" />
-
-      {/* Table ronde */}
+      {/* Table ronde sans image de fond */}
       <circle
         cx={size / 2}
         cy={size / 2}
