@@ -481,7 +481,7 @@ async def handle_game_action(room_code: str, player_id: str, action_type: str, p
                 game_state.turn.discard_count = len(game_state.discard)
                 
                 # Move to CONSEIL_ROYAUME phase (2 cards remain for chambellan)
-                game_state.turn.phase = Phase.LEGIS_CHAMBELLAN
+                game_state.turn.phase = Phase.CONSEIL_ROYAUME
                 game_state.version += 1
                 
                 await manager.broadcast_to_room(room_code, {
