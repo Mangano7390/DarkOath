@@ -245,11 +245,29 @@ const LandingPage = () => {
         backgroundImage: `url('https://customer-assets.emergentagent.com/job_1a735b74-0d1b-4cfc-aa0c-5d6b585ff99b/artifacts/yixjj87a_ChatGPT%20Image%2015%20sept.%202025%2C%2015_57_13.png')`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat'
+        backgroundRepeat: 'no-repeat',
+        backgroundAttachment: 'fixed'
       }}
     >
       {/* Dark overlay for readability */}
       <div className="absolute inset-0 bg-black bg-opacity-60"></div>
+      
+      {/* Custom CSS for mobile background optimization */}
+      <style jsx>{`
+        @media (max-width: 768px) {
+          div[style*="background-image"] {
+            background-size: contain !important;
+            background-position: center top !important;
+            background-attachment: scroll !important;
+          }
+        }
+        @media (max-width: 480px) {
+          div[style*="background-image"] {
+            background-size: 100% auto !important;
+            background-position: center top !important;
+          }
+        }
+      `}</style>
       
       {/* Music Control */}
       <div className="absolute top-4 right-4 z-20">
