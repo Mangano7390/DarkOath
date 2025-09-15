@@ -187,17 +187,42 @@ const ChatComponent = ({ roomCode, currentPlayerId, currentPlayerName }) => {
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
 
-  // Initialize chat with system message
+  // Initialize chat with system message and load history
   useEffect(() => {
-    const systemMessage = {
-      id: 'system-1',
-      player_name: 'Système',
-      message: 'La séance du conseil royal a commencé. Que les délibérations débutent !',
-      timestamp: new Date().toISOString(),
-      type: 'system'
+    const loadChatHistory = async () => {
+      try {
+        if (currentPlayerId && roomCode) {
+          const response = await axios.get(`${API}/rooms/${roomCode}/chat?player_id=${currentPlayerId}`);
+          if (response.data.messages && response.data.messages.length > 0) {
+            setMessages(response.data.messages);
+          } else {
+            // If no messages, add system message
+            const systemMessage = {
+              id: 'system-1',
+              player_name: 'Système',
+              message: 'La séance du conseil royal a commencé. Que les délibérations débutent !',
+              timestamp: new Date().toISOString(),
+              type: 'system'
+            };
+            setMessages([systemMessage]);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading chat history:', error);
+        // Fallback to system message
+        const systemMessage = {
+          id: 'system-1',
+          player_name: 'Système',
+          message: 'La séance du conseil royal a commencé. Que les délibérations débutent !',
+          timestamp: new Date().toISOString(),
+          type: 'system'
+        };
+        setMessages([systemMessage]);
+      }
     };
-    setMessages([systemMessage]);
-  }, []);
+
+    loadChatHistory();
+  }, [currentPlayerId, roomCode]);
 
   const sendMessage = async () => {
     if (!newMessage.trim() || isSending) return;
