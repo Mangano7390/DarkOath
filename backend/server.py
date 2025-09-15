@@ -609,7 +609,7 @@ async def handle_game_action(room_code: str, player_id: str, action_type: str, p
             
             # Check if council phase has expired
             import time
-            if (time.time() - game_state.turn.conseil_royaume_start_time) > 30:
+            if (time.time() - game_state.turn.conseil_royaume_start_time) > 60:
                 # Auto-advance to next phase if timer expired
                 await manager.advance_after_conseil(game_state)
                 raise HTTPException(status_code=400, detail="Conseil du Royaume has ended")
