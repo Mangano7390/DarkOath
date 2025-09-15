@@ -567,7 +567,7 @@ const GameInterface = ({ roomCode }) => {
         />
         
         {/* Main Game Area */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
           {/* Left Column - Role & Tracks */}
           <div className="space-y-4">
             <RoleDisplay role={playerRole} />
@@ -577,8 +577,8 @@ const GameInterface = ({ roomCode }) => {
             />
           </div>
           
-          {/* Center Column - Game Actions */}
-          <div className="space-y-4">
+          {/* Center Columns - Game Actions + Table */}
+          <div className="lg:col-span-3 space-y-4">
             {/* Game Actions */}
             <Card className="chat-parchment">
               <CardHeader>
@@ -672,28 +672,27 @@ const GameInterface = ({ roomCode }) => {
                 )}
               </CardContent>
             </Card>
-          </div>
-
-          {/* Right Column - Chat + Table */}
-          <div className="lg:col-span-2 space-y-4">
-            {/* Chat Component */}
-            <ChatComponent 
-              roomCode={roomCode}
-              currentPlayerId={currentPlayerId}
-              currentPlayerName={currentPlayerName}
-            />
             
-            {/* Medieval Round Table */}
-            <div className="flex justify-center items-start">
+            {/* Medieval Round Table - Below actions, not overlapping */}
+            <div className="flex justify-center items-start mt-6">
               <MedievalTable 
                 players={gameState.players?.map(player => ({
                   seat: player.seat,
                   name: player.name + (player.id === currentPlayerId ? ' (Vous)' : ''),
                   active: player.seat === gameState.regent_seat || player.seat === gameState.nominee_seat
                 })) || []}
-                size={500}
+                size={450}
               />
             </div>
+          </div>
+
+          {/* Right Column - Chat */}
+          <div className="space-y-4">
+            <ChatComponent 
+              roomCode={roomCode}
+              currentPlayerId={currentPlayerId}
+              currentPlayerName={currentPlayerName}
+            />
           </div>
         </div>
       </div>
