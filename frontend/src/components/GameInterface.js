@@ -364,7 +364,9 @@ const GameInterface = ({ roomCode }) => {
           </div>
           
           <div className="flex items-center space-x-4">
-            <span className="text-sm text-gray-400">Phase: {gameState.phase}</span>
+            <span className="text-sm text-gray-400">Phase: {
+              gameState.phase === 'CONSEIL_ROYAUME' ? 'CONSEIL DU ROYAUME' : gameState.phase
+            }</span>
             {gameState.regent_seat && (
               <span className="text-sm text-gray-400 hidden md:block">
                 Seigneur: Siège {gameState.regent_seat}
