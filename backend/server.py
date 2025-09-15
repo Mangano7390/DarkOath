@@ -655,7 +655,10 @@ async def get_game_state(room_code: str, player_id: str):
         "version": game_state.version,
         "legislative_cards": legislative_cards,
         "disgraced_player_seat": game_state.turn.disgraced_player_seat,
-        "peoples_anger_triggered": game_state.turn.peoples_anger_triggered
+        "peoples_anger_triggered": game_state.turn.peoples_anger_triggered,
+        "conseil_royaume_timer": game_state.turn.conseil_royaume_timer,
+        "conseil_royaume_start_time": game_state.turn.conseil_royaume_start_time,
+        "speaking_players": game_state.turn.speaking_players
     }
 @api_router.post("/rooms/{room_code}/start")
 async def start_game(room_code: str):
