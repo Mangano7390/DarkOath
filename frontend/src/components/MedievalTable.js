@@ -6,42 +6,42 @@ const MedievalTable = ({ players, size = 500 }) => {
 
   return (
     <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} className="mx-auto">
-      {/* Table ronde - bois sombre */}
+      {/* Table ronde - Style moderne sombre */}
       <circle
         cx={size / 2}
         cy={size / 2}
         r={tableRadius}
-        fill="#5c4033"
-        stroke="#3b2a22"
-        strokeWidth={6}
+        fill="#374151"
+        stroke="#6B7280"
+        strokeWidth={4}
       />
       
-      {/* Détails du bois */}
+      {/* Détails circulaires */}
       <circle
         cx={size / 2}
         cy={size / 2}
         r={tableRadius - 15}
         fill="none"
-        stroke="#4a3228"
+        stroke="#4B5563"
         strokeWidth={2}
         opacity={0.7}
       />
       
-      {/* Text au centre */}
+      {/* Text au centre - Modern clean */}
       <text
         x={size / 2}
         y={size / 2}
         textAnchor="middle"
         dominantBaseline="middle"
-        fill="#d1b075"
+        fill="#E5E7EB"
         fontSize={Math.max(16, size / 20)}
-        fontFamily="serif"
-        fontWeight="bold"
+        fontFamily="system-ui, -apple-system, sans-serif"
+        fontWeight="600"
       >
-        Table Ronde
+        Table de Jeu
       </text>
 
-      {/* Sièges autour de la table */}
+      {/* Sièges autour de la table - Style moderne */}
       {Array.from({ length: 10 }).map((_, i) => {
         const angle = (i / 10) * 2 * Math.PI - Math.PI / 2; // placement en cercle
         const x = size / 2 + radius * Math.cos(angle);
@@ -49,30 +49,30 @@ const MedievalTable = ({ players, size = 500 }) => {
 
         const player = players.find((p) => p.seat === i + 1);
         const name = player?.name || `Siège ${i + 1}`;
-        const seatSize = Math.max(30, size / 16);
+        const seatSize = Math.max(32, size / 15);
 
         return (
           <g key={i} transform={`translate(${x}, ${y})`}>
-            {/* Siège/Chaise */}
+            {/* Siège/Chaise moderne */}
             <rect
               x={-seatSize/2}
               y={-seatSize/2}
               width={seatSize}
               height={seatSize}
-              rx={4}
-              ry={4}
-              fill={player?.active ? "#8b0000" : "#444"}
-              stroke="#d1b075"
+              rx={6}
+              ry={6}
+              fill={player?.active ? "#DC2626" : "#4B5563"}
+              stroke={player?.active ? "#EF4444" : "#6B7280"}
               strokeWidth={2}
             />
             
             {/* Numéro du siège */}
             <text
-              y={5}
+              y={4}
               textAnchor="middle"
-              fill="#f5deb3"
-              fontSize={Math.max(12, size / 25)}
-              fontFamily="serif"
+              fill="#F3F4F6"
+              fontSize={Math.max(11, size / 28)}
+              fontFamily="system-ui, -apple-system, sans-serif"
               fontWeight="bold"
             >
               {i + 1}
@@ -80,11 +80,11 @@ const MedievalTable = ({ players, size = 500 }) => {
             
             {/* Nom du joueur */}
             <text
-              y={-seatSize/2 - 5}
+              y={-seatSize/2 - 8}
               textAnchor="middle"
-              fill="#f5deb3"
-              fontSize={Math.max(10, size / 30)}
-              fontFamily="serif"
+              fill="#D1D5DB"
+              fontSize={Math.max(9, size / 32)}
+              fontFamily="system-ui, -apple-system, sans-serif"
             >
               {name.length > 10 ? name.substring(0, 10) + '...' : name}
             </text>

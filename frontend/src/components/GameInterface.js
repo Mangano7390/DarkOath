@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Crown, Sword, Shield, Users, Clock, Vote, Gavel, Eye, Skull, Send, MessageCircle } from 'lucide-react';
+import { Crown, Sword, Shield, Users, Clock, Vote, Gavel, Eye, Skull, Send, MessageCircle, Zap } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
@@ -12,7 +12,6 @@ import NominationPanel from './NominationPanel';
 import VotePanel from './VotePanel';
 import LegislativePanel from './LegislativePanel';
 import MedievalTable from './MedievalTable.js';
-import '../styles/medieval-room.css';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -46,6 +45,39 @@ const getRoleInfo = (role) => {
   }
 };
 
+// Track Component for clean display
+const TrackComponent = ({ title, current, max, color, icon: Icon }) => {
+  return (
+    <Card className="bg-gray-800 border-gray-700 shadow-lg">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-lg flex items-center space-x-2 text-gray-100">
+          <Icon className={`h-5 w-5 text-${color}-400`} />
+          <span>{title}</span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex space-x-2 mb-3">
+          {Array.from({ length: max }, (_, i) => (
+            <div
+              key={i}
+              className={`w-10 h-10 rounded-lg border-2 flex items-center justify-center text-lg font-bold transition-all ${
+                i < current
+                  ? `bg-${color}-600 border-${color}-500 text-white shadow-md` 
+                  : `border-${color}-300 text-${color}-300 bg-gray-700`
+              }`}
+            >
+              {title === 'Loyaux' ? '🛡️' : title === 'Conjurés' ? '⚔️' : '⚡'}
+            </div>
+          ))}
+        </div>
+        <div className={`text-sm font-medium text-${color}-400 text-center`}>
+          {current}/{max} {title === 'Crise' ? '→ Adoption auto' : '→ Victoire'}
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
 // Main Game Interface Component
 const GameInterface = ({ roomCode }) => {
   const { t } = useTranslation();
@@ -53,7 +85,7 @@ const GameInterface = ({ roomCode }) => {
   const [playerRole, setPlayerRole] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [mobileTab, setMobileTab] = useState('table'); // 'table', 'tracks', 'chat', 'actions'
+  const [mobileTab, setMobileTab] = useState('table'); // 'table', 'tracks', 'chat'
   
   // Chat state variables
   const [messages, setMessages] = useState([]);
@@ -162,7 +194,7 @@ const GameInterface = ({ roomCode }) => {
             const systemMessage = {
               id: 'system-1',
               player_name: 'Système',
-              message: 'La séance du conseil royal a commencé. Que les délibérations débutent !',
+              message: 'La partie a commencé. Bonne chance !',
               timestamp: new Date().toISOString(),
               type: 'system'
             };
@@ -175,7 +207,7 @@ const GameInterface = ({ roomCode }) => {
         const systemMessage = {
           id: 'system-1',
           player_name: 'Système',
-          message: 'La séance du conseil royal a commencé. Que les délibérations débutent !',
+          message: 'La partie a commencé. Bonne chance !',
           timestamp: new Date().toISOString(),
           type: 'system'
         };
@@ -219,32 +251,25 @@ const GameInterface = ({ roomCode }) => {
   
   if (loading) {
     return (
-      <div className="medieval-room">
-        <div className="torch-light"></div>
-        <div className="torch-light"></div>
-        <div className="torch-light"></div>
-        <div className="torch-light"></div>
-        
-        <div className="flex items-center justify-center min-h-screen">
-          <Card className="game-info-parchment shadow-2xl p-8">
-            <div className="text-center">
-              <div className="animate-spin h-8 w-8 border-4 border-amber-600 border-t-transparent rounded-full mx-auto mb-4"></div>
-              <p className="text-amber-800 text-lg font-cinzel">Préparation de la salle du conseil...</p>
-              <p className="text-amber-600 text-sm mt-2 font-fell">Room: {roomCode}</p>
-            </div>
-          </Card>
-        </div>
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <Card className="bg-gray-800 border-gray-700 shadow-xl p-8">
+          <div className="text-center">
+            <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-gray-100 text-lg">Chargement de la partie...</p>
+            <p className="text-gray-400 text-sm mt-2">Room: {roomCode}</p>
+          </div>
+        </Card>
       </div>
     );
   }
   
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-900 via-amber-800 to-orange-900 flex items-center justify-center">
-        <Card className="bg-red-50/95 backdrop-blur-sm border-red-200 shadow-xl p-8">
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <Card className="bg-red-900 border-red-700 shadow-xl p-8">
           <div className="text-center">
-            <p className="text-red-800 text-lg mb-4">Erreur de connexion</p>
-            <p className="text-red-600 text-sm">{error}</p>
+            <p className="text-red-100 text-lg mb-4">Erreur de connexion</p>
+            <p className="text-red-300 text-sm">{error}</p>
             <Button 
               onClick={() => window.location.reload()} 
               className="mt-4 bg-red-600 hover:bg-red-700"
@@ -258,208 +283,243 @@ const GameInterface = ({ roomCode }) => {
   }
   
   return (
-    <div className="medieval-room">
-      {/* Atmospheric elements */}
-      <div className="torch-light"></div>
-      <div className="torch-light"></div>
-      <div className="torch-light"></div>
-      <div className="torch-light"></div>
-      
-      {/* Wall decorations */}
-      <div className="wall-decoration">⚔️</div>
-      <div className="wall-decoration">🛡️</div>
-      <div className="wall-decoration">🗡️</div>
-      
-      {/* Castle window view */}
-      <div className="castle-window"></div>
-      
-      <div className="h-screen flex flex-col">
-        
-        {/* DESKTOP LAYOUT */}
-        <div className="hidden md:flex flex-col h-full">
-          
-          {/* Top Section - Pistes de progression (centre haut) */}
-          <div className="flex-shrink-0 p-4">
-            <div className="flex justify-center space-x-8">
-              
-              {/* Piste des Loyaux */}
-              <Card className="game-info-parchment">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg flex items-center space-x-2 font-cinzel">
-                    <Shield className="h-6 w-6 text-blue-600" />
-                    <span className="text-blue-800">Piste des Loyaux</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex space-x-2 mb-2">
-                    {Array.from({ length: 5 }, (_, i) => (
-                      <div
-                        key={i}
-                        className={`w-14 h-14 rounded-lg border-2 flex items-center justify-center font-bold text-2xl transition-all ${
-                          i < (gameState.tracks?.loyal || 0)
-                            ? 'bg-blue-600 border-blue-600 text-white shadow-lg' 
-                            : 'border-blue-300 text-blue-300 bg-blue-50'
-                        }`}
-                      >
-                        🛡️
-                      </div>
-                    ))}
-                  </div>
-                  <div className="text-sm text-blue-700 font-medium font-fell text-center">
-                    🏆 {gameState.tracks?.loyal || 0}/5 cases - Victoire si 5 remplies
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Piste des Conjurés */}
-              <Card className="game-info-parchment">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg flex items-center space-x-2 font-cinzel">
-                    <Sword className="h-6 w-6 text-red-600" />
-                    <span className="text-red-800">Piste des Conjurés</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex space-x-2 mb-2">
-                    {Array.from({ length: 6 }, (_, i) => (
-                      <div
-                        key={i}
-                        className={`w-14 h-14 rounded-lg border-2 flex items-center justify-center font-bold text-2xl transition-all ${
-                          i < (gameState.tracks?.conjure || 0)
-                            ? 'bg-red-600 border-red-600 text-white shadow-lg' 
-                            : 'border-red-300 text-red-300 bg-red-50'
-                        }`}
-                      >
-                        ⚔️
-                      </div>
-                    ))}
-                  </div>
-                  <div className="text-sm text-red-700 font-medium font-fell text-center">
-                    ⚔️ {gameState.tracks?.conjure || 0}/6 cases - Victoire si 6 remplies
-                  </div>
-                  {/* Powers display */}
-                  {(gameState.tracks?.conjure || 0) >= 2 && (
-                    <div className="mt-2 pt-2 border-t border-red-200">
-                      <div className="text-xs font-fell text-red-800 text-center">
-                        <p>👁️ Investigation (2+)</p>
-                        {(gameState.tracks?.conjure || 0) >= 4 && <p>💀 Exécution (4+)</p>}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+    <div className="min-h-screen bg-slate-900 text-gray-100" style={{ minHeight: '100dvh' }}>
+      {/* Header Bar */}
+      <div className="bg-gray-800 border-b border-gray-700 px-4 py-3">
+        <div className="flex items-center justify-between max-w-7xl mx-auto">
+          <div className="flex items-center space-x-4">
+            <h1 className="text-xl font-bold text-gray-100">Secretus Regnum</h1>
+            <Badge className="bg-blue-600 text-blue-100">
+              {roomCode}
+            </Badge>
           </div>
+          
+          <div className="flex items-center space-x-4">
+            <span className="text-sm text-gray-400">Phase: {gameState.phase}</span>
+            {gameState.regent_seat && (
+              <span className="text-sm text-gray-400 hidden md:block">
+                Régent: Siège {gameState.regent_seat}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
 
-          {/* Main Layout - 3 columns */}
-          <div className="flex-1 flex min-h-0">
-            
-            {/* Left Column - Piste de Crise */}
-            <div className="w-72 p-4">
-              <Card className="game-info-parchment">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg font-cinzel">Piste de Crise</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-2">
-                      <Progress value={((gameState.tracks?.crisis || 0) / 3) * 100} className="flex-1" />
-                      <span className="text-lg font-medium font-fell">{gameState.tracks?.crisis || 0}/3</span>
+      {/* DESKTOP LAYOUT (≥1024px) */}
+      <div className="hidden lg:flex h-full" style={{ height: 'calc(100dvh - 73px)' }}>
+        
+        {/* Left Column - Tracks (Pistes) */}
+        <div className="w-80 p-4 space-y-4 bg-gray-900 border-r border-gray-700">
+          {/* Piste des Loyaux (5 cases) */}
+          <TrackComponent 
+            title="Loyaux"
+            current={gameState.tracks?.loyal || 0}
+            max={5}
+            color="blue"
+            icon={Shield}
+          />
+          
+          {/* Piste des Conjurés (6 cases) */}
+          <TrackComponent 
+            title="Conjurés"
+            current={gameState.tracks?.conjure || 0}
+            max={6}
+            color="red"
+            icon={Sword}
+          />
+          
+          {/* Piste de Crise (3 cases) */}
+          <TrackComponent 
+            title="Crise"
+            current={gameState.tracks?.crisis || 0}
+            max={3}
+            color="yellow"
+            icon={Zap}
+          />
+        </div>
+
+        {/* Center Column - Table */}
+        <div className="flex-1 flex flex-col items-center justify-center p-4 bg-slate-900">
+          <div className="w-full max-w-md">
+            <MedievalTable 
+              players={gameState.players?.map(player => ({
+                seat: player.seat,
+                name: player.name + (player.id === currentPlayerId ? ' (Vous)' : ''),
+                active: player.seat === gameState.regent_seat || player.seat === gameState.nominee_seat
+              })) || []}
+              size={320}
+            />
+          </div>
+        </div>
+
+        {/* Right Column - Chat + Actions */}
+        <div className="w-80 p-4 flex flex-col space-y-4 bg-gray-900 border-l border-gray-700">
+          
+          {/* Chat */}
+          <Card className="bg-gray-800 border-gray-700 flex-1 flex flex-col min-h-0">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center space-x-2 text-gray-100">
+                <MessageCircle className="h-5 w-5" />
+                <span>Chat</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col space-y-3 p-3 min-h-0">
+              {/* Messages Area */}
+              <ScrollArea className="flex-1 pr-2 chat-scroll-area min-h-0">
+                <div className="space-y-2">
+                  {messages.map((msg) => (
+                    <div key={msg.id} className={`p-3 rounded-lg text-sm transition-all ${
+                      msg.type === 'system' 
+                        ? 'bg-blue-900 text-blue-100 border border-blue-700' 
+                        : msg.player_name === currentPlayerName
+                        ? 'bg-green-900 text-green-100 border border-green-700'
+                        : 'bg-gray-700 text-gray-100 border border-gray-600'
+                    }`}>
+                      <div className="font-semibold text-xs mb-1 opacity-75">
+                        {msg.player_name}
+                        <span className="text-xs opacity-60 ml-2">
+                          {new Date(msg.timestamp).toLocaleTimeString('fr-FR', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })}
+                        </span>
+                      </div>
+                      <div className="break-words">{msg.message}</div>
                     </div>
-                    <p className="text-sm text-amber-700 font-fell text-center">
-                      ⚡ 3 échecs → Adoption automatique
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Center Column - Table Ronde (40% width, centrée en bas) */}
-            <div className="flex-1 flex flex-col justify-end items-center p-4">
-              <div className="w-full max-w-md">
-                <MedievalTable 
-                  players={gameState.players?.map(player => ({
-                    seat: player.seat,
-                    name: player.name + (player.id === currentPlayerId ? ' (Vous)' : ''),
-                    active: player.seat === gameState.regent_seat || player.seat === gameState.nominee_seat
-                  })) || []}
-                  size={320}
-                />
-              </div>
-            </div>
-
-            {/* Right Column - Chat + Phase Panels */}
-            <div className="w-80 p-4 flex flex-col space-y-4">
+                  ))}
+                </div>
+              </ScrollArea>
               
-              {/* Chat - Parchemin scrollable */}
-              <Card className="chat-parchment flex-1 flex flex-col min-h-0">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg flex items-center space-x-2 font-cinzel">
-                    <MessageCircle className="h-5 w-5" />
-                    <span>Chat</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="flex-1 flex flex-col space-y-3 p-3 min-h-0">
-                  {/* Messages Area - Scrollable */}
-                  <ScrollArea className="flex-1 pr-2 chat-scroll-area min-h-0">
-                    <div className="space-y-2">
-                      {messages.map((msg) => (
-                        <div key={msg.id} className={`p-2 rounded-lg text-sm font-fell ${
-                          msg.type === 'system' 
-                            ? 'bg-amber-100 text-amber-800 italic border border-amber-300' 
-                            : msg.player_name === currentPlayerName
-                            ? 'bg-yellow-100 text-yellow-800 border border-yellow-300'
-                            : 'bg-gray-100 text-gray-800 border border-gray-300'
-                        }`}>
-                          <div className="font-cinzel font-semibold text-xs mb-1">
-                            {msg.player_name}
-                            <span className="text-xs opacity-60 ml-2 font-fell">
-                              {new Date(msg.timestamp).toLocaleTimeString('fr-FR', { 
-                                hour: '2-digit', 
-                                minute: '2-digit' 
-                              })}
-                            </span>
-                          </div>
-                          <div className="break-words">{msg.message}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                  
-                  {/* Input Area */}
-                  <div className="flex space-x-2 flex-shrink-0">
-                    <Input
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      onKeyPress={handleKeyPress}
-                      placeholder="Écrivez votre message..."
-                      className="flex-1 bg-amber-50 border-amber-300 font-fell"
-                      maxLength={200}
-                      disabled={isSending}
-                    />
-                    <Button 
-                      onClick={sendMessage}
-                      disabled={!newMessage.trim() || isSending}
-                      size="sm"
-                      className="px-3 bg-amber-600 hover:bg-amber-700 font-cinzel"
-                    >
-                      {isSending ? (
-                        <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
-                      ) : (
-                        <Send className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* Input Area */}
+              <div className="flex space-x-2 flex-shrink-0">
+                <Input
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Votre message..."
+                  className="flex-1 bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400"
+                  maxLength={200}
+                  disabled={isSending}
+                />
+                <Button 
+                  onClick={sendMessage}
+                  disabled={!newMessage.trim() || isSending}
+                  size="sm"
+                  className="px-4 bg-blue-600 hover:bg-blue-700"
+                >
+                  {isSending ? (
+                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
 
-              {/* Phase/Vote Panels - Under Chat, no overlap */}
-              <Card className="chat-parchment flex-shrink-0">
-                <CardHeader>
-                  <CardTitle className="text-lg font-cinzel">Actions - Phase: {gameState.phase}</CardTitle>
+          {/* Actions Panel */}
+          <Card className="bg-gray-800 border-gray-700 flex-shrink-0">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg text-gray-100">Actions - {gameState.phase}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {/* Phase-specific actions */}
+              {gameState.phase === 'NOMINATION' && (
+                <NominationPanel
+                  meSeat={gameState.players?.find(p => p.id === currentPlayerId)?.seat}
+                  regentSeat={gameState.regent_seat}
+                  players={gameState.players || []}
+                  prevGovernment={gameState.prev_government}
+                  onNominate={async (seat) => {
+                    console.log('Nominating seat:', seat);
+                    try {
+                      await axios.post(`${API}/rooms/${roomCode}/action?player_id=${currentPlayerId}&action_type=NOMINATE`, {
+                        nomineeSeat: seat
+                      });
+                      console.log('Nomination successful');
+                    } catch (error) {
+                      console.error('Nomination failed:', error);
+                      alert('Erreur lors de la nomination: ' + (error.response?.data?.detail || error.message));
+                    }
+                  }}
+                />
+              )}
+
+              {gameState.phase === 'VOTE' && (
+                <VotePanel
+                  players={gameState.players || []}
+                  regentSeat={gameState.regent_seat}
+                  nomineeSeat={gameState.nominee_seat}
+                  votes={gameState.votes || {}}
+                  myVote={gameState.votes?.[currentPlayerId]}
+                  mySeat={gameState.players?.find(p => p.id === currentPlayerId)?.seat}
+                  onVote={async (vote) => {
+                    console.log('Voting:', vote);
+                    try {
+                      await axios.post(`${API}/rooms/${roomCode}/action?player_id=${currentPlayerId}&action_type=VOTE`, {
+                        vote: vote
+                      });
+                      console.log('Vote successful');
+                    } catch (error) {
+                      console.error('Vote failed:', error);
+                      alert('Erreur lors du vote: ' + (error.response?.data?.detail || error.message));
+                    }
+                  }}
+                />
+              )}
+
+              {(gameState.phase === 'LEGIS_REGENT' || gameState.phase === 'LEGIS_CHAMBELLAN') && (
+                <LegislativePanel
+                  phase={gameState.phase}
+                  mySeat={gameState.players?.find(p => p.id === currentPlayerId)?.seat}
+                  regentSeat={gameState.regent_seat}
+                  chambellanSeat={gameState.nominee_seat}
+                  players={gameState.players || []}
+                  cards={gameState.legislative_cards || []}
+                  onDiscard={async (cardId) => {
+                    console.log('Discarding card:', cardId);
+                    try {
+                      await axios.post(`${API}/rooms/${roomCode}/action?player_id=${currentPlayerId}&action_type=DISCARD`, {
+                        cardId: cardId
+                      });
+                      console.log('Discard successful');
+                    } catch (error) {
+                      console.error('Discard failed:', error);
+                      alert('Erreur lors de la défausse: ' + (error.response?.data?.detail || error.message));
+                    }
+                  }}
+                />
+              )}
+
+              {!['NOMINATION', 'VOTE', 'LEGIS_REGENT', 'LEGIS_CHAMBELLAN'].includes(gameState.phase) && (
+                <div className="text-center p-4">
+                  <Clock className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-gray-300 text-sm">
+                    En attente des actions...
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* MOBILE LAYOUT */}
+      <div className="lg:hidden flex flex-col h-full" style={{ height: 'calc(100dvh - 73px)' }}>
+        
+        {/* Mobile Content Area */}
+        <div className="flex-1 p-4" style={{ paddingBottom: 'calc(60px + env(safe-area-inset-bottom))' }}>
+          
+          {/* Table Tab */}
+          {mobileTab === 'table' && (
+            <div className="h-full flex flex-col items-center justify-start space-y-4">
+              
+              {/* Actions Panel - Above table on mobile */}
+              <Card className="bg-gray-800 border-gray-700 w-full">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg text-gray-100">Actions - {gameState.phase}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {/* Phase-specific actions */}
                   {gameState.phase === 'NOMINATION' && (
                     <NominationPanel
                       meSeat={gameState.players?.find(p => p.id === currentPlayerId)?.seat}
@@ -529,328 +589,226 @@ const GameInterface = ({ roomCode }) => {
 
                   {!['NOMINATION', 'VOTE', 'LEGIS_REGENT', 'LEGIS_CHAMBELLAN'].includes(gameState.phase) && (
                     <div className="text-center p-4">
-                      <Clock className="h-8 w-8 text-amber-600 mx-auto mb-2" />
-                      <p className="text-amber-800 text-sm font-cinzel">
+                      <Clock className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-gray-300 text-sm">
                         En attente des actions...
                       </p>
                     </div>
                   )}
                 </CardContent>
               </Card>
+              
+              {/* Compact Table */}
+              <div className="w-full max-w-xs">
+                <MedievalTable 
+                  players={gameState.players?.map(player => ({
+                    seat: player.seat,
+                    name: player.name.length > 8 ? player.name.substring(0, 8) + '...' : player.name,
+                    active: player.seat === gameState.regent_seat || player.seat === gameState.nominee_seat
+                  })) || []}
+                  size={240}
+                />
+              </div>
             </div>
-          </div>
-        </div>
+          )}
 
-        {/* MOBILE LAYOUT - Responsive with tabs */}
-        <div className="md:hidden flex flex-col h-full">
-          
-          {/* Mobile Content Area */}
-          <div className="flex-1 p-4 pb-20">
-            
-            {/* Table Tab */}
-            {mobileTab === 'table' && (
-              <div className="h-full flex flex-col items-center justify-center space-y-4">
-                {/* Compact table with just pseudos in circle */}
-                <div className="w-full max-w-xs">
-                  <MedievalTable 
-                    players={gameState.players?.map(player => ({
-                      seat: player.seat,
-                      name: player.name.length > 8 ? player.name.substring(0, 8) + '...' : player.name,
-                      active: player.seat === gameState.regent_seat || player.seat === gameState.nominee_seat
-                    })) || []}
-                    size={240}
-                  />
-                </div>
-                
-                {/* Phase info */}
-                <Card className="game-info-parchment w-full">
-                  <CardContent className="p-4 text-center">
-                    <p className="font-cinzel text-lg">Phase: {gameState.phase}</p>
-                    {gameState.regent_seat && (
-                      <p className="font-fell text-sm text-amber-700">
-                        Régent: Siège {gameState.regent_seat}
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-
-            {/* Actions Tab - CRITICAL FOR MOBILE VOTING */}
-            {mobileTab === 'actions' && (
-              <div className="space-y-4">
-                <Card className="chat-parchment">
-                  <CardHeader>
-                    <CardTitle className="text-lg font-cinzel">Actions - Phase: {gameState.phase}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {/* Phase-specific actions - SAME AS DESKTOP */}
-                    {gameState.phase === 'NOMINATION' && (
-                      <NominationPanel
-                        meSeat={gameState.players?.find(p => p.id === currentPlayerId)?.seat}
-                        regentSeat={gameState.regent_seat}
-                        players={gameState.players || []}
-                        prevGovernment={gameState.prev_government}
-                        onNominate={async (seat) => {
-                          console.log('Nominating seat:', seat);
-                          try {
-                            await axios.post(`${API}/rooms/${roomCode}/action?player_id=${currentPlayerId}&action_type=NOMINATE`, {
-                              nomineeSeat: seat
-                            });
-                            console.log('Nomination successful');
-                          } catch (error) {
-                            console.error('Nomination failed:', error);
-                            alert('Erreur lors de la nomination: ' + (error.response?.data?.detail || error.message));
-                          }
-                        }}
-                      />
-                    )}
-
-                    {gameState.phase === 'VOTE' && (
-                      <VotePanel
-                        players={gameState.players || []}
-                        regentSeat={gameState.regent_seat}
-                        nomineeSeat={gameState.nominee_seat}
-                        votes={gameState.votes || {}}
-                        myVote={gameState.votes?.[currentPlayerId]}
-                        mySeat={gameState.players?.find(p => p.id === currentPlayerId)?.seat}
-                        onVote={async (vote) => {
-                          console.log('Voting:', vote);
-                          try {
-                            await axios.post(`${API}/rooms/${roomCode}/action?player_id=${currentPlayerId}&action_type=VOTE`, {
-                              vote: vote
-                            });
-                            console.log('Vote successful');
-                          } catch (error) {
-                            console.error('Vote failed:', error);
-                            alert('Erreur lors du vote: ' + (error.response?.data?.detail || error.message));
-                          }
-                        }}
-                      />
-                    )}
-
-                    {(gameState.phase === 'LEGIS_REGENT' || gameState.phase === 'LEGIS_CHAMBELLAN') && (
-                      <LegislativePanel
-                        phase={gameState.phase}
-                        mySeat={gameState.players?.find(p => p.id === currentPlayerId)?.seat}
-                        regentSeat={gameState.regent_seat}
-                        chambellanSeat={gameState.nominee_seat}
-                        players={gameState.players || []}
-                        cards={gameState.legislative_cards || []}
-                        onDiscard={async (cardId) => {
-                          console.log('Discarding card:', cardId);
-                          try {
-                            await axios.post(`${API}/rooms/${roomCode}/action?player_id=${currentPlayerId}&action_type=DISCARD`, {
-                              cardId: cardId
-                            });
-                            console.log('Discard successful');
-                          } catch (error) {
-                            console.error('Discard failed:', error);
-                            alert('Erreur lors de la défausse: ' + (error.response?.data?.detail || error.message));
-                          }
-                        }}
-                      />
-                    )}
-
-                    {!['NOMINATION', 'VOTE', 'LEGIS_REGENT', 'LEGIS_CHAMBELLAN'].includes(gameState.phase) && (
-                      <div className="text-center p-4">
-                        <Clock className="h-8 w-8 text-amber-600 mx-auto mb-2" />
-                        <p className="text-amber-800 text-sm font-cinzel">
-                          En attente des actions...
-                        </p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-
-            {/* Tracks Tab */}
-            {mobileTab === 'tracks' && (
-              <div className="space-y-4">
-                {/* Pistes de progression */}
-                <Card className="game-info-parchment">
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center space-x-2 font-cinzel">
-                      <Shield className="h-5 w-5 text-blue-600" />
-                      <span className="text-blue-800">Piste des Loyaux</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex space-x-1 mb-2">
-                      {Array.from({ length: 5 }, (_, i) => (
-                        <div
-                          key={i}
-                          className={`w-10 h-10 rounded border-2 flex items-center justify-center text-lg transition-all ${
-                            i < (gameState.tracks?.loyal || 0)
-                              ? 'bg-blue-600 border-blue-600 text-white' 
-                              : 'border-blue-300 text-blue-300 bg-blue-50'
-                          }`}
-                        >
-                          🛡️
-                        </div>
-                      ))}
-                    </div>
-                    <p className="text-sm text-blue-700 font-fell text-center">
-                      {gameState.tracks?.loyal || 0}/5 - Victoire si 5 remplies
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card className="game-info-parchment">
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center space-x-2 font-cinzel">
-                      <Sword className="h-5 w-5 text-red-600" />
-                      <span className="text-red-800">Piste des Conjurés</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex space-x-1 mb-2">
-                      {Array.from({ length: 6 }, (_, i) => (
-                        <div
-                          key={i}
-                          className={`w-10 h-10 rounded border-2 flex items-center justify-center text-lg transition-all ${
-                            i < (gameState.tracks?.conjure || 0)
-                              ? 'bg-red-600 border-red-600 text-white' 
-                              : 'border-red-300 text-red-300 bg-red-50'
-                          }`}
-                        >
-                          ⚔️
-                        </div>
-                      ))}
-                    </div>
-                    <p className="text-sm text-red-700 font-fell text-center">
-                      {gameState.tracks?.conjure || 0}/6 - Victoire si 6 remplies
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card className="game-info-parchment">
-                  <CardHeader>
-                    <CardTitle className="text-lg font-cinzel">Piste de Crise</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center space-x-2">
-                      <Progress value={((gameState.tracks?.crisis || 0) / 3) * 100} className="flex-1" />
-                      <span className="text-lg font-medium font-fell">{gameState.tracks?.crisis || 0}/3</span>
-                    </div>
-                    <p className="text-sm text-amber-700 font-fell text-center mt-2">
-                      ⚡ 3 échecs → Adoption automatique
-                    </p>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-
-            {/* Chat Tab */}
-            {mobileTab === 'chat' && (
-              <Card className="chat-parchment h-full flex flex-col">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg flex items-center space-x-2 font-cinzel">
-                    <MessageCircle className="h-5 w-5" />
-                    <span>Chat</span>
+          {/* Tracks Tab */}
+          {mobileTab === 'tracks' && (
+            <div className="space-y-4">
+              {/* Piste des Loyaux (5 cases) */}
+              <Card className="bg-gray-800 border-gray-700">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center space-x-2 text-gray-100">
+                    <Shield className="h-5 w-5 text-blue-400" />
+                    <span>Loyaux</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="flex-1 flex flex-col p-3 min-h-0">
-                  {/* Messages Area */}
-                  <ScrollArea className="flex-1 pr-2 chat-scroll-area min-h-0 mb-4">
-                    <div className="space-y-2">
-                      {messages.map((msg) => (
-                        <div key={msg.id} className={`p-2 rounded-lg text-sm font-fell ${
-                          msg.type === 'system' 
-                            ? 'bg-amber-100 text-amber-800 italic border border-amber-300' 
-                            : msg.player_name === currentPlayerName
-                            ? 'bg-yellow-100 text-yellow-800 border border-yellow-300'
-                            : 'bg-gray-100 text-gray-800 border border-gray-300'
-                        }`}>
-                          <div className="font-cinzel font-semibold text-xs mb-1">
-                            {msg.player_name}
-                            <span className="text-xs opacity-60 ml-2 font-fell">
-                              {new Date(msg.timestamp).toLocaleTimeString('fr-FR', { 
-                                hour: '2-digit', 
-                                minute: '2-digit' 
-                              })}
-                            </span>
-                          </div>
-                          <div className="break-words">{msg.message}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                  
-                  {/* Input Area - Fixed at bottom */}
-                  <div className="flex space-x-2 flex-shrink-0 border-t pt-3">
-                    <Input
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      onKeyPress={handleKeyPress}
-                      placeholder="Écrivez votre message..."
-                      className="flex-1 bg-amber-50 border-amber-300 font-fell"
-                      maxLength={200}
-                      disabled={isSending}
-                    />
-                    <Button 
-                      onClick={sendMessage}
-                      disabled={!newMessage.trim() || isSending}
-                      size="sm"
-                      className="px-3 bg-amber-600 hover:bg-amber-700 font-cinzel"
-                    >
-                      {isSending ? (
-                        <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
-                      ) : (
-                        <Send className="h-4 w-4" />
-                      )}
-                    </Button>
+                <CardContent>
+                  <div className="flex space-x-2 mb-3">
+                    {Array.from({ length: 5 }, (_, i) => (
+                      <div
+                        key={i}
+                        className={`w-12 h-12 rounded-lg border-2 flex items-center justify-center text-xl font-bold transition-all ${
+                          i < (gameState.tracks?.loyal || 0)
+                            ? 'bg-blue-600 border-blue-500 text-white shadow-md' 
+                            : 'border-blue-300 text-blue-300 bg-gray-700'
+                        }`}
+                      >
+                        🛡️
+                      </div>
+                    ))}
                   </div>
+                  <p className="text-sm text-blue-400 text-center font-medium">
+                    {gameState.tracks?.loyal || 0}/5 → Victoire
+                  </p>
                 </CardContent>
               </Card>
-            )}
-          </div>
 
-          {/* Mobile Tabs Navigation - Fixed at bottom */}
-          <div className="fixed bottom-0 left-0 right-0 bg-amber-900/95 backdrop-blur-sm border-t-2 border-amber-600 z-30">
-            <div className="flex">
-              <button 
-                onClick={() => setMobileTab('table')}
-                className={`flex-1 p-3 text-center font-cinzel border-r border-amber-700 transition-all ${
-                  mobileTab === 'table' 
-                    ? 'bg-amber-600 text-white' 
-                    : 'text-amber-100 hover:bg-amber-800'
-                }`}
-              >
-                🏰 Table
-              </button>
-              <button 
-                onClick={() => setMobileTab('actions')}
-                className={`flex-1 p-3 text-center font-cinzel border-r border-amber-700 transition-all ${
-                  mobileTab === 'actions' 
-                    ? 'bg-amber-600 text-white' 
-                    : 'text-amber-100 hover:bg-amber-800'
-                }`}
-              >
-                ⚔️ Actions
-              </button>
-              <button 
-                onClick={() => setMobileTab('tracks')}
-                className={`flex-1 p-3 text-center font-cinzel border-r border-amber-700 transition-all ${
-                  mobileTab === 'tracks' 
-                    ? 'bg-amber-600 text-white' 
-                    : 'text-amber-100 hover:bg-amber-800'
-                }`}
-              >
-                📊 Pistes
-              </button>
-              <button 
-                onClick={() => setMobileTab('chat')}
-                className={`flex-1 p-3 text-center font-cinzel transition-all ${
-                  mobileTab === 'chat' 
-                    ? 'bg-amber-600 text-white' 
-                    : 'text-amber-100 hover:bg-amber-800'
-                }`}
-              >
-                💬 Chat
-              </button>
+              {/* Piste des Conjurés (6 cases) */}
+              <Card className="bg-gray-800 border-gray-700">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center space-x-2 text-gray-100">
+                    <Sword className="h-5 w-5 text-red-400" />
+                    <span>Conjurés</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex space-x-2 mb-3">
+                    {Array.from({ length: 6 }, (_, i) => (
+                      <div
+                        key={i}
+                        className={`w-12 h-12 rounded-lg border-2 flex items-center justify-center text-xl font-bold transition-all ${
+                          i < (gameState.tracks?.conjure || 0)
+                            ? 'bg-red-600 border-red-500 text-white shadow-md' 
+                            : 'border-red-300 text-red-300 bg-gray-700'
+                        }`}
+                      >
+                        ⚔️
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-sm text-red-400 text-center font-medium">
+                    {gameState.tracks?.conjure || 0}/6 → Victoire
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Piste de Crise (3 cases) */}
+              <Card className="bg-gray-800 border-gray-700">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center space-x-2 text-gray-100">
+                    <Zap className="h-5 w-5 text-yellow-400" />
+                    <span>Crise</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex space-x-2 mb-3">
+                    {Array.from({ length: 3 }, (_, i) => (
+                      <div
+                        key={i}
+                        className={`w-12 h-12 rounded-lg border-2 flex items-center justify-center text-xl font-bold transition-all ${
+                          i < (gameState.tracks?.crisis || 0)
+                            ? 'bg-yellow-600 border-yellow-500 text-white shadow-md' 
+                            : 'border-yellow-300 text-yellow-300 bg-gray-700'
+                        }`}
+                      >
+                        ⚡
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-sm text-yellow-400 text-center font-medium">
+                    {gameState.tracks?.crisis || 0}/3 → Adoption auto
+                  </p>
+                </CardContent>
+              </Card>
             </div>
+          )}
+
+          {/* Chat Tab */}
+          {mobileTab === 'chat' && (
+            <Card className="bg-gray-800 border-gray-700 h-full flex flex-col">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center space-x-2 text-gray-100">
+                  <MessageCircle className="h-5 w-5" />
+                  <span>Chat</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex-1 flex flex-col p-3 min-h-0">
+                {/* Messages Area */}
+                <ScrollArea className="flex-1 pr-2 chat-scroll-area min-h-0 mb-4">
+                  <div className="space-y-2">
+                    {messages.map((msg) => (
+                      <div key={msg.id} className={`p-3 rounded-lg text-sm transition-all ${
+                        msg.type === 'system' 
+                          ? 'bg-blue-900 text-blue-100 border border-blue-700' 
+                          : msg.player_name === currentPlayerName
+                          ? 'bg-green-900 text-green-100 border border-green-700'
+                          : 'bg-gray-700 text-gray-100 border border-gray-600'
+                      }`}>
+                        <div className="font-semibold text-xs mb-1 opacity-75">
+                          {msg.player_name}
+                          <span className="text-xs opacity-60 ml-2">
+                            {new Date(msg.timestamp).toLocaleTimeString('fr-FR', { 
+                              hour: '2-digit', 
+                              minute: '2-digit' 
+                            })}
+                          </span>
+                        </div>
+                        <div className="break-words">{msg.message}</div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+                
+                {/* Input Area - Mobile keyboard friendly */}
+                <div className="flex space-x-2 flex-shrink-0 border-t border-gray-700 pt-3">
+                  <Input
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Votre message..."
+                    className="flex-1 bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400"
+                    maxLength={200}
+                    disabled={isSending}
+                  />
+                  <Button 
+                    onClick={sendMessage}
+                    disabled={!newMessage.trim() || isSending}
+                    size="sm"
+                    className="px-4 bg-blue-600 hover:bg-blue-700"
+                    style={{ minHeight: '44px', minWidth: '44px' }}
+                  >
+                    {isSending ? (
+                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Mobile Tabs Navigation - Fixed at bottom with safe area */}
+        <div 
+          className="fixed bottom-0 left-0 right-0 bg-gray-800 border-t border-gray-700 z-30"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+        >
+          <div className="flex">
+            <button 
+              onClick={() => setMobileTab('table')}
+              className={`flex-1 p-3 text-center font-medium transition-all ${
+                mobileTab === 'table' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'text-gray-300 hover:bg-gray-700'
+              }`}
+              style={{ minHeight: '44px' }}
+            >
+              🏰 Table
+            </button>
+            <button 
+              onClick={() => setMobileTab('tracks')}
+              className={`flex-1 p-3 text-center font-medium border-l border-gray-700 transition-all ${
+                mobileTab === 'tracks' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'text-gray-300 hover:bg-gray-700'
+              }`}
+              style={{ minHeight: '44px' }}
+            >
+              📊 Pistes
+            </button>
+            <button 
+              onClick={() => setMobileTab('chat')}
+              className={`flex-1 p-3 text-center font-medium border-l border-gray-700 transition-all ${
+                mobileTab === 'chat' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'text-gray-300 hover:bg-gray-700'
+              }`}
+              style={{ minHeight: '44px' }}
+            >
+              💬 Chat
+            </button>
           </div>
         </div>
       </div>
