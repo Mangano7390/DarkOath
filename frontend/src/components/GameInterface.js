@@ -657,21 +657,45 @@ const GameInterface = ({ roomCode }) => {
         {/* Main Game Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 p-4 min-h-screen">
           
-          {/* Left Column - Game Tracks */}
-          <div className="space-y-4 lg:max-h-screen lg:overflow-y-auto">
+          {/* Left Column - Game Tracks (Desktop) / Conditional Mobile */}
+          <div className={`space-y-4 lg:max-h-screen lg:overflow-y-auto ${
+            mobileTab === 'tracks' ? 'block lg:block' : 'hidden lg:block'
+          }`}>
             <DecreeTrack 
               tracks={gameState.tracks || { loyal: 0, conjure: 0, crisis: 0 }}
               powers={gameState.powers || {}}
             />
             
-            {/* Player Role Info for mobile */}
-            <div className="block md:hidden">
+            {/* Player Role Info for mobile in tracks tab */}
+            <div className="block lg:hidden">
               <RoleDisplay role={playerRole} />
+            </div>
+            
+            {/* Game Progress for mobile */}
+            <div className="block lg:hidden">
+              <Card className="game-info-parchment">
+                <CardHeader>
+                  <CardTitle className="text-sm font-cinzel">Progression</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-xs font-fell text-amber-800">
+                    <p>Joueurs connectés: {gameState.players?.filter(p => p.connected).length || 0}</p>
+                    <p>Joueurs vivants: {gameState.players?.filter(p => p.alive).length || 0}</p>
+                    <p>Régent: Siège {gameState.regent_seat} 
+                      {gameState.players?.find(p => p.seat === gameState.regent_seat)?.name && 
+                        ` (${gameState.players.find(p => p.seat === gameState.regent_seat).name})`
+                      }
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
 
-          {/* Center Column - Table + Actions */}
-          <div className="flex flex-col space-y-4">
+          {/* Center Column - Table + Actions (Desktop) / Game Tab (Mobile) */}
+          <div className={`flex flex-col space-y-4 ${
+            mobileTab === 'game' ? 'block lg:block' : 'hidden lg:block'
+          }`}>
             {/* Game Actions */}
             <Card className="chat-parchment">
               <CardHeader>
@@ -775,8 +799,10 @@ const GameInterface = ({ roomCode }) => {
             </div>
           </div>
 
-          {/* Right Column - Chat only */}
-          <div className="space-y-4 lg:max-h-screen lg:overflow-y-auto">
+          {/* Right Column - Chat (Desktop) / Chat Tab (Mobile) */}
+          <div className={`space-y-4 lg:max-h-screen lg:overflow-y-auto ${
+            mobileTab === 'chat' ? 'block lg:block' : 'hidden lg:block'
+          }`}>
             <ChatComponent 
               roomCode={roomCode}
               currentPlayerId={currentPlayerId}
@@ -785,16 +811,37 @@ const GameInterface = ({ roomCode }) => {
           </div>
         </div>
 
-        {/* Mobile Tabs - Only visible on mobile */}
+        {/* Mobile Tabs - Functional navigation */}
         <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-amber-900/95 backdrop-blur-sm border-t-2 border-amber-600 z-30">
           <div className="flex">
-            <button className="flex-1 p-3 text-center text-amber-100 font-cinzel border-r border-amber-700">
+            <button 
+              onClick={() => setMobileTab('game')}
+              className={`flex-1 p-3 text-center font-cinzel border-r border-amber-700 transition-all ${
+                mobileTab === 'game' 
+                  ? 'bg-amber-600 text-white' 
+                  : 'text-amber-100 hover:bg-amber-800'
+              }`}
+            >
               🏰 Jeu
             </button>
-            <button className="flex-1 p-3 text-center text-amber-100 font-cinzel border-r border-amber-700">
+            <button 
+              onClick={() => setMobileTab('tracks')}
+              className={`flex-1 p-3 text-center font-cinzel border-r border-amber-700 transition-all ${
+                mobileTab === 'tracks' 
+                  ? 'bg-amber-600 text-white' 
+                  : 'text-amber-100 hover:bg-amber-800'
+              }`}
+            >
               📊 Pistes
             </button>
-            <button className="flex-1 p-3 text-center text-amber-100 font-cinzel">
+            <button 
+              onClick={() => setMobileTab('chat')}
+              className={`flex-1 p-3 text-center font-cinzel transition-all ${
+                mobileTab === 'chat' 
+                  ? 'bg-amber-600 text-white' 
+                  : 'text-amber-100 hover:bg-amber-800'
+              }`}
+            >
               💬 Chat
             </button>
           </div>
