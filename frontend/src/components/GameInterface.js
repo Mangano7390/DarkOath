@@ -301,6 +301,16 @@ const GameInterface = ({ roomCode }) => {
                 Régent: Siège {gameState.regent_seat}
               </span>
             )}
+            {playerRole && (
+              <div className="flex items-center space-x-2">
+                {getRoleInfo(playerRole).icon === Shield && <span className="text-blue-400">🛡️</span>}
+                {getRoleInfo(playerRole).icon === Sword && <span className="text-red-400">⚔️</span>}
+                {getRoleInfo(playerRole).icon === Crown && <span className="text-purple-400">👑</span>}
+                <span className="text-sm font-medium text-gray-300">
+                  {getRoleInfo(playerRole).name}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>
