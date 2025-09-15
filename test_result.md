@@ -289,6 +289,126 @@ frontend:
           agent: "testing"
           comment: "🎯 CRITICAL FIX VALIDATED - CHAT SYSTEM FULLY FUNCTIONAL! Comprehensive testing with room OXAGMG confirmed: ✅ 1) System message 'La séance du conseil royal a commencé' initializes correctly on chat load, ✅ 2) Message input field accepts text input properly, ✅ 3) Send button functionality working - messages sent successfully with HTTP 200, ✅ 4) Messages display with proper formatting, timestamps, and player names, ✅ 5) 'Parchemin des Délibérations' styling applied correctly, ✅ 6) Chat positioned in right column with parchment appearance. Message initialization, sending improvements, and error handling all working as intended. User-reported chat issues COMPLETELY RESOLVED!"
 
+  - task: "Real-time chat with 2s polling and auto-scroll"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/components/GameInterface.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+          agent: "testing"
+          comment: "New implementation needs testing - chat polling every 2s, auto-scroll to bottom, sound notifications, message animations"
+
+  - task: "Sticky banner with game info"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/components/GameInterface.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+          agent: "testing"
+          comment: "New sticky banner implementation needs testing - should show game name, room code, phase, role"
+
+  - task: "3-column optimized layout"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/components/GameInterface.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+          agent: "testing"
+          comment: "New 3-column layout needs testing - Left: Tracks | Center: Actions+Table | Right: Chat"
+
+  - task: "Reduced table size (320px centered)"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/components/MedievalTable.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+          agent: "testing"
+          comment: "Table size reduced to 320px and centered, needs verification"
+
+  - task: "Independent column scrolling"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/components/GameInterface.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+          agent: "testing"
+          comment: "Left and right columns should scroll independently, needs testing"
+
+  - task: "Mobile tabs navigation"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/components/GameInterface.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+          agent: "testing"
+          comment: "Mobile tabs at bottom for navigation, needs testing on mobile viewport"
+
+  - task: "Fixed mobile chat input"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/components/GameInterface.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+          agent: "testing"
+          comment: "Chat input should be fixed at bottom on mobile, needs testing"
+
+  - task: "Sound notification for new messages"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/components/GameInterface.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+          agent: "testing"
+          comment: "Sound notification implemented for new messages, needs testing"
+
+  - task: "Message animations on arrival"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/components/GameInterface.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+          agent: "testing"
+          comment: "Messages should animate when arriving, needs testing"
+
+  - task: "Complete responsive design PC/mobile"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/components/GameInterface.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+          agent: "testing"
+          comment: "Complete responsive adaptation for PC and mobile, needs comprehensive testing"
+
 metadata:
   created_by: "main_agent"
   version: "1.0"
