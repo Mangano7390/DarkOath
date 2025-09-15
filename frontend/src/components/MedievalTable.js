@@ -1,6 +1,6 @@
 import React from "react";
 
-const MedievalTable = ({ players, size = 500, disgracedPlayerSeat = null }) => {
+const MedievalTable = ({ players, size = 500, disgracedPlayerSeat = null, speakingPlayers = [] }) => {
   const radius = size / 2 - 50;
   const tableRadius = size / 3;
 
