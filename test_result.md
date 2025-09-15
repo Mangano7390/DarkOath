@@ -465,8 +465,7 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Remove regent info from under chat area"
-    - "Mobile tabs navigation"
+    - "Complete medieval interface redesign validation"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
