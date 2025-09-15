@@ -550,6 +550,15 @@ const GameInterface = ({ roomCode }) => {
                 />
               )}
 
+              {gameState.phase === 'CONSEIL_ROYAUME' && (
+                <ConseilRoyaumePanel
+                  gameState={gameState}
+                  currentPlayerId={currentPlayerId}
+                  onSpeakToggle={handleSpeakToggle}
+                  speakingPlayers={gameState.speaking_players || []}
+                />
+              )}
+
               {(gameState.phase === 'LEGIS_REGENT' || gameState.phase === 'LEGIS_CHAMBELLAN') && (
                 <LegislativePanel
                   phase={gameState.phase}
