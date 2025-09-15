@@ -543,6 +543,81 @@ const GameInterface = ({ roomCode }) => {
     };
   }, [roomCode, currentPlayerId]);
   
+  // Chat useEffect for loading messages and polling
+  useEffect(() => {
+    const loadChatHistory = async () => {
+      try {
+        if (currentPlayerId && roomCode) {
+          const response = await axios.get(`${API}/rooms/${roomCode}/chat?player_id=${currentPlayerId}`);
+          if (response.data.messages && response.data.messages.length > 0) {
+            setMessages(response.data.messages);
+          } else {
+            // If no messages, add system message
+            const systemMessage = {
+              id: 'system-1',
+              player_name: 'Système',
+              message: 'La séance du conseil royal a commencé. Que les délibérations débutent !',
+              timestamp: new Date().toISOString(),
+              type: 'system'
+            };
+            setMessages([systemMessage]);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading chat history:', error);
+        // Fallback to system message
+        const systemMessage = {
+          id: 'system-1',
+          player_name: 'Système',
+          message: 'La séance du conseil royal a commencé. Que les délibérations débutent !',
+          timestamp: new Date().toISOString(),
+          type: 'system'
+        };
+        setMessages([systemMessage]);
+      }
+    };
+
+    loadChatHistory();
+
+    // Set up polling for new messages every 2 seconds
+    const pollInterval = setInterval(async () => {
+      try {
+        if (currentPlayerId && roomCode) {
+          const response = await axios.get(`${API}/rooms/${roomCode}/chat?player_id=${currentPlayerId}`);
+          if (response.data.messages) {
+            setMessages(prevMessages => {
+              const newMessages = response.data.messages;
+              // Check if there are new messages
+              if (newMessages.length > prevMessages.length) {
+                // Play notification sound for new messages
+                try {
+                  const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hTEw1Mp+DyvmIcBSuTrIrEiikEO1gqvWFBCj+B2vLCcCQF');
+                  audio.volume = 0.3;
+                  audio.play().catch(() => {}); // Ignore errors
+                } catch (e) {}
+                
+                // Scroll to bottom after new message
+                setTimeout(() => {
+                  const chatContainer = document.querySelector('.chat-scroll-area');
+                  if (chatContainer) {
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                  }
+                }, 100);
+              }
+              return newMessages;
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error polling chat messages:', error);
+      }
+    }, 2000);
+
+    return () => {
+      clearInterval(pollInterval);
+    };
+  }, [currentPlayerId, roomCode]);
+  
   if (loading) {
     return (
       <div className="medieval-room">
