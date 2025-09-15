@@ -450,6 +450,9 @@ frontend:
         - working: false
           agent: "testing"
           comment: "CRITICAL ISSUE FOUND: Testing shows regent info still appears under chat area (regent_under_chat = True). The recent correction to move regent info to sticky banner was successful, but the regent info was not removed from its original location under the chat. This creates duplicate regent information display. The regent info should appear ONLY in the sticky banner and be completely removed from the chat area."
+        - working: false
+          agent: "testing"
+          comment: "🔍 REGENT DUPLICATION ISSUE IDENTIFIED! Code analysis reveals the problem: GamePhase component was correctly removed (no matches found in codebase), but regent info still appears in TWO locations: 1) ✅ STICKY BANNER (lines 578-589) - CORRECT location showing 'Régent Siège X (PlayerName)', 2) ❌ MOBILE TRACKS TAB (lines 630-634) - DUPLICATE in 'Progression' section showing 'Régent: Siège X (PlayerName)'. The duplicate regent info in the mobile tracks section (GameInterface.js lines 630-634) needs to be removed. This is NOT under the chat but in the left column mobile tracks tab, creating the reported duplication. Testing confirmed: ✅ No GamePhase component found, ✅ Mobile tabs navigation working (🏰 Jeu | 📊 Pistes | 💬 Chat), ✅ 3-column layout structure present, ❌ Regent duplication still exists in mobile tracks section."
 
 metadata:
   created_by: "main_agent"
