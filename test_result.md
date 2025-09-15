@@ -336,15 +336,18 @@ frontend:
 
   - task: "Reduced table size (320px centered)"
     implemented: true
-    working: "NA"
+    working: true
     file: "frontend/src/components/MedievalTable.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
           agent: "testing"
           comment: "Table size reduced to 320px and centered, needs verification"
+        - working: true
+          agent: "testing"
+          comment: "✅ TABLE SIZE REDUCTION PERFECTLY IMPLEMENTED! Comprehensive testing confirmed: 1) Table size set to 320px in GameInterface.js line 759 (size={320}), 2) Table is properly centered with flex justify-center and max-width constraints, 3) SVG table renders at exactly 320x320px as requested, 4) Table contains 'Table Ronde' center text and 10 player seats around the perimeter, 5) Table is much smaller than previous 40-50% width implementation, 6) Centering works perfectly in the center column. The table size reduction to 320px and centering is working exactly as requested."
 
   - task: "Independent column scrolling"
     implemented: true
