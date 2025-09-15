@@ -49,50 +49,40 @@ const getRoleInfo = (role) => {
 
 
 
-// Decree Track Component
+// Decree Track Component - Two separate tracks
 const DecreeTrack = ({ tracks, powers }) => {
   const { t } = useTranslation();
   
   const loyalMarkers = Array.from({ length: 5 }, (_, i) => i < tracks.loyal);
   const conjureMarkers = Array.from({ length: 6 }, (_, i) => i < tracks.conjure);
-  
-  const getPowerIcon = (index) => {
-    switch(index) {
-      case 1: return { icon: Eye, text: 'Investigation', unlocked: tracks.conjure >= 2 };
-      case 2: return { icon: Crown, text: 'Élection Spéciale', unlocked: tracks.conjure >= 3 };
-      case 3: return { icon: Skull, text: 'Exécution', unlocked: tracks.conjure >= 4 };
-      case 4: return { icon: Skull, text: 'Exécution', unlocked: tracks.conjure >= 5 };
-      default: return null;
-    }
-  };
-  
+
   return (
     <div className="space-y-4">
       {/* Loyal Track */}
       <Card className="game-info-parchment">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center space-x-2 font-cinzel">
-            <Shield className="h-4 w-4 text-blue-600" />
-            <span>Décrets Loyaux</span>
+            <Shield className="h-5 w-5 text-blue-600" />
+            <span className="text-blue-800">Piste des Loyaux</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex space-x-2">
+          <div className="flex space-x-1 mb-2">
             {loyalMarkers.map((filled, index) => (
               <div
                 key={index}
-                className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold ${
+                className={`w-10 h-10 rounded-lg border-2 flex items-center justify-center text-xs font-bold transition-all ${
                   filled 
-                    ? 'bg-blue-600 border-blue-600 text-white' 
-                    : 'border-blue-300 text-blue-300'
+                    ? 'bg-blue-600 border-blue-600 text-white shadow-lg' 
+                    : 'border-blue-300 text-blue-300 bg-blue-50'
                 }`}
               >
-                {index + 1}
+                <Shield className="h-4 w-4" />
               </div>
             ))}
-            <div className="ml-4 text-sm text-blue-700 font-medium flex items-center font-fell">
-              {tracks.loyal}/5 pour la victoire
-            </div>
+          </div>
+          <div className="text-xs text-blue-700 font-medium font-fell">
+            🏆 {tracks.loyal}/5 - Victoire des Loyaux si 5 atteint
           </div>
         </CardContent>
       </Card>
@@ -101,39 +91,46 @@ const DecreeTrack = ({ tracks, powers }) => {
       <Card className="game-info-parchment">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center space-x-2 font-cinzel">
-            <Sword className="h-4 w-4 text-red-600" />
-            <span>Décrets Conjurés</span>
+            <Sword className="h-5 w-5 text-red-600" />
+            <span className="text-red-800">Piste des Conjurés</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex space-x-2">
-            {conjureMarkers.map((filled, index) => {
-              const power = getPowerIcon(index + 1);
-              return (
-                <div key={index} className="relative">
-                  <div
-                    className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold ${
-                      filled 
-                        ? 'bg-red-600 border-red-600 text-white' 
-                        : 'border-red-300 text-red-300'
-                    }`}
-                  >
-                    {index + 1}
-                  </div>
-                  {power && (
-                    <div className={`absolute -bottom-6 left-1/2 transform -translate-x-1/2 ${
-                      power.unlocked ? 'text-red-600' : 'text-gray-400'
-                    }`}>
-                      <power.icon className="h-3 w-3" />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-            <div className="ml-4 text-sm text-red-700 font-medium flex items-center">
-              {tracks.conjure}/6 pour la victoire
-            </div>
+          <div className="flex space-x-1 mb-2">
+            {conjureMarkers.map((filled, index) => (
+              <div
+                key={index}
+                className={`w-10 h-10 rounded-lg border-2 flex items-center justify-center text-xs font-bold transition-all ${
+                  filled 
+                    ? 'bg-red-600 border-red-600 text-white shadow-lg' 
+                    : 'border-red-300 text-red-300 bg-red-50'
+                }`}
+              >
+                <Sword className="h-4 w-4" />
+              </div>
+            ))}
           </div>
+          <div className="text-xs text-red-700 font-medium font-fell">
+            ⚔️ {tracks.conjure}/6 - Victoire des Conjurés si 6 atteint
+          </div>
+          
+          {/* Powers display */}
+          {tracks.conjure >= 2 && (
+            <div className="mt-2 pt-2 border-t border-red-200">
+              <div className="text-xs font-fell text-red-800">
+                <p className="flex items-center space-x-1">
+                  <Eye className="h-3 w-3" />
+                  <span>2+ : Pouvoir d'Investigation</span>
+                </p>
+                {tracks.conjure >= 4 && (
+                  <p className="flex items-center space-x-1">
+                    <Skull className="h-3 w-3" />
+                    <span>4+ : Pouvoir d'Exécution</span>
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
       
@@ -148,7 +145,7 @@ const DecreeTrack = ({ tracks, powers }) => {
             <span className="text-sm font-medium font-fell">{tracks.crisis}/3</span>
           </div>
           <p className="text-xs text-amber-700 mt-1 font-fell">
-            3 échecs consécutifs → Adoption automatique
+            ⚡ 3 échecs consécutifs → Adoption automatique
           </p>
         </CardContent>
       </Card>
