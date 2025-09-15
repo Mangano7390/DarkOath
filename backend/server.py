@@ -366,6 +366,10 @@ async def handle_game_action(room_code: str, player_id: str, action_type: str, p
                     game_state.turn.phase = Phase.LEGIS_REGENT
                     game_state.tracks.crisis = 0  # Reset crisis on successful election
                     
+                    # Rehabilitate disgraced player after successful election
+                    game_state.turn.disgraced_player_seat = None
+                    game_state.turn.peoples_anger_triggered = False
+                    
                     # Draw 3 cards from deck for the regent to examine
                     if len(game_state.deck) >= 3:
                         game_state.turn.legislative_cards = game_state.deck[:3]
