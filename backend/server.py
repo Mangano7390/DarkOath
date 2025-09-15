@@ -586,7 +586,9 @@ async def get_game_state(room_code: str, player_id: str):
         "players": [{"id": p.id, "name": p.name, "seat": p.seat, "alive": p.alive, "connected": p.connected} for p in game_state.players],
         "winner": game_state.winner,
         "version": game_state.version,
-        "legislative_cards": legislative_cards
+        "legislative_cards": legislative_cards,
+        "disgraced_player_seat": game_state.turn.disgraced_player_seat,
+        "peoples_anger_triggered": game_state.turn.peoples_anger_triggered
     }
 @api_router.post("/rooms/{room_code}/start")
 async def start_game(room_code: str):
