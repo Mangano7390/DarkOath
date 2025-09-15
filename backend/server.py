@@ -682,12 +682,29 @@ async def handle_game_action(room_code: str, player_id: str, action_type: str, p
 
 @api_router.get("/rooms/{room_code}/game_state")
 async def get_game_state(room_code: str, player_id: str):
-    """Get current game state for a specific player"""
-    game_state = manager.get_game_state(room_code)
-    if not game_state:
+    """Get current game state for a player"""
+    
+    if room_code not in manager.game_states:
         raise HTTPException(status_code=404, detail="Room not found")
     
-    # Find the player
+    game_state = manager.game_states[room_code]
+    
+    # Check if Conseil du Royaume has expired and auto-advance if needed
+    if game_state.turn.phase == Phase.CONSEIL_ROYAUME and game_state.turn.conseil_royaume_start_time:
+        import time
+        current_time = time.time()
+        if (current_time - game_state.turn.conseil_royaume_start_time) >= 60:
+            # Time's up! Advance to next phase
+            await manager.advance_after_conseil(game_state)
+            game_state.version += 1
+            
+            # Broadcast the update
+            await manager.broadcast_to_room(room_code, {
+                "type": "game_update", 
+                "data": "conseil_timeout",
+                "version": game_state.version
+            })
+    
     player = next((p for p in game_state.players if p.id == player_id), None)
     if not player:
         raise HTTPException(status_code=404, detail="Player not found")
