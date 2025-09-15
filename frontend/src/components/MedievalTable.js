@@ -105,8 +105,3 @@ const MedievalTable = ({ players, size = 500, disgracedPlayerSeat = null }) => {
 };
 
 export default MedievalTable;
-    </svg>
-  );
-};
-
-export default MedievalTable;
