@@ -312,6 +312,35 @@ const GameInterface = ({ roomCode }) => {
   
   return (
     <div className="min-h-screen bg-slate-900 text-gray-100" style={{ minHeight: '100dvh' }}>
+      {/* Colère du Peuple Message */}
+      {showPeoplesAnger && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+          <Card className="bg-red-900 border-red-700 shadow-2xl max-w-md mx-4">
+            <CardHeader className="text-center">
+              <CardTitle className="text-2xl text-red-100 flex items-center justify-center space-x-2">
+                <Zap className="h-8 w-8 text-yellow-400" />
+                <span>Colère du Peuple</span>
+                <Zap className="h-8 w-8 text-yellow-400" />
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-center">
+              <p className="text-red-200 text-lg mb-4">
+                ⚡ Un décret est imposé et le Seigneur est désavoué !
+              </p>
+              <p className="text-red-300 text-sm">
+                Le Seigneur désavoué ne peut plus être élu au tour suivant.
+              </p>
+              <Button 
+                onClick={() => setShowPeoplesAnger(false)}
+                className="mt-4 bg-red-600 hover:bg-red-700 text-white"
+              >
+                Compris
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+      
       {/* Header Bar */}
       <div className="bg-gray-800 border-b border-gray-700 px-4 py-3">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
