@@ -576,6 +576,95 @@ const GameInterface = ({ roomCode }) => {
               </div>
             )}
 
+            {/* Actions Tab - CRITICAL FOR MOBILE VOTING */}
+            {mobileTab === 'actions' && (
+              <div className="space-y-4">
+                <Card className="chat-parchment">
+                  <CardHeader>
+                    <CardTitle className="text-lg font-cinzel">Actions - Phase: {gameState.phase}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {/* Phase-specific actions - SAME AS DESKTOP */}
+                    {gameState.phase === 'NOMINATION' && (
+                      <NominationPanel
+                        meSeat={gameState.players?.find(p => p.id === currentPlayerId)?.seat}
+                        regentSeat={gameState.regent_seat}
+                        players={gameState.players || []}
+                        prevGovernment={gameState.prev_government}
+                        onNominate={async (seat) => {
+                          console.log('Nominating seat:', seat);
+                          try {
+                            await axios.post(`${API}/rooms/${roomCode}/action?player_id=${currentPlayerId}&action_type=NOMINATE`, {
+                              nomineeSeat: seat
+                            });
+                            console.log('Nomination successful');
+                          } catch (error) {
+                            console.error('Nomination failed:', error);
+                            alert('Erreur lors de la nomination: ' + (error.response?.data?.detail || error.message));
+                          }
+                        }}
+                      />
+                    )}
+
+                    {gameState.phase === 'VOTE' && (
+                      <VotePanel
+                        players={gameState.players || []}
+                        regentSeat={gameState.regent_seat}
+                        nomineeSeat={gameState.nominee_seat}
+                        votes={gameState.votes || {}}
+                        myVote={gameState.votes?.[currentPlayerId]}
+                        mySeat={gameState.players?.find(p => p.id === currentPlayerId)?.seat}
+                        onVote={async (vote) => {
+                          console.log('Voting:', vote);
+                          try {
+                            await axios.post(`${API}/rooms/${roomCode}/action?player_id=${currentPlayerId}&action_type=VOTE`, {
+                              vote: vote
+                            });
+                            console.log('Vote successful');
+                          } catch (error) {
+                            console.error('Vote failed:', error);
+                            alert('Erreur lors du vote: ' + (error.response?.data?.detail || error.message));
+                          }
+                        }}
+                      />
+                    )}
+
+                    {(gameState.phase === 'LEGIS_REGENT' || gameState.phase === 'LEGIS_CHAMBELLAN') && (
+                      <LegislativePanel
+                        phase={gameState.phase}
+                        mySeat={gameState.players?.find(p => p.id === currentPlayerId)?.seat}
+                        regentSeat={gameState.regent_seat}
+                        chambellanSeat={gameState.nominee_seat}
+                        players={gameState.players || []}
+                        cards={gameState.legislative_cards || []}
+                        onDiscard={async (cardId) => {
+                          console.log('Discarding card:', cardId);
+                          try {
+                            await axios.post(`${API}/rooms/${roomCode}/action?player_id=${currentPlayerId}&action_type=DISCARD`, {
+                              cardId: cardId
+                            });
+                            console.log('Discard successful');
+                          } catch (error) {
+                            console.error('Discard failed:', error);
+                            alert('Erreur lors de la défausse: ' + (error.response?.data?.detail || error.message));
+                          }
+                        }}
+                      />
+                    )}
+
+                    {!['NOMINATION', 'VOTE', 'LEGIS_REGENT', 'LEGIS_CHAMBELLAN'].includes(gameState.phase) && (
+                      <div className="text-center p-4">
+                        <Clock className="h-8 w-8 text-amber-600 mx-auto mb-2" />
+                        <p className="text-amber-800 text-sm font-cinzel">
+                          En attente des actions...
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
             {/* Tracks Tab */}
             {mobileTab === 'tracks' && (
               <div className="space-y-4">
