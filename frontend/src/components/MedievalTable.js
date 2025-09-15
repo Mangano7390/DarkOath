@@ -47,9 +47,30 @@ const MedievalTable = ({ players, size = 500, disgracedPlayerSeat = null, speaki
         const name = player?.name || `Siège ${i + 1}`;
         const seatSize = Math.max(32, size / 15);
         const isDisgraced = disgracedPlayerSeat === i + 1;
+        const isSpeaking = speakingPlayers.includes(i + 1);
 
         return (
           <g key={i} transform={`translate(${x}, ${y})`}>
+            {/* Halo rouge pour joueur qui parle */}
+            {isSpeaking && (
+              <circle
+                cx={0}
+                cy={0}
+                r={seatSize/2 + 6}
+                fill="none"
+                stroke="#EF4444"
+                strokeWidth={3}
+                opacity={0.8}
+              >
+                <animate
+                  attributeName="opacity"
+                  values="0.4;1;0.4"
+                  dur="1.5s"
+                  repeatCount="indefinite"
+                />
+              </circle>
+            )}
+            
             <rect
               x={-seatSize/2}
               y={-seatSize/2}
@@ -58,8 +79,8 @@ const MedievalTable = ({ players, size = 500, disgracedPlayerSeat = null, speaki
               rx={6}
               ry={6}
               fill={isDisgraced ? "#6B7280" : (player?.active ? "#DC2626" : "#4B5563")}
-              stroke={isDisgraced ? "#9CA3AF" : (player?.active ? "#EF4444" : "#6B7280")}
-              strokeWidth={2}
+              stroke={isDisgraced ? "#9CA3AF" : (isSpeaking ? "#EF4444" : (player?.active ? "#EF4444" : "#6B7280"))}
+              strokeWidth={isSpeaking ? 3 : 2}
               opacity={isDisgraced ? 0.6 : 1}
             />
             
