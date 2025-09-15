@@ -41,7 +41,7 @@ const NominationPanel = ({ meSeat, regentSeat, players, prevGovernment, disgrace
     
     // Can't nominate previous government members
     if (prevGovernment) {
-      if (player.seat === prevGovernment.regent || player.seat === prevGovernement.chambellan) {
+      if (player.seat === prevGovernment.regent || player.seat === prevGovernment.chambellan) {
         return false;
       }
     }
