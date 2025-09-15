@@ -95,6 +95,20 @@ const GameInterface = ({ roomCode }) => {
   const currentPlayerId = localStorage.getItem('userId');
   const currentPlayerName = localStorage.getItem('playerName') || 'Joueur';
   
+  // Middle Earth music for game
+  useEffect(() => {
+    const audio = new Audio('https://customer-assets.emergentagent.com/job_1a735b74-0d1b-4cfc-aa0c-5d6b585ff99b/artifacts/x03qntuf_Middle%20Earth%20%28Copyright%20Free%20Fantasy%20Music%20inspired%20by%20Lord%20of%20the%20Rings%29.mp3');
+    audio.loop = true;
+    audio.volume = 0.2;
+    
+    // Auto-play game music
+    audio.play().catch(console.error);
+    
+    return () => {
+      audio.pause();
+    };
+  }, []);
+  
   // Chat functions
   const sendMessage = async () => {
     if (!newMessage.trim() || isSending) return;
@@ -194,7 +208,7 @@ const GameInterface = ({ roomCode }) => {
             const systemMessage = {
               id: 'system-1',
               player_name: 'Système',
-              message: 'La partie a commencé. Bonne chance !',
+              message: 'Le Dark Oath a commencé. Que les conspirations débutent...',
               timestamp: new Date().toISOString(),
               type: 'system'
             };
@@ -207,7 +221,7 @@ const GameInterface = ({ roomCode }) => {
         const systemMessage = {
           id: 'system-1',
           player_name: 'Système',
-          message: 'La partie a commencé. Bonne chance !',
+          message: 'Le Dark Oath a commencé. Que les conspirations débutent...',
           timestamp: new Date().toISOString(),
           type: 'system'
         };
@@ -254,8 +268,8 @@ const GameInterface = ({ roomCode }) => {
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <Card className="bg-gray-800 border-gray-700 shadow-xl p-8">
           <div className="text-center">
-            <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-gray-100 text-lg">Chargement de la partie...</p>
+            <div className="animate-spin h-8 w-8 border-4 border-amber-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-gray-100 text-lg">Chargement de Dark Oath...</p>
             <p className="text-gray-400 text-sm mt-2">Room: {roomCode}</p>
           </div>
         </Card>
@@ -288,8 +302,8 @@ const GameInterface = ({ roomCode }) => {
       <div className="bg-gray-800 border-b border-gray-700 px-4 py-3">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center space-x-4">
-            <h1 className="text-xl font-bold text-gray-100">Secretus Regnum</h1>
-            <Badge className="bg-blue-600 text-blue-100">
+            <h1 className="text-xl font-bold text-amber-400">Dark Oath</h1>
+            <Badge className="bg-amber-600 text-black">
               {roomCode}
             </Badge>
           </div>
@@ -370,7 +384,7 @@ const GameInterface = ({ roomCode }) => {
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center space-x-2 text-gray-100">
                 <MessageCircle className="h-5 w-5" />
-                <span>Chat</span>
+                <span>Conspirations</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col space-y-3 p-3 min-h-0">
@@ -380,9 +394,9 @@ const GameInterface = ({ roomCode }) => {
                   {messages.map((msg) => (
                     <div key={msg.id} className={`p-3 rounded-lg text-sm transition-all ${
                       msg.type === 'system' 
-                        ? 'bg-blue-900 text-blue-100 border border-blue-700' 
+                        ? 'bg-purple-900 text-purple-100 border border-purple-700' 
                         : msg.player_name === currentPlayerName
-                        ? 'bg-green-900 text-green-100 border border-green-700'
+                        ? 'bg-amber-900 text-amber-100 border border-amber-700'
                         : 'bg-gray-700 text-gray-100 border border-gray-600'
                     }`}>
                       <div className="font-semibold text-xs mb-1 opacity-75">
@@ -406,7 +420,7 @@ const GameInterface = ({ roomCode }) => {
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder="Votre message..."
+                  placeholder="Chuchotez vos secrets..."
                   className="flex-1 bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400"
                   maxLength={200}
                   disabled={isSending}
@@ -415,10 +429,10 @@ const GameInterface = ({ roomCode }) => {
                   onClick={sendMessage}
                   disabled={!newMessage.trim() || isSending}
                   size="sm"
-                  className="px-4 bg-blue-600 hover:bg-blue-700"
+                  className="px-4 bg-amber-600 hover:bg-amber-700 text-black"
                 >
                   {isSending ? (
-                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                    <div className="animate-spin h-4 w-4 border-2 border-black border-t-transparent rounded-full" />
                   ) : (
                     <Send className="h-4 w-4" />
                   )}
@@ -720,7 +734,7 @@ const GameInterface = ({ roomCode }) => {
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center space-x-2 text-gray-100">
                   <MessageCircle className="h-5 w-5" />
-                  <span>Chat</span>
+                  <span>Conspirations</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="flex-1 flex flex-col p-3 min-h-0">
@@ -730,9 +744,9 @@ const GameInterface = ({ roomCode }) => {
                     {messages.map((msg) => (
                       <div key={msg.id} className={`p-3 rounded-lg text-sm transition-all ${
                         msg.type === 'system' 
-                          ? 'bg-blue-900 text-blue-100 border border-blue-700' 
+                          ? 'bg-purple-900 text-purple-100 border border-purple-700' 
                           : msg.player_name === currentPlayerName
-                          ? 'bg-green-900 text-green-100 border border-green-700'
+                          ? 'bg-amber-900 text-amber-100 border border-amber-700'
                           : 'bg-gray-700 text-gray-100 border border-gray-600'
                       }`}>
                         <div className="font-semibold text-xs mb-1 opacity-75">
@@ -756,7 +770,7 @@ const GameInterface = ({ roomCode }) => {
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    placeholder="Votre message..."
+                    placeholder="Chuchotez vos secrets..."
                     className="flex-1 bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400"
                     maxLength={200}
                     disabled={isSending}
@@ -765,11 +779,11 @@ const GameInterface = ({ roomCode }) => {
                     onClick={sendMessage}
                     disabled={!newMessage.trim() || isSending}
                     size="sm"
-                    className="px-4 bg-blue-600 hover:bg-blue-700"
+                    className="px-4 bg-amber-600 hover:bg-amber-700 text-black"
                     style={{ minHeight: '44px', minWidth: '44px' }}
                   >
                     {isSending ? (
-                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                      <div className="animate-spin h-4 w-4 border-2 border-black border-t-transparent rounded-full" />
                     ) : (
                       <Send className="h-4 w-4" />
                     )}
@@ -790,7 +804,7 @@ const GameInterface = ({ roomCode }) => {
               onClick={() => setMobileTab('table')}
               className={`flex-1 p-3 text-center font-medium transition-all ${
                 mobileTab === 'table' 
-                  ? 'bg-blue-600 text-white' 
+                  ? 'bg-amber-600 text-black' 
                   : 'text-gray-300 hover:bg-gray-700'
               }`}
               style={{ minHeight: '44px' }}
@@ -801,7 +815,7 @@ const GameInterface = ({ roomCode }) => {
               onClick={() => setMobileTab('tracks')}
               className={`flex-1 p-3 text-center font-medium border-l border-gray-700 transition-all ${
                 mobileTab === 'tracks' 
-                  ? 'bg-blue-600 text-white' 
+                  ? 'bg-amber-600 text-black' 
                   : 'text-gray-300 hover:bg-gray-700'
               }`}
               style={{ minHeight: '44px' }}
@@ -812,7 +826,7 @@ const GameInterface = ({ roomCode }) => {
               onClick={() => setMobileTab('chat')}
               className={`flex-1 p-3 text-center font-medium border-l border-gray-700 transition-all ${
                 mobileTab === 'chat' 
-                  ? 'bg-blue-600 text-white' 
+                  ? 'bg-amber-600 text-black' 
                   : 'text-gray-300 hover:bg-gray-700'
               }`}
               style={{ minHeight: '44px' }}
