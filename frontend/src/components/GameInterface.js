@@ -501,6 +501,25 @@ const GameInterface = ({ roomCode }) => {
   const currentPlayerId = localStorage.getItem('userId');
   const currentPlayerName = localStorage.getItem('playerName') || 'Joueur';
   
+  // Get current player info
+  const getCurrentPlayer = () => {
+    return gameState?.players?.find(p => p.id === currentPlayerId);
+  };
+
+  // Get role display info
+  const getRoleInfo = (role) => {
+    switch(role) {
+      case 'LOYAL': 
+        return { name: 'Chevalier Loyal', color: 'text-blue-400', icon: '🛡️' };
+      case 'CONJURE': 
+        return { name: 'Conjuré', color: 'text-red-400', icon: '⚔️' };
+      case 'USURPATEUR': 
+        return { name: 'Usurpateur', color: 'text-purple-400', icon: '👑' };
+      default: 
+        return { name: 'Noble', color: 'text-gray-400', icon: '🏰' };
+    }
+  };
+  
   // Load game state from API
   useEffect(() => {
     const loadGameState = async () => {
