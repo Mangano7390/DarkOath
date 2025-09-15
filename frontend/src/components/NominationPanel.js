@@ -41,9 +41,14 @@ const NominationPanel = ({ meSeat, regentSeat, players, prevGovernment, disgrace
     
     // Can't nominate previous government members
     if (prevGovernment) {
-      if (player.seat === prevGovernment.regent || player.seat === prevGovernment.chambellan) {
+      if (player.seat === prevGovernment.regent || player.seat === prevGovernement.chambellan) {
         return false;
       }
+    }
+    
+    // Can't nominate disgraced player (Colère du Peuple)
+    if (disgracedPlayerSeat && player.seat === disgracedPlayerSeat) {
+      return false;
     }
     
     return true;
