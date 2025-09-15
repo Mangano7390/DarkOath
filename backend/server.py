@@ -69,6 +69,8 @@ class TurnState(BaseModel):
     discard_count: int = 0
     legislative_cards: List[DecreeType] = []  # Cards currently being considered by regent/chambellan
     chat_messages: List[Dict] = []  # Store chat messages for the room
+    disgraced_player_seat: Optional[int] = None  # Player who was disgraced due to "Colère du Peuple"
+    peoples_anger_triggered: bool = False  # Flag to show "Colère du Peuple" message
 
 class GameState(BaseModel):
     room_code: str
