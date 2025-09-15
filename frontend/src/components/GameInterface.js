@@ -627,11 +627,6 @@ const GameInterface = ({ roomCode }) => {
                   <div className="text-xs font-fell text-amber-800">
                     <p>Joueurs connectés: {gameState.players?.filter(p => p.connected).length || 0}</p>
                     <p>Joueurs vivants: {gameState.players?.filter(p => p.alive).length || 0}</p>
-                    <p>Régent: Siège {gameState.regent_seat} 
-                      {gameState.players?.find(p => p.seat === gameState.regent_seat)?.name && 
-                        ` (${gameState.players.find(p => p.seat === gameState.regent_seat).name})`
-                      }
-                    </p>
                   </div>
                 </CardContent>
               </Card>
