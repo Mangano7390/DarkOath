@@ -719,135 +719,277 @@ const GameInterface = ({ roomCode }) => {
           </div>
         </div>
 
-        {/* Main Game Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 p-4 min-h-screen">
+        {/* Main Game Layout - Completely redesigned */}
+        <div className="flex flex-col h-screen max-h-screen overflow-hidden">
           
-          {/* Left Column - Game Tracks (Desktop) / Conditional Mobile */}
-          <div className={`space-y-4 lg:max-h-screen lg:overflow-y-auto ${
-            mobileTab === 'tracks' ? 'block lg:block' : 'hidden lg:block'
-          }`}>
-            <DecreeTrack 
-              tracks={gameState.tracks || { loyal: 0, conjure: 0, crisis: 0 }}
-              powers={gameState.powers || {}}
-            />
+          {/* Top Section - Victory Tracks (au centre haut) */}
+          <div className="flex-shrink-0 p-4">
+            <div className="flex justify-center space-x-8">
+              {/* Piste des Loyaux */}
+              <Card className="game-info-parchment">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center space-x-2 font-cinzel">
+                    <Shield className="h-5 w-5 text-blue-600" />
+                    <span className="text-blue-800">Piste des Loyaux</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex space-x-1 mb-2">
+                    {Array.from({ length: 5 }, (_, i) => (
+                      <div
+                        key={i}
+                        className={`w-12 h-12 rounded-lg border-2 flex items-center justify-center font-bold transition-all ${
+                          i < (gameState.tracks?.loyal || 0)
+                            ? 'bg-blue-600 border-blue-600 text-white shadow-lg' 
+                            : 'border-blue-300 text-blue-300 bg-blue-50'
+                        }`}
+                      >
+                        🛡️
+                      </div>
+                    ))}
+                  </div>
+                  <div className="text-xs text-blue-700 font-medium font-fell text-center">
+                    🏆 {gameState.tracks?.loyal || 0}/5 - Victoire Loyaux
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Piste des Conjurés */}
+              <Card className="game-info-parchment">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center space-x-2 font-cinzel">
+                    <Sword className="h-5 w-5 text-red-600" />
+                    <span className="text-red-800">Piste des Conjurés</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex space-x-1 mb-2">
+                    {Array.from({ length: 6 }, (_, i) => (
+                      <div
+                        key={i}
+                        className={`w-12 h-12 rounded-lg border-2 flex items-center justify-center font-bold transition-all ${
+                          i < (gameState.tracks?.conjure || 0)
+                            ? 'bg-red-600 border-red-600 text-white shadow-lg' 
+                            : 'border-red-300 text-red-300 bg-red-50'
+                        }`}
+                      >
+                        ⚔️
+                      </div>
+                    ))}
+                  </div>
+                  <div className="text-xs text-red-700 font-medium font-fell text-center">
+                    ⚔️ {gameState.tracks?.conjure || 0}/6 - Victoire Conjurés
+                  </div>
+                  {/* Powers display */}
+                  {(gameState.tracks?.conjure || 0) >= 2 && (
+                    <div className="mt-2 pt-2 border-t border-red-200">
+                      <div className="text-xs font-fell text-red-800 text-center">
+                        <p>👁️ Investigation (2+)</p>
+                        {(gameState.tracks?.conjure || 0) >= 4 && <p>💀 Exécution (4+)</p>}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </div>
 
-          {/* Center Column - Table + Actions (Desktop) / Game Tab (Mobile) */}
-          <div className={`flex flex-col space-y-4 ${
-            mobileTab === 'game' ? 'block lg:block' : 'hidden lg:block'
-          }`}>
-            {/* Game Actions */}
-            <Card className="chat-parchment">
-              <CardHeader>
-                <CardTitle className="text-lg font-cinzel">Actions de Jeu</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {/* Phase-specific actions */}
-                {gameState.phase === 'NOMINATION' && (
-                  <NominationPanel
-                    meSeat={gameState.players?.find(p => p.id === currentPlayerId)?.seat}
-                    regentSeat={gameState.regent_seat}
-                    players={gameState.players || []}
-                    prevGovernment={gameState.prev_government}
-                    onNominate={async (seat) => {
-                      console.log('Nominating seat:', seat);
-                      try {
-                        await axios.post(`${API}/rooms/${roomCode}/action?player_id=${currentPlayerId}&action_type=NOMINATE`, {
-                          nomineeSeat: seat
-                        });
-                        console.log('Nomination successful');
-                      } catch (error) {
-                        console.error('Nomination failed:', error);
-                        alert('Erreur lors de la nomination: ' + (error.response?.data?.detail || error.message));
-                      }
-                    }}
-                  />
-                )}
-
-                {gameState.phase === 'VOTE' && (
-                  <VotePanel
-                    players={gameState.players || []}
-                    regentSeat={gameState.regent_seat}
-                    nomineeSeat={gameState.nominee_seat}
-                    votes={gameState.votes || {}}
-                    myVote={gameState.votes?.[currentPlayerId]}
-                    mySeat={gameState.players?.find(p => p.id === currentPlayerId)?.seat}
-                    onVote={async (vote) => {
-                      console.log('Voting:', vote);
-                      try {
-                        await axios.post(`${API}/rooms/${roomCode}/action?player_id=${currentPlayerId}&action_type=VOTE`, {
-                          vote: vote
-                        });
-                        console.log('Vote successful');
-                      } catch (error) {
-                        console.error('Vote failed:', error);
-                        alert('Erreur lors du vote: ' + (error.response?.data?.detail || error.message));
-                      }
-                    }}
-                  />
-                )}
-
-                {(gameState.phase === 'LEGIS_REGENT' || gameState.phase === 'LEGIS_CHAMBELLAN') && (
-                  <LegislativePanel
-                    phase={gameState.phase}
-                    mySeat={gameState.players?.find(p => p.id === currentPlayerId)?.seat}
-                    regentSeat={gameState.regent_seat}
-                    chambellanSeat={gameState.nominee_seat}
-                    players={gameState.players || []}
-                    cards={gameState.legislative_cards || []}
-                    onDiscard={async (cardId) => {
-                      console.log('Discarding card:', cardId);
-                      try {
-                        await axios.post(`${API}/rooms/${roomCode}/action?player_id=${currentPlayerId}&action_type=DISCARD`, {
-                          cardId: cardId
-                        });
-                        console.log('Discard successful');
-                      } catch (error) {
-                        console.error('Discard failed:', error);
-                        alert('Erreur lors de la défausse: ' + (error.response?.data?.detail || error.message));
-                      }
-                    }}
-                  />
-                )}
-
-                {!['NOMINATION', 'VOTE', 'LEGIS_REGENT', 'LEGIS_CHAMBELLAN'].includes(gameState.phase) && (
-                  <div className="text-center p-6">
-                    <Clock className="h-12 w-12 text-amber-600 mx-auto mb-4" />
-                    <p className="text-amber-800 text-lg mb-4 font-cinzel">
-                      Phase: {gameState.phase}
-                    </p>
-                    <p className="text-amber-600 text-sm font-fell">
-                      En attente des actions...
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+          {/* Middle Section - Main Game Area */}
+          <div className="flex-1 flex min-h-0">
             
-            {/* Medieval Round Table - Reduced size, centered */}
-            <div className="flex justify-center items-center">
-              <div className="w-full max-w-md lg:max-w-lg">
+            {/* Left Column - Crisis Track */}
+            <div className={`flex-shrink-0 w-80 p-4 space-y-4 ${
+              mobileTab === 'tracks' ? 'block lg:block' : 'hidden lg:block'
+            }`}>
+              {/* Crisis Track */}
+              <Card className="game-info-parchment">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-cinzel">Piste de Crise</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center space-x-2">
+                    <Progress value={((gameState.tracks?.crisis || 0) / 3) * 100} className="flex-1" />
+                    <span className="text-sm font-medium font-fell">{gameState.tracks?.crisis || 0}/3</span>
+                  </div>
+                  <p className="text-xs text-amber-700 mt-1 font-fell">
+                    ⚡ 3 échecs → Adoption automatique
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Center Column - Table Area */}
+            <div className={`flex-1 flex flex-col items-center justify-end p-4 ${
+              mobileTab === 'game' ? 'block lg:block' : 'hidden lg:block'
+            }`}>
+              {/* Medieval Round Table - 40% width max, bottom positioned */}
+              <div className="w-full max-w-sm lg:max-w-md">
                 <MedievalTable 
                   players={gameState.players?.map(player => ({
                     seat: player.seat,
                     name: player.name + (player.id === currentPlayerId ? ' (Vous)' : ''),
                     active: player.seat === gameState.regent_seat || player.seat === gameState.nominee_seat
                   })) || []}
-                  size={320}
+                  size={280}
                 />
               </div>
             </div>
-          </div>
 
-          {/* Right Column - Chat (Desktop) / Chat Tab (Mobile) */}
-          <div className={`space-y-4 lg:max-h-screen lg:overflow-y-auto ${
-            mobileTab === 'chat' ? 'block lg:block' : 'hidden lg:block'
-          }`}>
-            <ChatComponent 
-              roomCode={roomCode}
-              currentPlayerId={currentPlayerId}
-              currentPlayerName={currentPlayerName}
-            />
+            {/* Right Column - Chat & Actions */}
+            <div className={`flex-shrink-0 w-80 p-4 flex flex-col space-y-4 ${
+              mobileTab === 'chat' ? 'block lg:block' : 'hidden lg:block'
+            }`}>
+              
+              {/* Chat Component */}
+              <Card className="chat-parchment flex-1 flex flex-col min-h-0">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center space-x-2 font-cinzel">
+                    <MessageCircle className="h-5 w-5" />
+                    <span>Parchemin des Délibérations</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="flex-1 flex flex-col space-y-3 p-3 min-h-0">
+                  {/* Messages Area */}
+                  <ScrollArea className="flex-1 pr-2 chat-scroll-area min-h-0">
+                    <div className="space-y-2">
+                      {messages.map((msg) => (
+                        <div key={msg.id} className={`p-2 rounded-lg text-sm font-fell transition-all duration-300 ${
+                          msg.type === 'system' 
+                            ? 'bg-amber-100 text-amber-800 italic border border-amber-300' 
+                            : msg.player_name === currentPlayerName
+                            ? 'bg-yellow-100 text-yellow-800 ml-2 border border-yellow-300'
+                            : 'bg-gray-100 text-gray-800 border border-gray-300'
+                        }`}>
+                          <div className="font-cinzel font-semibold text-xs mb-1">
+                            {msg.player_name}
+                            <span className="text-xs opacity-60 ml-2 font-fell">
+                              {new Date(msg.timestamp).toLocaleTimeString('fr-FR', { 
+                                hour: '2-digit', 
+                                minute: '2-digit' 
+                              })}
+                            </span>
+                          </div>
+                          <div className="break-words">{msg.message}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                  
+                  {/* Input Area */}
+                  <div className="flex space-x-2 flex-shrink-0">
+                    <Input
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      placeholder="Écrivez votre message..."
+                      className="flex-1 bg-amber-50 border-amber-300 font-fell"
+                      maxLength={200}
+                      disabled={isSending}
+                    />
+                    <Button 
+                      onClick={sendMessage}
+                      disabled={!newMessage.trim() || isSending}
+                      size="sm"
+                      className="px-3 bg-amber-600 hover:bg-amber-700 font-cinzel"
+                    >
+                      {isSending ? (
+                        <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                      ) : (
+                        <Send className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Game Actions Panel - Under Chat */}
+              <Card className="chat-parchment flex-shrink-0">
+                <CardHeader>
+                  <CardTitle className="text-lg font-cinzel">Actions de Jeu</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {/* Phase-specific actions */}
+                  {gameState.phase === 'NOMINATION' && (
+                    <NominationPanel
+                      meSeat={gameState.players?.find(p => p.id === currentPlayerId)?.seat}
+                      regentSeat={gameState.regent_seat}
+                      players={gameState.players || []}
+                      prevGovernment={gameState.prev_government}
+                      onNominate={async (seat) => {
+                        console.log('Nominating seat:', seat);
+                        try {
+                          await axios.post(`${API}/rooms/${roomCode}/action?player_id=${currentPlayerId}&action_type=NOMINATE`, {
+                            nomineeSeat: seat
+                          });
+                          console.log('Nomination successful');
+                        } catch (error) {
+                          console.error('Nomination failed:', error);
+                          alert('Erreur lors de la nomination: ' + (error.response?.data?.detail || error.message));
+                        }
+                      }}
+                    />
+                  )}
+
+                  {gameState.phase === 'VOTE' && (
+                    <VotePanel
+                      players={gameState.players || []}
+                      regentSeat={gameState.regent_seat}
+                      nomineeSeat={gameState.nominee_seat}
+                      votes={gameState.votes || {}}
+                      myVote={gameState.votes?.[currentPlayerId]}
+                      mySeat={gameState.players?.find(p => p.id === currentPlayerId)?.seat}
+                      onVote={async (vote) => {
+                        console.log('Voting:', vote);
+                        try {
+                          await axios.post(`${API}/rooms/${roomCode}/action?player_id=${currentPlayerId}&action_type=VOTE`, {
+                            vote: vote
+                          });
+                          console.log('Vote successful');
+                        } catch (error) {
+                          console.error('Vote failed:', error);
+                          alert('Erreur lors du vote: ' + (error.response?.data?.detail || error.message));
+                        }
+                      }}
+                    />
+                  )}
+
+                  {(gameState.phase === 'LEGIS_REGENT' || gameState.phase === 'LEGIS_CHAMBELLAN') && (
+                    <LegislativePanel
+                      phase={gameState.phase}
+                      mySeat={gameState.players?.find(p => p.id === currentPlayerId)?.seat}
+                      regentSeat={gameState.regent_seat}
+                      chambellanSeat={gameState.nominee_seat}
+                      players={gameState.players || []}
+                      cards={gameState.legislative_cards || []}
+                      onDiscard={async (cardId) => {
+                        console.log('Discarding card:', cardId);
+                        try {
+                          await axios.post(`${API}/rooms/${roomCode}/action?player_id=${currentPlayerId}&action_type=DISCARD`, {
+                            cardId: cardId
+                          });
+                          console.log('Discard successful');
+                        } catch (error) {
+                          console.error('Discard failed:', error);
+                          alert('Erreur lors de la défausse: ' + (error.response?.data?.detail || error.message));
+                        }
+                      }}
+                    />
+                  )}
+
+                  {!['NOMINATION', 'VOTE', 'LEGIS_REGENT', 'LEGIS_CHAMBELLAN'].includes(gameState.phase) && (
+                    <div className="text-center p-4">
+                      <Clock className="h-8 w-8 text-amber-600 mx-auto mb-2" />
+                      <p className="text-amber-800 text-sm mb-2 font-cinzel">
+                        Phase: {gameState.phase}
+                      </p>
+                      <p className="text-amber-600 text-xs font-fell">
+                        En attente des actions...
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
 
@@ -862,7 +1004,7 @@ const GameInterface = ({ roomCode }) => {
                   : 'text-amber-100 hover:bg-amber-800'
               }`}
             >
-              🏰 Jeu
+              🏰 Table
             </button>
             <button 
               onClick={() => setMobileTab('tracks')}
