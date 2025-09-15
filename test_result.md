@@ -102,7 +102,7 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: Test the complete redesign of "Secretus Regnum" interface with real-time chat fixes and new 3-column layout with sticky banner, reduced table size, mobile tabs navigation, and responsive design.
+user_problem_statement: Correction impérative de l'interface du jeu "Secretus Regnum" - refonte complète du layout selon les spécifications exactes: 1) Table Ronde réduite (40% max) centrée en bas (PC) et compacte (mobile), 2) Pistes de progression manquantes - 2 pistes distinctes au centre haut (Loyaux 5 cases bleu/or 🛡️, Conjurés 6 cases rouge sombre ⚔️), 3) Piste de Crise à gauche, 4) Chat à droite dans parchemin scrollable temps réel, 5) Panneaux phase/votes à droite sous chat sans chevaucher, 6) Mobile responsive avec onglets Table|Pistes|Chat. Interface doit être lisible PC/mobile, chat live sans refresh.
 
 backend:
   - task: "Chat system endpoints and WebSocket broadcasting"
