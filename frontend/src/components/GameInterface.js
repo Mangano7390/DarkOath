@@ -295,7 +295,7 @@ const ChatComponent = ({ roomCode, currentPlayerId, currentPlayerName }) => {
                 msg.type === 'system' 
                   ? 'bg-amber-100 text-amber-800 italic border border-amber-300' 
                   : msg.player_name === currentPlayerName
-                  ? 'bg-yellow-100 text-yellow-800 ml-2 border border-yellow-300 animate-pulse'
+                  ? 'bg-yellow-100 text-yellow-800 ml-2 border border-yellow-300'
                   : 'bg-gray-100 text-gray-800 border border-gray-300'
               }`}>
                 <div className="font-cinzel font-semibold text-xs mb-1">
