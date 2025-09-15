@@ -47,61 +47,7 @@ const getRoleInfo = (role) => {
   }
 };
 
-// Game Phase Component
-const GamePhase = ({ phase, regentSeat, nomineeSeat, players }) => {
-  const { t } = useTranslation();
-  
-  const getPhaseDisplay = (phase) => {
-    switch(phase) {
-      case 'NOMINATION': return { text: 'Nomination du Chambellan', icon: Crown, color: 'blue' };
-      case 'VOTE': return { text: 'Vote pour le gouvernement', icon: Vote, color: 'purple' };
-      case 'LEGIS_REGENT': return { text: 'Session législative - Régent', icon: Gavel, color: 'amber' };
-      case 'LEGIS_CHAMBELLAN': return { text: 'Session législative - Chambellan', icon: Gavel, color: 'amber' };
-      case 'POWER': return { text: 'Pouvoir du Régent', icon: Eye, color: 'red' };
-      default: return { text: 'Phase inconnue', icon: Clock, color: 'gray' };
-    }
-  };
-  
-  const phaseInfo = getPhaseDisplay(phase);
-  const PhaseIcon = phaseInfo.icon;
-  
-  const regent = players.find(p => p.seat === regentSeat);
-  const nominee = nomineeSeat ? players.find(p => p.seat === nomineeSeat) : null;
-  
-  return (
-    <Card className="game-info-parchment">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <PhaseIcon className={`h-6 w-6 text-${phaseInfo.color}-600`} />
-            <CardTitle className="text-lg text-amber-900 font-cinzel">{phaseInfo.text}</CardTitle>
-          </div>
-          <Badge variant="outline" className="bg-amber-100 font-cinzel">
-            Tour en cours
-          </Badge>
-        </div>
-      </CardHeader>
-      <CardContent className="pt-0">
-        <div className="flex space-x-6">
-          <div className="flex items-center space-x-2">
-            <Crown className="h-4 w-4 text-yellow-600" />
-            <span className="text-sm font-medium">
-              Régent: {regent ? regent.name : 'N/A'}
-            </span>
-          </div>
-          {nominee && (
-            <div className="flex items-center space-x-2">
-              <Users className="h-4 w-4 text-blue-600" />
-              <span className="text-sm font-medium">
-                Chambellan proposé: {nominee.name}
-              </span>
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
+
 
 // Decree Track Component
 const DecreeTrack = ({ tracks, powers }) => {
