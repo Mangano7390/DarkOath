@@ -821,6 +821,16 @@ const GameInterface = ({ roomCode }) => {
                 🏰 Table
               </button>
               <button 
+                onClick={() => setMobileTab('actions')}
+                className={`flex-1 p-3 text-center font-cinzel border-r border-amber-700 transition-all ${
+                  mobileTab === 'actions' 
+                    ? 'bg-amber-600 text-white' 
+                    : 'text-amber-100 hover:bg-amber-800'
+                }`}
+              >
+                ⚔️ Actions
+              </button>
+              <button 
                 onClick={() => setMobileTab('tracks')}
                 className={`flex-1 p-3 text-center font-cinzel border-r border-amber-700 transition-all ${
                   mobileTab === 'tracks' 
