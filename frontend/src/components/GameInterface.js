@@ -628,9 +628,22 @@ const GameInterface = ({ roomCode }) => {
                   <p className="text-lg font-cinzel text-amber-100">{gameState.phase}</p>
                 </div>
                 
+                {/* Regent Info */}
+                {gameState.regent_seat && (
+                  <div className="text-center hidden md:block">
+                    <p className="text-xs text-amber-300 font-fell">Régent</p>
+                    <p className="text-sm font-cinzel text-amber-100">
+                      Siège {gameState.regent_seat}
+                      {gameState.players?.find(p => p.seat === gameState.regent_seat)?.name && 
+                        ` (${gameState.players.find(p => p.seat === gameState.regent_seat).name})`
+                      }
+                    </p>
+                  </div>
+                )}
+                
                 {/* Player Role */}
                 {playerRole && (
-                  <div className="text-center hidden md:block">
+                  <div className="text-center hidden lg:block">
                     <p className="text-xs text-amber-300 font-fell">Votre rôle</p>
                     <p className="text-sm font-cinzel text-amber-100">{getRoleInfo(playerRole).name}</p>
                   </div>
