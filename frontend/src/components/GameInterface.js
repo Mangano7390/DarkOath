@@ -18,6 +18,35 @@ import '../styles/medieval-room.css';
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
+// Get role display info
+const getRoleInfo = (role) => {
+  switch(role) {
+    case 'LOYAL': 
+      return { 
+        name: 'Chevalier Loyal', 
+        color: 'blue', 
+        icon: Shield,
+        description: 'Défendez le royaume et démasquez les traîtres'
+      };
+    case 'CONJURE': 
+      return { 
+        name: 'Conjuré', 
+        color: 'red', 
+        icon: Sword,
+        description: 'Répandez le chaos et aidez l\'Usurpateur'
+      };
+    case 'USURPATEUR': 
+      return { 
+        name: 'Usurpateur', 
+        color: 'purple', 
+        icon: Crown,
+        description: 'Prenez le pouvoir en secret'
+      };
+    default: 
+      return { name: 'Inconnu', color: 'gray', icon: Users, description: '' };
+  }
+};
+
 // Game Phase Component
 const GamePhase = ({ phase, regentSeat, nomineeSeat, players }) => {
   const { t } = useTranslation();
