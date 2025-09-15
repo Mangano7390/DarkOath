@@ -510,13 +510,28 @@ const GameInterface = ({ roomCode }) => {
   const getRoleInfo = (role) => {
     switch(role) {
       case 'LOYAL': 
-        return { name: 'Chevalier Loyal', color: 'text-blue-400', icon: '🛡️' };
+        return { 
+          name: 'Chevalier Loyal', 
+          color: 'blue', 
+          icon: Shield,
+          description: 'Défendez le royaume et démasquez les traîtres'
+        };
       case 'CONJURE': 
-        return { name: 'Conjuré', color: 'text-red-400', icon: '⚔️' };
+        return { 
+          name: 'Conjuré', 
+          color: 'red', 
+          icon: Sword,
+          description: 'Répandez le chaos et aidez l\'Usurpateur'
+        };
       case 'USURPATEUR': 
-        return { name: 'Usurpateur', color: 'text-purple-400', icon: '👑' };
+        return { 
+          name: 'Usurpateur', 
+          color: 'purple', 
+          icon: Crown,
+          description: 'Prenez le pouvoir en secret'
+        };
       default: 
-        return { name: 'Noble', color: 'text-gray-400', icon: '🏰' };
+        return { name: 'Inconnu', color: 'gray', icon: Users, description: '' };
     }
   };
   
