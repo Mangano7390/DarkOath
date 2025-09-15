@@ -582,7 +582,7 @@ async def handle_game_action(room_code: str, player_id: str, action_type: str, p
                     # After a decree is revealed, trigger Conseil du Royaume phase
                     import time
                     game_state.turn.phase = Phase.CONSEIL_ROYAUME
-                    game_state.turn.conseil_royaume_timer = 30  # 30 seconds
+                    game_state.turn.conseil_royaume_timer = 60  # 60 seconds
                     game_state.turn.conseil_royaume_start_time = time.time()
                     game_state.turn.speaking_players = []
                 
