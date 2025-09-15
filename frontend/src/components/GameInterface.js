@@ -288,7 +288,7 @@ const ChatComponent = ({ roomCode, currentPlayerId, currentPlayerName }) => {
       </CardHeader>
       <CardContent className="flex-1 flex flex-col space-y-3 p-3">
         {/* Messages Area */}
-        <ScrollArea className="flex-1 pr-2 chat-scroll-area">
+        <ScrollArea className="flex-1 pr-2 chat-scroll-area max-h-64 overflow-y-auto">
           <div className="space-y-2">
             {messages.map((msg) => (
               <div key={msg.id} className={`p-2 rounded-lg text-sm font-fell transition-all duration-300 ${
