@@ -11,7 +11,7 @@ from datetime import datetime
 import time
 
 class MedievalInterfaceTestSetup:
-    def __init__(self, base_url="https://throne-scheme.preview.emergentagent.com"):
+    def __init__(self, base_url="https://secretus-regnum.preview.emergentagent.com"):
         self.base_url = base_url
         self.api_url = f"{base_url}/api"
         self.room_code = None

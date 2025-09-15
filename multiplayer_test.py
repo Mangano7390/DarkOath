@@ -5,7 +5,7 @@ import time
 from datetime import datetime
 
 class MultiplayerFlowTester:
-    def __init__(self, base_url="https://throne-scheme.preview.emergentagent.com"):
+    def __init__(self, base_url="https://secretus-regnum.preview.emergentagent.com"):
         self.base_url = base_url
         self.api_url = f"{base_url}/api"
         self.tests_run = 0
@@ -258,7 +258,7 @@ class MultiplayerFlowTester:
 def main():
     print("🏰 SECRETUS REGNUM MULTIPLAYER FLOW TEST")
     print("=" * 60)
-    print(f"Testing against: https://throne-scheme.preview.emergentagent.com")
+    print(f"Testing against: https://secretus-regnum.preview.emergentagent.com")
     print(f"Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
     tester = MultiplayerFlowTester()
