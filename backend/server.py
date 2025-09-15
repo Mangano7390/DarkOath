@@ -206,7 +206,25 @@ class WebSocketManager:
         
         return None
 
-    async def advance_after_conseil(self, game_state: GameState):
+    async def check_conseil_royaume_timeout(self):
+        """Check all games for expired Conseil du Royaume phases"""
+        import time
+        current_time = time.time()
+        
+        for room_code, game_state in self.game_states.items():
+            if (game_state.turn.phase == Phase.CONSEIL_ROYAUME and 
+                game_state.turn.conseil_royaume_start_time and
+                (current_time - game_state.turn.conseil_royaume_start_time) >= 30):
+                
+                # Time's up! Advance to next phase
+                await self.advance_after_conseil(game_state)
+                game_state.version += 1
+                
+                await self.broadcast_to_room(room_code, {
+                    "type": "game_update", 
+                    "data": "conseil_timeout",
+                    "version": game_state.version
+                })
         """Advance the game phase after Conseil du Royaume ends"""
         # Check if powers should be unlocked based on tracks
         if game_state.tracks.conjure >= 3 and not game_state.powers["investigation_unlocked"]:
