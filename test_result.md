@@ -440,12 +440,12 @@ frontend:
           comment: "✅ COMPLETE RESPONSIVE DESIGN PERFECTLY IMPLEMENTED! Comprehensive testing confirmed: 1) Desktop layout uses 3-column grid (lg:grid-cols-3), 2) Mobile layout uses single column (grid-cols-1), 3) Mobile tabs navigation appears only on mobile (lg:hidden), 4) Role info hidden on mobile, visible on desktop (hidden md:block), 5) Chat input sticky on mobile, static on desktop, 6) Independent column scrolling only on desktop (lg: prefixes), 7) Proper viewport handling and responsive breakpoints, 8) All components adapt correctly between PC and mobile viewports. Complete responsive design is working perfectly for both PC and mobile as requested."
 
   - task: "Remove regent info from under chat area"
-    implemented: false
-    working: false
+    implemented: true
+    working: true
     file: "frontend/src/components/GameInterface.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: false
           agent: "testing"
@@ -453,6 +453,9 @@ frontend:
         - working: false
           agent: "testing"
           comment: "🔍 REGENT DUPLICATION ISSUE IDENTIFIED! Code analysis reveals the problem: GamePhase component was correctly removed (no matches found in codebase), but regent info still appears in TWO locations: 1) ✅ STICKY BANNER (lines 578-589) - CORRECT location showing 'Régent Siège X (PlayerName)', 2) ❌ MOBILE TRACKS TAB (lines 630-634) - DUPLICATE in 'Progression' section showing 'Régent: Siège X (PlayerName)'. The duplicate regent info in the mobile tracks section (GameInterface.js lines 630-634) needs to be removed. This is NOT under the chat but in the left column mobile tracks tab, creating the reported duplication. Testing confirmed: ✅ No GamePhase component found, ✅ Mobile tabs navigation working (🏰 Jeu | 📊 Pistes | 💬 Chat), ✅ 3-column layout structure present, ❌ Regent duplication still exists in mobile tracks section."
+        - working: true
+          agent: "testing"
+          comment: "✅ REGENT DUPLICATION ISSUE COMPLETELY RESOLVED! Code analysis confirms the final fix has been successfully applied. The duplicate regent info has been removed from the mobile tracks section (lines 630-634 in GameInterface.js). VERIFICATION RESULTS: 1) ✅ STICKY BANNER (lines 578-589) - Regent info correctly displayed ONLY here with 'Régent Siège X (PlayerName)', 2) ✅ MOBILE TRACKS SECTION (lines 627-630) - Now shows only player counts ('Joueurs connectés' and 'Joueurs vivants'), NO regent info, 3) ✅ CODE SEARCH CONFIRMED - Only 2 legitimate 'Régent' references remain: sticky banner (line 581) and player badge (line 385), 4) ✅ NO DUPLICATION - Comprehensive grep search shows no duplicate regent info patterns. FINAL RESULT: regent_under_chat = False. The interface now has regent info UNIQUELY in the sticky banner as requested. All mobile tabs (🏰 Jeu, 📊 Pistes, 💬 Chat) are clean without regent duplication. The correction is DEFINITIVE and COMPLETE."
 
 metadata:
   created_by: "main_agent"
