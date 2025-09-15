@@ -24,7 +24,7 @@ const LandingPage = () => {
   const navigate = useNavigate();
   const [playerName, setPlayerName] = useState('');
   const [roomCode, setRoomCode] = useState('');
-  const [musicEnabled, setMusicEnabled] = useState(false);
+  const [musicEnabled, setMusicEnabled] = useState(true); // Auto-start music
   const [showRules, setShowRules] = useState(false);
 
   // Medieval music control - Auto-play by default
