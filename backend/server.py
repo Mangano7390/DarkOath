@@ -206,6 +206,41 @@ class WebSocketManager:
         
         return None
 
+    async def advance_after_conseil(self, game_state: GameState):
+        """Advance the game phase after Conseil du Royaume ends"""
+        # Check if powers should be unlocked based on tracks
+        if game_state.tracks.conjure >= 3 and not game_state.powers["investigation_unlocked"]:
+            game_state.powers["investigation_unlocked"] = True
+        
+        if game_state.tracks.conjure >= 4 and not game_state.powers["execution_unlocked"]:
+            game_state.powers["execution_unlocked"] = True
+        
+        # Move to POWER phase if powers are available, otherwise move to next regent
+        if (game_state.powers["investigation_unlocked"] or game_state.powers["execution_unlocked"]) and game_state.turn.regent_seat:
+            game_state.turn.phase = Phase.POWER
+        else:
+            # Move to next regent
+            current_seat = game_state.turn.regent_seat
+            alive_seats = [p.seat for p in game_state.players if p.alive]
+            alive_seats.sort()
+            current_index = alive_seats.index(current_seat)
+            
+            # Find next regent (skip disgraced player if applicable)
+            next_index = (current_index + 1) % len(alive_seats)
+            next_regent_seat = alive_seats[next_index]
+            
+            if game_state.turn.disgraced_player_seat == next_regent_seat:
+                next_index = (next_index + 1) % len(alive_seats)
+                next_regent_seat = alive_seats[next_index]
+            
+            game_state.turn.regent_seat = next_regent_seat
+            game_state.turn.phase = Phase.NOMINATION
+        
+        # Clear conseil-specific state
+        game_state.turn.conseil_royaume_timer = None
+        game_state.turn.conseil_royaume_start_time = None
+        game_state.turn.speaking_players = []
+
 manager = WebSocketManager()
 
 # API Routes
