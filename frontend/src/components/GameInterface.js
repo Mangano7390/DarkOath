@@ -582,7 +582,7 @@ const GameInterface = ({ roomCode }) => {
                 />
               )}
 
-              {!['NOMINATION', 'VOTE', 'LEGIS_REGENT', 'LEGIS_CHAMBELLAN'].includes(gameState.phase) && (
+              {!['NOMINATION', 'VOTE', 'LEGIS_REGENT', 'LEGIS_CHAMBELLAN', 'CONSEIL_ROYAUME'].includes(gameState.phase) && (
                 <div className="text-center p-4">
                   <Clock className="h-8 w-8 text-gray-400 mx-auto mb-2" />
                   <p className="text-gray-300 text-sm">
