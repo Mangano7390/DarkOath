@@ -313,14 +313,14 @@ const ChatComponent = ({ roomCode, currentPlayerId, currentPlayerName }) => {
       </CardHeader>
       <CardContent className="flex-1 flex flex-col space-y-3 p-3">
         {/* Messages Area */}
-        <ScrollArea className="flex-1 pr-2">
+        <ScrollArea className="flex-1 pr-2 chat-scroll-area">
           <div className="space-y-2">
             {messages.map((msg) => (
-              <div key={msg.id} className={`p-2 rounded-lg text-sm font-fell ${
+              <div key={msg.id} className={`p-2 rounded-lg text-sm font-fell transition-all duration-300 ${
                 msg.type === 'system' 
                   ? 'bg-amber-100 text-amber-800 italic border border-amber-300' 
                   : msg.player_name === currentPlayerName
-                  ? 'bg-yellow-100 text-yellow-800 ml-2 border border-yellow-300'
+                  ? 'bg-yellow-100 text-yellow-800 ml-2 border border-yellow-300 animate-pulse'
                   : 'bg-gray-100 text-gray-800 border border-gray-300'
               }`}>
                 <div className="font-cinzel font-semibold text-xs mb-1">
@@ -343,8 +343,8 @@ const ChatComponent = ({ roomCode, currentPlayerId, currentPlayerName }) => {
           </div>
         </ScrollArea>
         
-        {/* Input Area */}
-        <div className="flex space-x-2">
+        {/* Input Area - Fixed on mobile */}
+        <div className="flex space-x-2 sticky bottom-0 md:static bg-amber-50 p-2 md:p-0 rounded-lg md:rounded-none border md:border-none border-amber-300">
           <Input
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
