@@ -610,8 +610,8 @@ async def get_chat_history(room_code: str, player_id: str):
     if not player:
         raise HTTPException(status_code=404, detail="Player not found")
     
-    # Return chat history (for now, return empty - in a real app you'd store this)
-    return {"messages": []}
+    # Return chat history
+    return {"messages": game_state.turn.chat_messages}
 
 # WebSocket endpoint
 @app.websocket("/ws/{room_code}/{player_id}")
