@@ -549,6 +549,31 @@ async def handle_game_action(room_code: str, player_id: str, action_type: str, p
             else:
                 raise HTTPException(status_code=400, detail="Wrong phase for card discard")
         
+        elif action_type == "SPEAK_TOGGLE":
+            # Handle voice speaking during CONSEIL_ROYAUME phase
+            if game_state.turn.phase != Phase.CONSEIL_ROYAUME:
+                raise HTTPException(status_code=400, detail="Speaking only allowed during Conseil du Royaume")
+            
+            # Check if council phase has expired
+            import time
+            if (time.time() - game_state.turn.conseil_royaume_start_time) > 30:
+                # Auto-advance to next phase if timer expired
+                await manager.advance_after_conseil(game_state)
+                raise HTTPException(status_code=400, detail="Conseil du Royaume has ended")
+            
+            # Toggle speaking status
+            if player.seat in game_state.turn.speaking_players:
+                game_state.turn.speaking_players.remove(player.seat)
+            else:
+                game_state.turn.speaking_players.append(player.seat)
+            
+            game_state.version += 1
+            await manager.broadcast_to_room(room_code, {
+                "type": "game_update",
+                "data": "speaking_update",
+                "version": game_state.version
+            })
+        
         else:
             raise HTTPException(status_code=400, detail="Unknown action type")
             
