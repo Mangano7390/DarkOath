@@ -27,12 +27,27 @@ const LandingPage = () => {
   const [musicEnabled, setMusicEnabled] = useState(false);
   const [showRules, setShowRules] = useState(false);
 
-  // Medieval music control
+  // Medieval music control - Auto-play by default
   useEffect(() => {
     const audio = new Audio('https://customer-assets.emergentagent.com/job_1a735b74-0d1b-4cfc-aa0c-5d6b585ff99b/artifacts/iom0jxfs_Medieval%20Song%20Village%20Consort%20%5BNo%20Copyright%20Music%5D.mp3');
     audio.loop = true;
     audio.volume = 0.3;
 
+    // Auto-start music when page loads
+    const startMusic = async () => {
+      try {
+        await audio.play();
+        setMusicEnabled(true);
+      } catch (error) {
+        // Browser blocks autoplay, user will need to click
+        console.log('Autoplay blocked, user interaction required');
+        setMusicEnabled(false);
+      }
+    };
+
+    startMusic();
+
+    // Handle manual music control
     if (musicEnabled) {
       audio.play().catch(console.error);
     } else {
