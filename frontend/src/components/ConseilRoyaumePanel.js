@@ -165,7 +165,7 @@ const ConseilRoyaumePanel = ({
         <div className="bg-blue-900 p-3 rounded-lg border border-blue-700">
           <p className="text-blue-100 text-sm">
             <strong>Règle :</strong> Cette phase permet à tous les joueurs de discuter 
-            librement pendant 30 secondes après la révélation d'un décret. 
+            librement pendant 60 secondes après la révélation d'un décret. 
             Le chat écrit reste disponible.
           </p>
         </div>
