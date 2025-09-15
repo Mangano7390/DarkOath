@@ -206,6 +206,49 @@ class WebSocketManager:
         
         return None
 
+    async def advance_after_conseil(self, game_state: GameState):
+        """Advance game to next phase after Conseil du Royaume expires"""
+        # Reset council phase data
+        game_state.turn.conseil_royaume_timer = None
+        game_state.turn.conseil_royaume_start_time = None
+        game_state.turn.speaking_players = []
+        
+        # Check for executive powers based on conjure track
+        if game_state.tracks.conjure >= 2 and not game_state.powers.get("investigation_unlocked"):
+            game_state.powers["investigation_unlocked"] = True
+            game_state.turn.phase = Phase.POWER
+        elif game_state.tracks.conjure >= 4 and not game_state.powers.get("executed_once"):
+            game_state.powers["execution_unlocked"] = True  
+            game_state.turn.phase = Phase.POWER
+        else:
+            # Move to next regent and new nomination phase
+            current_seat = game_state.turn.regent_seat
+            alive_seats = [p.seat for p in game_state.players if p.alive]
+            alive_seats.sort()
+            current_index = alive_seats.index(current_seat)
+            
+            # Find next regent (skip disgraced player)
+            next_index = (current_index + 1) % len(alive_seats)
+            next_regent_seat = alive_seats[next_index]
+            
+            # If the next regent would be disgraced, skip to the one after
+            if game_state.turn.disgraced_player_seat == next_regent_seat:
+                next_index = (next_index + 1) % len(alive_seats)
+                next_regent_seat = alive_seats[next_index]
+            
+            game_state.turn.regent_seat = next_regent_seat
+            game_state.turn.phase = Phase.NOMINATION
+            
+            # Set previous government
+            game_state.turn.prev_government = {
+                "regent": current_seat,
+                "chambellan": game_state.turn.nominee_seat
+            }
+            
+            # Clear votes and nominee for next round
+            game_state.turn.nominee_seat = None
+            game_state.turn.votes = {}
+
     async def check_conseil_royaume_timeout(self):
         """Check all games for expired Conseil du Royaume phases"""
         import time
