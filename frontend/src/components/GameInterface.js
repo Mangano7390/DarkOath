@@ -86,6 +86,7 @@ const GameInterface = ({ roomCode }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [mobileTab, setMobileTab] = useState('table'); // 'table', 'tracks', 'chat'
+  const [showPeoplesAnger, setShowPeoplesAnger] = useState(false);
   
   // Chat state variables
   const [messages, setMessages] = useState([]);
