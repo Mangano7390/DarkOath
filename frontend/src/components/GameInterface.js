@@ -443,6 +443,11 @@ const GameInterface = ({ roomCode }) => {
   const [error, setError] = useState(null);
   const [mobileTab, setMobileTab] = useState('game'); // 'game', 'tracks', 'chat'
   
+  // Chat state variables
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [isSending, setIsSending] = useState(false);
+  
   const currentPlayerId = localStorage.getItem('userId');
   const currentPlayerName = localStorage.getItem('playerName') || 'Joueur';
   
