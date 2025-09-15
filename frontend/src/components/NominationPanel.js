@@ -20,10 +20,10 @@ const NominationPanel = ({ meSeat, regentSeat, players, prevGovernment, onNomina
           <div className="text-center p-6">
             <Users className="h-12 w-12 text-blue-600 mx-auto mb-4" />
             <p className="text-blue-800 text-lg mb-2">
-              En attente de la nomination du Régent
+              En attente de la nomination du Seigneur
             </p>
             <p className="text-blue-600 text-sm">
-              Le Régent (Siège {regentSeat}) doit choisir un Chambellan
+              Le Seigneur (Siège {regentSeat}) doit choisir un Sénéchal
             </p>
           </div>
         </CardContent>
@@ -54,17 +54,17 @@ const NominationPanel = ({ meSeat, regentSeat, players, prevGovernment, onNomina
       <CardHeader>
         <CardTitle className="text-lg flex items-center">
           <Crown className="h-5 w-5 mr-2 text-amber-600" />
-          Nomination du Chambellan
+          Nomination du Sénéchal
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
           <div className="bg-amber-100 p-3 rounded-lg">
             <p className="text-amber-800 font-medium mb-2">
-              👑 Vous êtes le Régent !
+              👑 Vous êtes le Seigneur !
             </p>
             <p className="text-amber-700 text-sm">
-              Choisissez un joueur pour être votre Chambellan. Ensemble, vous formerez le gouvernement.
+              Choisissez un joueur pour être votre Sénéchal. Ensemble, vous formerez le gouvernement.
             </p>
           </div>
           
@@ -102,8 +102,8 @@ const NominationPanel = ({ meSeat, regentSeat, players, prevGovernment, onNomina
           {prevGovernment && (
             <div className="bg-gray-100 p-3 rounded-lg">
               <p className="text-gray-700 text-sm">
-                <strong>Gouvernement précédent :</strong> Régent (Siège {prevGovernment.regent}), 
-                Chambellan (Siège {prevGovernment.chambellan}) - Exclus de la nomination
+                <strong>Gouvernement précédent :</strong> Seigneur (Siège {prevGovernment.regent}), 
+                Sénéchal (Siège {prevGovernment.chambellan}) - Exclus de la nomination
               </p>
             </div>
           )}

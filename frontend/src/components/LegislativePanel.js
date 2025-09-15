@@ -15,9 +15,9 @@ const LegislativePanel = ({ phase, mySeat, regentSeat, chambellanSeat, players, 
   const getPhaseTitle = () => {
     switch(phase) {
       case 'LEGIS_REGENT':
-        return 'Session Législative - Régent';
+        return 'Session Législative - Seigneur';
       case 'LEGIS_CHAMBELLAN':
-        return 'Session Législative - Chambellan';
+        return 'Session Législative - Sénéchal';
       default:
         return 'Session Législative';
     }
@@ -27,12 +27,12 @@ const LegislativePanel = ({ phase, mySeat, regentSeat, chambellanSeat, players, 
     switch(phase) {
       case 'LEGIS_REGENT':
         return isRegent 
-          ? 'Vous devez défausser une carte et passer les 2 restantes au Chambellan'
-          : `Le Régent (${regent?.name}) examine 3 cartes et en défausse une`;
+          ? 'Vous devez défausser une carte et passer les 2 restantes au Sénéchal'
+          : `Le Seigneur (${regent?.name}) examine 3 cartes et en défausse une`;
       case 'LEGIS_CHAMBELLAN':
         return isChambellan
           ? 'Choisissez une carte à adopter et défaussez l\'autre'
-          : `Le Chambellan (${chambellan?.name}) choisit la carte à adopter`;
+          : `Le Sénéchal (${chambellan?.name}) choisit la carte à adopter`;
       default:
         return 'Session législative en cours';
     }
@@ -75,7 +75,7 @@ const LegislativePanel = ({ phase, mySeat, regentSeat, chambellanSeat, players, 
           {/* Role Info */}
           <div className="bg-amber-100 p-3 rounded-lg">
             <p className="text-amber-800 font-medium mb-2">
-              {phase === 'LEGIS_REGENT' ? '👑 Vous êtes le Régent' : '🏛️ Vous êtes le Chambellan'}
+              {phase === 'LEGIS_REGENT' ? '👑 Vous êtes le Seigneur' : '🏛️ Vous êtes le Sénéchal'}
             </p>
             <p className="text-amber-700 text-sm">
               {getPhaseDescription()}
@@ -130,12 +130,12 @@ const LegislativePanel = ({ phase, mySeat, regentSeat, chambellanSeat, players, 
             <h5 className="font-medium text-gray-800 mb-2">Gouvernement actuel :</h5>
             <div className="flex items-center space-x-4">
               <div className="text-center">
-                <Badge variant="secondary" className="mb-1">Régent</Badge>
+                <Badge variant="secondary" className="mb-1">Seigneur</Badge>
                 <p className="text-sm font-medium">{regent?.name}</p>
                 <p className="text-xs text-gray-600">Siège {regentSeat}</p>
               </div>
               <div className="text-center">
-                <Badge variant="secondary" className="mb-1">Chambellan</Badge>
+                <Badge variant="secondary" className="mb-1">Sénéchal</Badge>
                 <p className="text-sm font-medium">{chambellan?.name}</p>
                 <p className="text-xs text-gray-600">Siège {chambellanSeat}</p>
               </div>
@@ -146,8 +146,8 @@ const LegislativePanel = ({ phase, mySeat, regentSeat, chambellanSeat, players, 
           <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
             <p className="text-xs text-blue-700">
               <strong>Règle :</strong> {phase === 'LEGIS_REGENT' 
-                ? 'Le Régent tire 3 cartes, en défausse 1 secrètement, et passe les 2 restantes au Chambellan.'
-                : 'Le Chambellan reçoit 2 cartes du Régent, en adopte 1, et défausse l\'autre secrètement.'
+                ? 'Le Seigneur tire 3 cartes, en défausse 1 secrètement, et passe les 2 restantes au Sénéchal.'
+                : 'Le Sénéchal reçoit 2 cartes du Seigneur, en adopte 1, et défausse l\'autre secrètement.'
               }
             </p>
           </div>
