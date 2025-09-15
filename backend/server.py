@@ -244,6 +244,7 @@ async def join_room(room_code: str, player_id: str, player_name: str):
     
     return {"success": True}
 
+# Chat endpoint
 @api_router.post("/rooms/{room_code}/chat")
 async def send_chat_message(room_code: str, player_id: str, message: str):
     """Send a chat message to all players in the room"""
@@ -256,16 +257,26 @@ async def send_chat_message(room_code: str, player_id: str, message: str):
     if not player:
         raise HTTPException(status_code=404, detail="Player not found")
     
-    # Broadcast chat message
-    await manager.broadcast_to_room(room_code, {
-        "type": "chat_message",
+    # Create chat message
+    chat_message = {
+        "id": len(game_state.turn.chat_messages) + 1,
         "player_id": player_id,
         "player_name": player.name,
         "message": message,
-        "timestamp": datetime.now(timezone.utc).isoformat()
+        "timestamp": datetime.now().isoformat(),
+        "type": "player"
+    }
+    
+    # Store message in game state
+    game_state.turn.chat_messages.append(chat_message)
+    
+    # Broadcast to all players in the room
+    await manager.broadcast_to_room(room_code, {
+        "type": "chat_message",
+        **chat_message
     })
     
-    return {"success": True}
+    return {"success": True, "message": chat_message}
 
 @api_router.post("/rooms/{room_code}/action")
 async def handle_game_action(room_code: str, player_id: str, action_type: str, payload: dict = {}):
