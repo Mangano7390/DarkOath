@@ -134,21 +134,21 @@ const LandingPage = () => {
             <CardContent className="text-gray-300 space-y-6">
               <section>
                 <h3 className="text-xl font-bold text-amber-400 mb-3">🎯 Objectif du Jeu</h3>
-                <p>Dark Oath est un jeu de déduction sociale où loyaux et traîtres s'affrontent dans l'ombre. Les <strong className="text-blue-400">Loyaux</strong> tentent de préserver la stabilité du royaume, tandis que les <strong className="text-red-400">Conjurés</strong> et leur mystérieux <strong className="text-purple-400">Usurpateur</strong> conspirent pour prendre le pouvoir.</p>
+                <p>Dark Oath est un jeu de déduction sociale où Chevaliers et traîtres s'affrontent dans l'ombre. Les <strong className="text-blue-400">Chevaliers</strong> tentent de préserver la stabilité du royaume, tandis que les <strong className="text-red-400">Conjurés</strong> et leur mystérieux <strong className="text-purple-400">Usurpateur</strong> conspirent pour prendre le pouvoir.</p>
               </section>
 
               <section>
                 <h3 className="text-xl font-bold text-amber-400 mb-3">👥 Composition (5-10 joueurs)</h3>
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="bg-gray-700 p-4 rounded-lg">
-                    <h4 className="font-bold text-blue-400 mb-2">🛡️ Loyaux</h4>
+                    <h4 className="font-bold text-blue-400 mb-2">🛡️ Chevaliers</h4>
                     <ul className="text-sm space-y-1">
-                      <li>5 joueurs : 3 Loyaux</li>
-                      <li>6 joueurs : 4 Loyaux</li>
-                      <li>7 joueurs : 4 Loyaux</li>
-                      <li>8 joueurs : 5 Loyaux</li>
-                      <li>9 joueurs : 5 Loyaux</li>
-                      <li>10 joueurs : 6 Loyaux</li>
+                      <li>5 joueurs : 3 Chevaliers</li>
+                      <li>6 joueurs : 4 Chevaliers</li>
+                      <li>7 joueurs : 4 Chevaliers</li>
+                      <li>8 joueurs : 5 Chevaliers</li>
+                      <li>9 joueurs : 5 Chevaliers</li>
+                      <li>10 joueurs : 6 Chevaliers</li>
                     </ul>
                   </div>
                   <div className="bg-gray-700 p-4 rounded-lg">
@@ -169,16 +169,16 @@ const LandingPage = () => {
                 <h3 className="text-xl font-bold text-amber-400 mb-3">🏆 Conditions de Victoire</h3>
                 <div className="grid md:grid-cols-3 gap-4">
                   <div className="bg-blue-900 p-4 rounded-lg border border-blue-700">
-                    <h4 className="font-bold text-blue-300 mb-2">🛡️ Victoire Loyaux</h4>
-                    <p className="text-sm">Adopter 5 décrets loyaux OU éliminer l'Usurpateur</p>
+                    <h4 className="font-bold text-blue-300 mb-2">🛡️ Victoire Chevaliers</h4>
+                    <p className="text-sm">Adopter 5 Décrets Loyaux OU exécuter l'Usurpateur</p>
                   </div>
                   <div className="bg-red-900 p-4 rounded-lg border border-red-700">
                     <h4 className="font-bold text-red-300 mb-2">⚔️ Victoire Conjurés</h4>
-                    <p className="text-sm">Adopter 6 décrets conjurés OU l'Usurpateur devient Régent</p>
+                    <p className="text-sm">Adopter 6 Décrets Conjurés OU l'Usurpateur devient Sénéchal après 4+ Décrets Conjurés</p>
                   </div>
                   <div className="bg-purple-900 p-4 rounded-lg border border-purple-700">
                     <h4 className="font-bold text-purple-300 mb-2">👑 Victoire Usurpateur</h4>
-                    <p className="text-sm">Être élu Régent après 3 décrets conjurés adoptés</p>
+                    <p className="text-sm">Être élu Sénéchal après 4 Décrets Conjurés adoptés (gagne avec les Conjurés)</p>
                   </div>
                 </div>
               </section>
@@ -193,15 +193,15 @@ const LandingPage = () => {
                 <div className="space-y-3">
                   <div className="bg-gray-700 p-3 rounded-lg">
                     <h4 className="font-bold text-yellow-400">1. Nomination</h4>
-                    <p className="text-sm">Le Régent nomme un Chambellan pour l'assister.</p>
+                    <p className="text-sm">Le Seigneur nomme un Sénéchal pour l'assister.</p>
                   </div>
                   <div className="bg-gray-700 p-3 rounded-lg">
                     <h4 className="font-bold text-yellow-400">2. Vote</h4>
-                    <p className="text-sm">Tous les joueurs (sauf Régent et Chambellan) votent OUI ou NON pour approuver le gouvernement.</p>
+                    <p className="text-sm">Tous les joueurs (sauf Seigneur et Sénéchal) votent OUI ou NON pour approuver le gouvernement.</p>
                   </div>
                   <div className="bg-gray-700 p-3 rounded-lg">
                     <h4 className="font-bold text-yellow-400">3. Phase Législative</h4>
-                    <p className="text-sm">Si approuvé : le Régent puis le Chambellan choisissent quels décrets adopter parmi 3 cartes tirées.</p>
+                    <p className="text-sm">Si approuvé : le Seigneur puis le Sénéchal choisissent quels décrets adopter parmi 3 cartes tirées.</p>
                   </div>
                   <div className="bg-gray-700 p-3 rounded-lg">
                     <h4 className="font-bold text-yellow-400">4. Pouvoirs Spéciaux</h4>
@@ -214,19 +214,21 @@ const LandingPage = () => {
                 <h3 className="text-xl font-bold text-amber-400 mb-3">🎭 Conseils Tactiques</h3>
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
-                    <h4 className="font-bold text-blue-400 mb-2">Pour les Loyaux :</h4>
+                    <h4 className="font-bold text-blue-400 mb-2">Pour les Chevaliers :</h4>
                     <ul className="text-sm space-y-1 list-disc list-inside">
                       <li>Observez les votes et comportements suspects</li>
                       <li>Utilisez les pouvoirs d'investigation à bon escient</li>
                       <li>Méfiez-vous des joueurs trop coopératifs</li>
+                      <li>Identifiez et exécutez l'Usurpateur</li>
                     </ul>
                   </div>
                   <div>
                     <h4 className="font-bold text-red-400 mb-2">Pour les Conjurés :</h4>
                     <ul className="text-sm space-y-1 list-disc list-inside">
                       <li>Semez la discorde sans vous exposer</li>
-                      <li>Aidez l'Usurpateur à accéder au pouvoir</li>
+                      <li>Aidez l'Usurpateur à accéder au poste de Sénéchal</li>
                       <li>Votez stratégiquement pour faire échouer les bons gouvernements</li>
+                      <li>Adoptez 4+ décrets conjurés avant de pousser l'Usurpateur</li>
                     </ul>
                   </div>
                 </div>
@@ -309,11 +311,11 @@ const LandingPage = () => {
           <Card className="bg-black/50 border-blue-600 backdrop-blur-sm">
             <CardHeader className="text-center">
               <Shield className="h-12 w-12 text-blue-400 mx-auto mb-4" />
-              <CardTitle className="text-blue-300">Chevaliers Loyaux</CardTitle>
+              <CardTitle className="text-blue-300">Chevaliers</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-gray-300 text-center text-sm">
-                Défendez le royaume et démasquez les traîtres. Adoptez 5 décrets loyaux pour triompher.
+                Défendez le royaume et démasquez les traîtres. Adoptez 5 décrets loyaux ou exécutez l'Usurpateur pour triompher.
               </p>
             </CardContent>
           </Card>
@@ -325,7 +327,7 @@ const LandingPage = () => {
             </CardHeader>
             <CardContent>
               <p className="text-gray-300 text-center text-sm">
-                Répandez le chaos et aidez l'Usurpateur. 6 décrets conjurés ou l'Usurpateur au pouvoir = victoire.
+                Répandez le chaos et aidez l'Usurpateur. 6 décrets conjurés ou l'Usurpateur Sénéchal après 4+ décrets = victoire.
               </p>
             </CardContent>
           </Card>
@@ -337,7 +339,7 @@ const LandingPage = () => {
             </CardHeader>
             <CardContent>
               <p className="text-gray-300 text-center text-sm">
-                Prenez le pouvoir en secret. Devenez Régent après 3 décrets conjurés pour régner.
+                Prenez le pouvoir en secret. Devenez Sénéchal après 4 décrets conjurés pour régner avec les Conjurés.
               </p>
             </CardContent>
           </Card>

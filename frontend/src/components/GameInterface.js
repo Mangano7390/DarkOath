@@ -21,7 +21,7 @@ const getRoleInfo = (role) => {
   switch(role) {
     case 'LOYAL': 
       return { 
-        name: 'Chevalier Loyal', 
+        name: 'Chevalier', 
         color: 'blue', 
         icon: Shield,
         description: 'Défendez le royaume et démasquez les traîtres'
@@ -66,7 +66,7 @@ const TrackComponent = ({ title, current, max, color, icon: Icon }) => {
                   : `border-${color}-300 text-${color}-300 bg-gray-700`
               }`}
             >
-              {title === 'Loyaux' ? '🛡️' : title === 'Conjurés' ? '⚔️' : '⚡'}
+              {title === 'Chevaliers' ? '🛡️' : title === 'Conjurés' ? '⚔️' : '⚡'}
             </div>
           ))}
         </div>
@@ -312,7 +312,7 @@ const GameInterface = ({ roomCode }) => {
             <span className="text-sm text-gray-400">Phase: {gameState.phase}</span>
             {gameState.regent_seat && (
               <span className="text-sm text-gray-400 hidden md:block">
-                Régent: Siège {gameState.regent_seat}
+                Seigneur: Siège {gameState.regent_seat}
               </span>
             )}
             {playerRole && (
@@ -334,9 +334,9 @@ const GameInterface = ({ roomCode }) => {
         
         {/* Left Column - Tracks (Pistes) */}
         <div className="w-80 p-4 space-y-4 bg-gray-900 border-r border-gray-700">
-          {/* Piste des Loyaux (5 cases) */}
+          {/* Piste des Chevaliers (5 cases) */}
           <TrackComponent 
-            title="Loyaux"
+            title="Chevaliers"
             current={gameState.tracks?.loyal || 0}
             max={5}
             color="blue"
@@ -639,12 +639,12 @@ const GameInterface = ({ roomCode }) => {
           {/* Tracks Tab */}
           {mobileTab === 'tracks' && (
             <div className="space-y-4">
-              {/* Piste des Loyaux (5 cases) */}
+              {/* Piste des Chevaliers (5 cases) */}
               <Card className="bg-gray-800 border-gray-700">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg flex items-center space-x-2 text-gray-100">
                     <Shield className="h-5 w-5 text-blue-400" />
-                    <span>Loyaux</span>
+                    <span>Chevaliers</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
