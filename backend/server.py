@@ -526,22 +526,12 @@ async def handle_game_action(room_code: str, player_id: str, action_type: str, p
                     game_state.winner = winner
                     game_state.turn.phase = Phase.ENDGAME
                 else:
-                    # Check for executive powers based on conjure track
-                    if game_state.tracks.conjure >= 2 and not game_state.powers.get("investigation_unlocked"):
-                        game_state.powers["investigation_unlocked"] = True
-                        game_state.turn.phase = Phase.POWER
-                    elif game_state.tracks.conjure >= 4 and not game_state.powers.get("executed_once"):
-                        game_state.powers["execution_unlocked"] = True  
-                        game_state.turn.phase = Phase.POWER
-                    else:
-                        # Move to next regent and new nomination phase
-                        current_seat = game_state.turn.regent_seat
-                        alive_seats = [p.seat for p in game_state.players if p.alive]
-                        alive_seats.sort()
-                        current_index = alive_seats.index(current_seat)
-                        next_index = (current_index + 1) % len(alive_seats)
-                        game_state.turn.regent_seat = alive_seats[next_index]
-                        game_state.turn.phase = Phase.NOMINATION
+                    # After a decree is revealed, trigger Conseil du Royaume phase
+                    import time
+                    game_state.turn.phase = Phase.CONSEIL_ROYAUME
+                    game_state.turn.conseil_royaume_timer = 30  # 30 seconds
+                    game_state.turn.conseil_royaume_start_time = time.time()
+                    game_state.turn.speaking_players = []
                 
                 game_state.turn.nominee_seat = None
                 game_state.turn.votes = {}
