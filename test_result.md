@@ -439,6 +439,18 @@ frontend:
           agent: "testing"
           comment: "✅ COMPLETE RESPONSIVE DESIGN PERFECTLY IMPLEMENTED! Comprehensive testing confirmed: 1) Desktop layout uses 3-column grid (lg:grid-cols-3), 2) Mobile layout uses single column (grid-cols-1), 3) Mobile tabs navigation appears only on mobile (lg:hidden), 4) Role info hidden on mobile, visible on desktop (hidden md:block), 5) Chat input sticky on mobile, static on desktop, 6) Independent column scrolling only on desktop (lg: prefixes), 7) Proper viewport handling and responsive breakpoints, 8) All components adapt correctly between PC and mobile viewports. Complete responsive design is working perfectly for both PC and mobile as requested."
 
+  - task: "Remove regent info from under chat area"
+    implemented: false
+    working: false
+    file: "frontend/src/components/GameInterface.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: false
+          agent: "testing"
+          comment: "CRITICAL ISSUE FOUND: Testing shows regent info still appears under chat area (regent_under_chat = True). The recent correction to move regent info to sticky banner was successful, but the regent info was not removed from its original location under the chat. This creates duplicate regent information display. The regent info should appear ONLY in the sticky banner and be completely removed from the chat area."
+
 metadata:
   created_by: "main_agent"
   version: "1.0"
