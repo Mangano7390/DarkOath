@@ -187,7 +187,7 @@ const ChatComponent = ({ roomCode, currentPlayerId, currentPlayerName }) => {
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
 
-  // Initialize chat with system message and load history
+  // Initialize chat with system message and load history + setup polling
   useEffect(() => {
     const loadChatHistory = async () => {
       try {
@@ -222,6 +222,44 @@ const ChatComponent = ({ roomCode, currentPlayerId, currentPlayerName }) => {
     };
 
     loadChatHistory();
+
+    // Set up polling for new messages every 2 seconds
+    const pollInterval = setInterval(async () => {
+      try {
+        if (currentPlayerId && roomCode) {
+          const response = await axios.get(`${API}/rooms/${roomCode}/chat?player_id=${currentPlayerId}`);
+          if (response.data.messages) {
+            setMessages(prevMessages => {
+              const newMessages = response.data.messages;
+              // Check if there are new messages
+              if (newMessages.length > prevMessages.length) {
+                // Play notification sound for new messages
+                try {
+                  const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hTEw1Mp+DyvmIcBSuTrIrEiikEO1gqvWFBCj+B2vLCcCQF');
+                  audio.volume = 0.3;
+                  audio.play().catch(() => {}); // Ignore errors
+                } catch (e) {}
+                
+                // Scroll to bottom after new message
+                setTimeout(() => {
+                  const chatContainer = document.querySelector('.chat-scroll-area');
+                  if (chatContainer) {
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                  }
+                }, 100);
+              }
+              return newMessages;
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error polling chat messages:', error);
+      }
+    }, 2000);
+
+    return () => {
+      clearInterval(pollInterval);
+    };
   }, [currentPlayerId, roomCode]);
 
   const sendMessage = async () => {
