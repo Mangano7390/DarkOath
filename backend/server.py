@@ -582,7 +582,7 @@ async def get_game_state(room_code: str, player_id: str):
     if game_state.turn.phase == Phase.LEGIS_REGENT and player.seat == game_state.turn.regent_seat:
         # Regent can see the cards during LEGIS_REGENT phase
         legislative_cards = game_state.turn.legislative_cards
-    elif game_state.turn.phase == Phase.LEGIS_CHAMBELLAN and player.seat == game_state.turn.nominee_seat:
+    elif game_state.turn.phase == Phase.CONSEIL_ROYAUME and player.seat == game_state.turn.nominee_seat:
         # Chambellan can see the cards during LEGIS_CHAMBELLAN phase
         legislative_cards = game_state.turn.legislative_cards
     
