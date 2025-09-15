@@ -774,28 +774,13 @@ const GameInterface = ({ roomCode }) => {
             </div>
           </div>
 
-          {/* Right Column - Chat + Progress */}
+          {/* Right Column - Chat only */}
           <div className="space-y-4 lg:max-h-screen lg:overflow-y-auto">
             <ChatComponent 
               roomCode={roomCode}
               currentPlayerId={currentPlayerId}
               currentPlayerName={currentPlayerName}
             />
-            
-            {/* Vote Progress - Desktop only */}
-            <div className="hidden lg:block">
-              <Card className="game-info-parchment">
-                <CardHeader>
-                  <CardTitle className="text-sm font-cinzel">Progression</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-xs font-fell text-amber-800">
-                    <p>Joueurs connectés: {gameState.players?.filter(p => p.connected).length || 0}</p>
-                    <p>Joueurs vivants: {gameState.players?.filter(p => p.alive).length || 0}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
           </div>
         </div>
 
