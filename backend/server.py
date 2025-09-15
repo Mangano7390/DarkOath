@@ -414,13 +414,22 @@ async def handle_game_action(room_code: str, player_id: str, action_type: str, p
                         # Reset crisis
                         game_state.tracks.crisis = 0
                     
-                    # Move to next regent
+                    # Move to next regent (skip disgraced player if applicable)
                     current_seat = game_state.turn.regent_seat
                     alive_seats = [p.seat for p in game_state.players if p.alive]
                     alive_seats.sort()
                     current_index = alive_seats.index(current_seat)
+                    
+                    # Find next regent (skip disgraced player)
                     next_index = (current_index + 1) % len(alive_seats)
-                    game_state.turn.regent_seat = alive_seats[next_index]
+                    next_regent_seat = alive_seats[next_index]
+                    
+                    # If the next regent would be disgraced, skip to the one after
+                    if game_state.turn.disgraced_player_seat == next_regent_seat:
+                        next_index = (next_index + 1) % len(alive_seats)
+                        next_regent_seat = alive_seats[next_index]
+                    
+                    game_state.turn.regent_seat = next_regent_seat
                     game_state.turn.phase = Phase.NOMINATION
                     
                     # Clear nominee and votes for rejected government
