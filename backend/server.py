@@ -72,6 +72,9 @@ class TurnState(BaseModel):
     chat_messages: List[Dict] = []  # Store chat messages for the room
     disgraced_player_seat: Optional[int] = None  # Player who was disgraced due to "Colère du Peuple"
     peoples_anger_triggered: bool = False  # Flag to show "Colère du Peuple" message
+    conseil_royaume_timer: Optional[int] = None  # Timer for Conseil du Royaume phase (30 seconds)
+    conseil_royaume_start_time: Optional[float] = None  # Start time for the council phase
+    speaking_players: List[int] = []  # List of players currently speaking
 
 class GameState(BaseModel):
     room_code: str
