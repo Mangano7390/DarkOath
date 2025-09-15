@@ -480,7 +480,7 @@ async def handle_game_action(room_code: str, player_id: str, action_type: str, p
                 game_state.discard.append(discarded_card)
                 game_state.turn.discard_count = len(game_state.discard)
                 
-                # Move to LEGIS_CHAMBELLAN phase (2 cards remain for chambellan)
+                # Move to CONSEIL_ROYAUME phase (2 cards remain for chambellan)
                 game_state.turn.phase = Phase.LEGIS_CHAMBELLAN
                 game_state.version += 1
                 
