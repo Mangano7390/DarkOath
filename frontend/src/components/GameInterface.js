@@ -646,6 +646,7 @@ const GameInterface = ({ roomCode }) => {
                     active: player.seat === gameState.regent_seat || player.seat === gameState.nominee_seat
                   })) || []}
                   size={240}
+                  disgracedPlayerSeat={gameState.disgraced_player_seat}
                 />
               </div>
             </div>
