@@ -111,7 +111,7 @@ const ConseilRoyaumePanel = ({
             Vous pouvez parler librement pendant cette phase
           </p>
           <p className="text-amber-200 text-sm">
-            Utilisez le bouton microphone ci-dessous
+            Utilisez le bouton microphone ci-dessous (60 secondes)
           </p>
         </div>
 
