@@ -603,57 +603,61 @@ const GameInterface = ({ roomCode }) => {
       {/* Castle window view */}
       <div className="castle-window"></div>
       
-      <div className="max-w-7xl mx-auto space-y-6 p-4 relative z-10">
-        {/* Header - Style parchemin */}
-        <Card className="game-info-parchment">
-          <CardHeader>
+      <div className="max-w-full mx-auto relative z-10">
+        {/* Sticky Header Banner */}
+        <div className="sticky top-0 z-20 bg-gradient-to-r from-amber-900/95 to-amber-800/95 backdrop-blur-sm border-b-2 border-amber-600 shadow-lg">
+          <div className="max-w-7xl mx-auto px-4 py-3">
             <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-2xl text-amber-900 font-cinzel">
-                  Secretus Regnum
-                </CardTitle>
-                <p className="text-amber-700 font-fell">Room: {roomCode}</p>
+              <div className="flex items-center space-x-4">
+                <h1 className="text-2xl font-uncial text-amber-100">Secretus Regnum</h1>
+                <Badge className="bg-amber-700 text-amber-100 font-cinzel">
+                  Room: {roomCode}
+                </Badge>
               </div>
-              <Badge variant="outline" className="bg-amber-100 font-cinzel">
-                Partie en cours
-              </Badge>
+              
+              <div className="flex items-center space-x-4">
+                {/* Current Phase */}
+                <div className="text-center">
+                  <p className="text-xs text-amber-300 font-fell">Phase actuelle</p>
+                  <p className="text-lg font-cinzel text-amber-100">{gameState.phase}</p>
+                </div>
+                
+                {/* Player Role */}
+                {playerRole && (
+                  <div className="text-center hidden md:block">
+                    <p className="text-xs text-amber-300 font-fell">Votre rôle</p>
+                    <p className="text-sm font-cinzel text-amber-100">{getRoleInfo(playerRole).name}</p>
+                  </div>
+                )}
+              </div>
             </div>
-          </CardHeader>
-        </Card>
-        
-        {/* Game Phase */}
-        <GamePhase 
-          phase={gameState.phase}
-          regentSeat={gameState.regent_seat}
-          nomineeSeat={gameState.nominee_seat}
-          players={gameState.players || []}
-        />
-        
-        {/* Main Game Area */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-          {/* Left Column - Role & Tracks */}
-          <div className="space-y-4">
-            <RoleDisplay role={playerRole} />
+          </div>
+        </div>
+
+        {/* Main Game Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 p-4 min-h-screen">
+          
+          {/* Left Column - Game Tracks */}
+          <div className="space-y-4 lg:max-h-screen lg:overflow-y-auto">
             <DecreeTrack 
               tracks={gameState.tracks || { loyal: 0, conjure: 0, crisis: 0 }}
               powers={gameState.powers || {}}
             />
+            
+            {/* Player Role Info for mobile */}
+            <div className="block md:hidden">
+              <RoleDisplay role={playerRole} />
+            </div>
           </div>
-          
-          {/* Center Columns - Game Actions + Table */}
-          <div className="lg:col-span-3 space-y-4">
+
+          {/* Center Column - Table + Actions */}
+          <div className="flex flex-col space-y-4">
             {/* Game Actions */}
             <Card className="chat-parchment">
               <CardHeader>
                 <CardTitle className="text-lg font-cinzel">Actions de Jeu</CardTitle>
               </CardHeader>
               <CardContent>
-                {/* Debug Info */}
-                <div className="mb-4 p-3 bg-amber-100 rounded text-xs">
-                  <p className="font-fell"><strong>Debug:</strong> Phase: {gameState.phase} | Régent: Siège {gameState.regent_seat} | Nominee: {gameState.nominee_seat || 'Aucun'}</p>
-                  <p className="font-fell">Joueurs vivants: {gameState.players?.filter(p => p.alive).length || 0}</p>
-                </div>
-
                 {/* Phase-specific actions */}
                 {gameState.phase === 'NOMINATION' && (
                   <NominationPanel
@@ -729,33 +733,65 @@ const GameInterface = ({ roomCode }) => {
                       Phase: {gameState.phase}
                     </p>
                     <p className="text-amber-600 text-sm font-fell">
-                      Actions en cours de développement pour cette phase
+                      En attente des actions...
                     </p>
                   </div>
                 )}
               </CardContent>
             </Card>
             
-            {/* Medieval Round Table - Below actions, not overlapping */}
-            <div className="flex justify-center items-start mt-6">
-              <MedievalTable 
-                players={gameState.players?.map(player => ({
-                  seat: player.seat,
-                  name: player.name + (player.id === currentPlayerId ? ' (Vous)' : ''),
-                  active: player.seat === gameState.regent_seat || player.seat === gameState.nominee_seat
-                })) || []}
-                size={450}
-              />
+            {/* Medieval Round Table - Reduced size, centered */}
+            <div className="flex justify-center items-center">
+              <div className="w-full max-w-md lg:max-w-lg">
+                <MedievalTable 
+                  players={gameState.players?.map(player => ({
+                    seat: player.seat,
+                    name: player.name + (player.id === currentPlayerId ? ' (Vous)' : ''),
+                    active: player.seat === gameState.regent_seat || player.seat === gameState.nominee_seat
+                  })) || []}
+                  size={320}
+                />
+              </div>
             </div>
           </div>
 
-          {/* Right Column - Chat */}
-          <div className="space-y-4">
+          {/* Right Column - Chat + Progress */}
+          <div className="space-y-4 lg:max-h-screen lg:overflow-y-auto">
             <ChatComponent 
               roomCode={roomCode}
               currentPlayerId={currentPlayerId}
               currentPlayerName={currentPlayerName}
             />
+            
+            {/* Vote Progress - Desktop only */}
+            <div className="hidden lg:block">
+              <Card className="game-info-parchment">
+                <CardHeader>
+                  <CardTitle className="text-sm font-cinzel">Progression</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-xs font-fell text-amber-800">
+                    <p>Joueurs connectés: {gameState.players?.filter(p => p.connected).length || 0}</p>
+                    <p>Joueurs vivants: {gameState.players?.filter(p => p.alive).length || 0}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile Tabs - Only visible on mobile */}
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-amber-900/95 backdrop-blur-sm border-t-2 border-amber-600 z-30">
+          <div className="flex">
+            <button className="flex-1 p-3 text-center text-amber-100 font-cinzel border-r border-amber-700">
+              🏰 Jeu
+            </button>
+            <button className="flex-1 p-3 text-center text-amber-100 font-cinzel border-r border-amber-700">
+              📊 Pistes
+            </button>
+            <button className="flex-1 p-3 text-center text-amber-100 font-cinzel">
+              💬 Chat
+            </button>
           </div>
         </div>
       </div>
