@@ -315,6 +315,10 @@ async def handle_game_action(room_code: str, player_id: str, action_type: str, p
                 if nominee_seat == prev_gov.get("regent") or nominee_seat == prev_gov.get("chambellan"):
                     raise HTTPException(status_code=400, detail="Nominee was in previous government")
             
+            # Check if nominee is disgraced (cannot be nominated after "Colère du Peuple")
+            if game_state.turn.disgraced_player_seat == nominee_seat:
+                raise HTTPException(status_code=400, detail="Cannot nominate disgraced player")
+            
             # Can't nominate self
             if nominee_seat == game_state.turn.regent_seat:
                 raise HTTPException(status_code=400, detail="Cannot nominate self")
