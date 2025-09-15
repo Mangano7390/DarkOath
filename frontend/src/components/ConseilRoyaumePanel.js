@@ -21,7 +21,7 @@ const ConseilRoyaumePanel = ({
       const updateTimer = () => {
         const now = Date.now() / 1000;
         const elapsed = now - gameState.conseil_royaume_start_time;
-        const remaining = Math.max(0, 30 - elapsed);
+        const remaining = Math.max(0, 60 - elapsed);
         setTimeLeft(Math.ceil(remaining));
         
         if (remaining <= 0) {
