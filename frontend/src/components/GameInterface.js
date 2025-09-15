@@ -498,6 +498,7 @@ const GameInterface = ({ roomCode }) => {
   const [playerRole, setPlayerRole] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [mobileTab, setMobileTab] = useState('game'); // 'game', 'tracks', 'chat'
   
   const currentPlayerId = localStorage.getItem('userId');
   const currentPlayerName = localStorage.getItem('playerName') || 'Joueur';
