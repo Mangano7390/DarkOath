@@ -214,7 +214,7 @@ class WebSocketManager:
         for room_code, game_state in self.game_states.items():
             if (game_state.turn.phase == Phase.CONSEIL_ROYAUME and 
                 game_state.turn.conseil_royaume_start_time and
-                (current_time - game_state.turn.conseil_royaume_start_time) >= 30):
+                (current_time - game_state.turn.conseil_royaume_start_time) >= 60):
                 
                 # Time's up! Advance to next phase
                 await self.advance_after_conseil(game_state)
