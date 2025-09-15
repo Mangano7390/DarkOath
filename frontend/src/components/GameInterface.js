@@ -595,6 +595,7 @@ const GameInterface = ({ roomCode }) => {
                       regentSeat={gameState.regent_seat}
                       players={gameState.players || []}
                       prevGovernment={gameState.prev_government}
+                      disgracedPlayerSeat={gameState.disgraced_player_seat}
                       onNominate={async (seat) => {
                         console.log('Nominating seat:', seat);
                         try {
