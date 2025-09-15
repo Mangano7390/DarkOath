@@ -102,7 +102,7 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: Test the recently fixed chat system endpoints and WebSocket broadcasting functionality.
+user_problem_statement: Test the complete redesign of "Secretus Regnum" interface with real-time chat fixes and new 3-column layout with sticky banner, reduced table size, mobile tabs navigation, and responsive design.
 
 backend:
   - task: "Chat system endpoints and WebSocket broadcasting"
