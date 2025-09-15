@@ -456,6 +456,48 @@ const GameInterface = ({ roomCode }) => {
     return gameState?.players?.find(p => p.id === currentPlayerId);
   };
   
+  // Chat functions
+  const sendMessage = async () => {
+    if (!newMessage.trim() || isSending) return;
+
+    setIsSending(true);
+    try {
+      const response = await axios.post(`${API}/rooms/${roomCode}/chat`, null, {
+        params: {
+          player_id: currentPlayerId,
+          message: newMessage
+        }
+      });
+      
+      if (response.data.success) {
+        // Add message to local state immediately
+        const newMsg = {
+          id: Date.now(),
+          player_name: currentPlayerName,
+          message: newMessage,
+          timestamp: new Date().toISOString(),
+          type: 'player'
+        };
+        setMessages(prev => [...prev, newMsg]);
+        setNewMessage('');
+        console.log('Message sent successfully:', newMessage);
+      }
+      
+    } catch (error) {
+      console.error('Error sending message:', error);
+      alert('Erreur lors de l\'envoi du message: ' + (error.response?.data?.detail || error.message));
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+  
   // Load game state from API
   useEffect(() => {
     const loadGameState = async () => {
