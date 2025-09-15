@@ -110,6 +110,19 @@ const GameInterface = ({ roomCode }) => {
     };
   }, []);
   
+  // Detect "Colère du Peuple" trigger
+  useEffect(() => {
+    if (gameState?.peoples_anger_triggered) {
+      setShowPeoplesAnger(true);
+      // Auto-hide after 5 seconds
+      const timer = setTimeout(() => {
+        setShowPeoplesAnger(false);
+      }, 5000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [gameState?.peoples_anger_triggered]);
+  
   // Chat functions
   const sendMessage = async () => {
     if (!newMessage.trim() || isSending) return;
