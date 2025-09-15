@@ -165,6 +165,17 @@ const GameInterface = ({ roomCode }) => {
     }
   };
   
+  // Handle speak toggle for Conseil du Royaume
+  const handleSpeakToggle = async () => {
+    try {
+      await axios.post(`${API}/rooms/${roomCode}/action?player_id=${currentPlayerId}&action_type=SPEAK_TOGGLE`, {});
+      console.log('Speak toggle successful');
+    } catch (error) {
+      console.error('Speak toggle failed:', error);
+      alert('Erreur lors du toggle vocal: ' + (error.response?.data?.detail || error.message));
+    }
+  };
+  
   // Load game state from API
   useEffect(() => {
     const loadGameState = async () => {
