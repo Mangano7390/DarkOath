@@ -1,12 +1,11 @@
 import React from "react";
 
 const MedievalTable = ({ players, size = 500, disgracedPlayerSeat = null }) => {
-  const radius = size / 2 - 50; // rayon où placer les chaises/pseudos
-  const tableRadius = size / 3; // taille de la table ronde
+  const radius = size / 2 - 50;
+  const tableRadius = size / 3;
 
   return (
     <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} className="mx-auto">
-      {/* Table ronde - Style moderne sombre */}
       <circle
         cx={size / 2}
         cy={size / 2}
@@ -16,7 +15,6 @@ const MedievalTable = ({ players, size = 500, disgracedPlayerSeat = null }) => {
         strokeWidth={4}
       />
       
-      {/* Détails circulaires */}
       <circle
         cx={size / 2}
         cy={size / 2}
@@ -27,7 +25,6 @@ const MedievalTable = ({ players, size = 500, disgracedPlayerSeat = null }) => {
         opacity={0.7}
       />
       
-      {/* Text au centre - Modern clean */}
       <text
         x={size / 2}
         y={size / 2}
@@ -41,9 +38,8 @@ const MedievalTable = ({ players, size = 500, disgracedPlayerSeat = null }) => {
         Table de Jeu
       </text>
 
-      {/* Sièges autour de la table - Style moderne */}
       {Array.from({ length: 10 }).map((_, i) => {
-        const angle = (i / 10) * 2 * Math.PI - Math.PI / 2; // placement en cercle
+        const angle = (i / 10) * 2 * Math.PI - Math.PI / 2;
         const x = size / 2 + radius * Math.cos(angle);
         const y = size / 2 + radius * Math.sin(angle);
 
@@ -54,7 +50,6 @@ const MedievalTable = ({ players, size = 500, disgracedPlayerSeat = null }) => {
 
         return (
           <g key={i} transform={`translate(${x}, ${y})`}>
-            {/* Siège/Chaise moderne */}
             <rect
               x={-seatSize/2}
               y={-seatSize/2}
@@ -68,7 +63,6 @@ const MedievalTable = ({ players, size = 500, disgracedPlayerSeat = null }) => {
               opacity={isDisgraced ? 0.6 : 1}
             />
             
-            {/* Icône de bannissement pour joueur désavoué */}
             {isDisgraced && (
               <text
                 y={-seatSize/2 - 18}
@@ -81,7 +75,6 @@ const MedievalTable = ({ players, size = 500, disgracedPlayerSeat = null }) => {
               </text>
             )}
             
-            {/* Numéro du siège */}
             <text
               y={4}
               textAnchor="middle"
@@ -94,7 +87,6 @@ const MedievalTable = ({ players, size = 500, disgracedPlayerSeat = null }) => {
               {i + 1}
             </text>
             
-            {/* Nom du joueur */}
             <text
               y={-seatSize/2 - 8}
               textAnchor="middle"
