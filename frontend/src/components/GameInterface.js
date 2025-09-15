@@ -441,34 +441,6 @@ const RoleDisplay = ({ role }) => {
   
   if (!role) return null;
   
-  const getRoleInfo = (role) => {
-    switch(role) {
-      case 'LOYAL': 
-        return { 
-          name: 'Chevalier Loyal', 
-          color: 'blue', 
-          icon: Shield,
-          description: 'Défendez le royaume et démasquez les traîtres'
-        };
-      case 'CONJURE': 
-        return { 
-          name: 'Conjuré', 
-          color: 'red', 
-          icon: Sword,
-          description: 'Répandez le chaos et aidez l\'Usurpateur'
-        };
-      case 'USURPATEUR': 
-        return { 
-          name: 'Usurpateur', 
-          color: 'purple', 
-          icon: Crown,
-          description: 'Prenez le pouvoir en secret'
-        };
-      default: 
-        return { name: 'Inconnu', color: 'gray', icon: Users, description: '' };
-    }
-  };
-  
   const roleInfo = getRoleInfo(role);
   const RoleIcon = roleInfo.icon;
   
