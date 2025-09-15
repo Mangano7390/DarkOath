@@ -390,6 +390,7 @@ async def handle_game_action(room_code: str, player_id: str, action_type: str, p
                     game_state.tracks.crisis += 1
                     
                     if game_state.tracks.crisis >= 3:
+                        # COLÈRE DU PEUPLE - Enhanced crisis rule
                         # Auto-adopt top card
                         if len(game_state.deck) > 0:
                             top_card = game_state.deck.pop(0)
@@ -397,6 +398,12 @@ async def handle_game_action(room_code: str, player_id: str, action_type: str, p
                                 game_state.tracks.loyal += 1
                             else:
                                 game_state.tracks.conjure += 1
+                        
+                        # Disgrace the current Seigneur (can't be Seigneur or Sénéchal next turn)
+                        game_state.turn.disgraced_player_seat = game_state.turn.regent_seat
+                        game_state.turn.peoples_anger_triggered = True
+                        
+                        # Reset crisis
                         game_state.tracks.crisis = 0
                     
                     # Move to next regent
