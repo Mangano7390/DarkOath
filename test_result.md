@@ -296,7 +296,17 @@ metadata:
   run_ui: false
 
 test_plan:
-  current_focus: []
+  current_focus:
+    - "Real-time chat with 2s polling and auto-scroll"
+    - "Sticky banner with game info"
+    - "3-column optimized layout"
+    - "Reduced table size (320px centered)"
+    - "Independent column scrolling"
+    - "Mobile tabs navigation"
+    - "Fixed mobile chat input"
+    - "Sound notification for new messages"
+    - "Message animations on arrival"
+    - "Complete responsive design PC/mobile"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
