@@ -611,26 +611,6 @@ const GameInterface = ({ roomCode }) => {
               tracks={gameState.tracks || { loyal: 0, conjure: 0, crisis: 0 }}
               powers={gameState.powers || {}}
             />
-            
-            {/* Player Role Info for mobile in tracks tab */}
-            <div className="block lg:hidden">
-              <RoleDisplay role={playerRole} />
-            </div>
-            
-            {/* Game Progress for mobile */}
-            <div className="block lg:hidden">
-              <Card className="game-info-parchment">
-                <CardHeader>
-                  <CardTitle className="text-sm font-cinzel">Progression</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-xs font-fell text-amber-800">
-                    <p>Joueurs connectés: {gameState.players?.filter(p => p.connected).length || 0}</p>
-                    <p>Joueurs vivants: {gameState.players?.filter(p => p.alive).length || 0}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
           </div>
 
           {/* Center Column - Table + Actions (Desktop) / Game Tab (Mobile) */}
