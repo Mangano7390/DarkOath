@@ -491,8 +491,8 @@ async def handle_game_action(room_code: str, player_id: str, action_type: str, p
                     "version": game_state.version
                 })
                 
-            elif game_state.turn.phase == Phase.CONSEIL_ROYAUME:
-                # Only chambellan can discard during CONSEIL_ROYAUME phase
+            elif game_state.turn.phase == Phase.LEGIS_CHAMBELLAN:
+                # Only chambellan can discard during LEGIS_CHAMBELLAN phase
                 if player.seat != game_state.turn.nominee_seat:
                     raise HTTPException(status_code=400, detail="Only chambellan can discard during this phase") 
                 
