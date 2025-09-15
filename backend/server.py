@@ -465,7 +465,7 @@ async def handle_game_action(room_code: str, player_id: str, action_type: str, p
                 })
         
         elif action_type == "DISCARD":
-            # Handle legislative card discard during LEGIS_REGENT or LEGIS_CHAMBELLAN phase
+            # Handle legislative card discard during LEGIS_REGENT or CONSEIL_ROYAUME phase
             if game_state.turn.phase == Phase.LEGIS_REGENT:
                 # Only regent can discard during LEGIS_REGENT phase
                 if player.seat != game_state.turn.regent_seat:
