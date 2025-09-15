@@ -68,6 +68,7 @@ class TurnState(BaseModel):
     deck_count: int = 17
     discard_count: int = 0
     legislative_cards: List[DecreeType] = []  # Cards currently being considered by regent/chambellan
+    chat_messages: List[Dict] = []  # Store chat messages for the room
 
 class GameState(BaseModel):
     room_code: str
