@@ -3,7 +3,7 @@ import json
 
 # Test with the room from previous test
 room_code = "YWGTCJ"
-base_url = "https://secretus-regnum.preview.emergentagent.com/api"
+base_url = "https://shadow-council.preview.emergentagent.com/api"
 
 # Create a test user to check game state
 response = requests.post(f"{base_url}/auth/anonymous", params={"name": "DebugUser"})

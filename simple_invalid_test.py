@@ -2,7 +2,7 @@ import requests
 import json
 
 def test_invalid_actions():
-    base_url = "https://secretus-regnum.preview.emergentagent.com/api"
+    base_url = "https://shadow-council.preview.emergentagent.com/api"
     
     # Create room and players
     room_response = requests.post(f"{base_url}/rooms")
