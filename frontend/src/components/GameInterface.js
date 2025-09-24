@@ -116,9 +116,9 @@ const GameInterface = ({ roomCode }) => {
   const currentPlayerId = localStorage.getItem('userId');
   const currentPlayerName = localStorage.getItem('playerName') || 'Joueur';
   
-  // Middle Earth music for game
+  // Multiplayer game music - Morceau 2
   useEffect(() => {
-    const audio = new Audio('https://customer-assets.emergentagent.com/job_1a735b74-0d1b-4cfc-aa0c-5d6b585ff99b/artifacts/x03qntuf_Middle%20Earth%20%28Copyright%20Free%20Fantasy%20Music%20inspired%20by%20Lord%20of%20the%20Rings%29.mp3');
+    const audio = new Audio('https://customer-assets.emergentagent.com/job_1a735b74-0d1b-4cfc-aa0c-5d6b585ff99b/artifacts/249imtyo_Morceau%202.mp3');
     audio.loop = true;
     audio.volume = 0.2;
     
