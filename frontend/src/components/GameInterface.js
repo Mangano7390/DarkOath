@@ -632,7 +632,7 @@ const GameInterface = ({ roomCode }) => {
               <Card className="bg-gray-800 border-gray-700 w-full">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg text-gray-100">Actions - {
-                    gameState.phase === 'CONSEIL_ROYAUME' ? 'CONSEIL DU ROYAUME' : gameState.phase
+                    formatPhaseName(gameState.phase)
                   }</CardTitle>
                 </CardHeader>
                 <CardContent>
