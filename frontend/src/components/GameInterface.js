@@ -46,6 +46,25 @@ const getRoleInfo = (role) => {
   }
 };
 
+// Format phase names to remove underscores and make them readable
+const formatPhaseName = (phase) => {
+  switch(phase) {
+    case 'NOMINATION':
+      return 'Nomination';
+    case 'VOTE':
+      return 'Vote';
+    case 'LEGIS_REGENT':
+      return 'Législatif Seigneur';
+    case 'LEGIS_CHAMBELLAN':
+      return 'Législatif Sénéchal';
+    case 'CONSEIL_ROYAUME':
+      return 'Conseil du Royaume';
+    default:
+      // Fallback: replace underscores with spaces and capitalize first letter
+      return phase.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+  }
+};
+
 // Track Component for clean display
 const TrackComponent = ({ title, current, max, color, icon: Icon }) => {
   return (
