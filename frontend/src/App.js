@@ -27,9 +27,9 @@ const LandingPage = () => {
   const [musicEnabled, setMusicEnabled] = useState(true); // Auto-start music
   const [showRules, setShowRules] = useState(false);
 
-  // Medieval music control - Auto-play by default
+  // Medieval music control - Auto-play by default (Morceau 3)
   useEffect(() => {
-    const audio = new Audio('https://customer-assets.emergentagent.com/job_1a735b74-0d1b-4cfc-aa0c-5d6b585ff99b/artifacts/iom0jxfs_Medieval%20Song%20Village%20Consort%20%5BNo%20Copyright%20Music%5D.mp3');
+    const audio = new Audio('https://customer-assets.emergentagent.com/job_1a735b74-0d1b-4cfc-aa0c-5d6b585ff99b/artifacts/l96z3xc1_Morceau%203.mp3');
     audio.loop = true;
     audio.volume = 0.3;
 
