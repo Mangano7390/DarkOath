@@ -462,6 +462,20 @@ const Lobby = ({ roomCode }) => {
     };
   }, [roomCode, currentPlayerId, navigate, currentPlayerName]);
 
+  // Lobby music - Morceau 1
+  useEffect(() => {
+    const audio = new Audio('https://customer-assets.emergentagent.com/job_1a735b74-0d1b-4cfc-aa0c-5d6b585ff99b/artifacts/10k0yrvs_Morceau%201.mp3');
+    audio.loop = true;
+    audio.volume = 0.3;
+
+    // Auto-play lobby music
+    audio.play().catch(console.error);
+
+    return () => {
+      audio.pause();
+    };
+  }, []);
+
   const startGame = async () => {
     console.log('startGame called for room:', roomCode);
     console.log('Current players:', players.length);
