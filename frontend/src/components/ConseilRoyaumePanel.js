@@ -123,9 +123,13 @@ const ConseilRoyaumePanel = ({
     streamRef.current = stream;
 
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) throw new Error('AudioContext non supporté par ce navigateur');
     const ctx = new AudioCtx();
     audioCtxRef.current = ctx;
     if (ctx.state === 'suspended') await ctx.resume();
+    if (!ctx.audioWorklet) {
+      throw new Error('AudioWorklet non supporté (iOS < 14.5 ou navigateur ancien)');
+    }
     await ctx.audioWorklet.addModule('/audio-worklet.js');
 
     const micSource = ctx.createMediaStreamSource(stream);
@@ -203,10 +207,11 @@ const ConseilRoyaumePanel = ({
         } catch {}
       } catch (err) {
         console.error('Voice init failed:', err);
+        const detail = `${err?.name || 'Error'}: ${err?.message || String(err)}`;
         setVoiceError(
           err?.name === 'NotAllowedError'
             ? "Microphone refusé. Autorisez l'accès dans les réglages du navigateur."
-            : "Impossible d'initialiser le vocal.",
+            : `Impossible d'initialiser le vocal — ${detail}`,
         );
         teardown();
       } finally {
