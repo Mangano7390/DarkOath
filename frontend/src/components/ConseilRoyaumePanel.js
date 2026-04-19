@@ -15,7 +15,8 @@ const ConseilRoyaumePanel = ({
 }) => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [timeLeft, setTimeLeft] = useState(60);
-  const [micReady, setMicReady] = useState(false);
+  const [micInitialized, setMicInitialized] = useState(false);
+  const [initializing, setInitializing] = useState(false);
   const [voiceError, setVoiceError] = useState(null);
 
   const phase = gameState?.phase;
@@ -30,7 +31,6 @@ const ConseilRoyaumePanel = ({
   const speakingRef = useRef(false);
   const playbackRef = useRef(new Map()); // seat -> { nextTime }
 
-  // Keep ref in sync with state for the worklet's async message handler
   useEffect(() => {
     speakingRef.current = isSpeaking;
   }, [isSpeaking]);
@@ -47,7 +47,6 @@ const ConseilRoyaumePanel = ({
     return () => clearInterval(id);
   }, [startTime]);
 
-  // Playback helper — schedules a PCM chunk from a given sender for gapless play
   const playChunk = useCallback((seat, sampleRate, int16) => {
     const ctx = audioCtxRef.current;
     if (!ctx) return;
@@ -65,139 +64,119 @@ const ConseilRoyaumePanel = ({
 
     const state = playbackRef.current.get(seat) || { nextTime: 0 };
     const now = ctx.currentTime;
-    // If we fell behind (network hiccup), resync to "now" with a small lead
     const startAt = Math.max(now + 0.02, state.nextTime);
     src.start(startAt);
     state.nextTime = startAt + buffer.duration;
     playbackRef.current.set(seat, state);
   }, []);
 
-  // Open the audio pipeline once per CONSEIL_ROYAUME phase, tear down on exit
+  // Teardown helper — idempotent
+  const teardown = useCallback(() => {
+    setMicInitialized(false);
+    setIsSpeaking(false);
+    speakingRef.current = false;
+
+    try {
+      workletNodeRef.current?.port?.close?.();
+      workletNodeRef.current?.disconnect?.();
+    } catch {}
+    try {
+      micSourceRef.current?.disconnect?.();
+    } catch {}
+    try {
+      audioCtxRef.current?.close?.();
+    } catch {}
+    workletNodeRef.current = null;
+    micSourceRef.current = null;
+    audioCtxRef.current = null;
+
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+    if (wsRef.current) {
+      try {
+        wsRef.current.close();
+      } catch {}
+      wsRef.current = null;
+    }
+    playbackRef.current.clear();
+  }, []);
+
+  // Tear down on phase exit or unmount (iOS-safe: no init in useEffect)
   useEffect(() => {
-    if (phase !== 'CONSEIL_ROYAUME') return;
-    if (!roomCode || !currentPlayerId) return;
+    if (phase !== 'CONSEIL_ROYAUME') {
+      teardown();
+    }
+    return teardown;
+  }, [phase, teardown]);
 
-    let cancelled = false;
+  // Init audio pipeline — MUST be called from a user gesture (iOS requirement)
+  const initAudio = async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+    });
+    streamRef.current = stream;
 
-    (async () => {
-      try {
-        // 1. Mic access
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-          },
-        });
-        if (cancelled) {
-          stream.getTracks().forEach((t) => t.stop());
-          return;
-        }
-        streamRef.current = stream;
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    const ctx = new AudioCtx();
+    audioCtxRef.current = ctx;
+    if (ctx.state === 'suspended') await ctx.resume();
+    await ctx.audioWorklet.addModule('/audio-worklet.js');
 
-        // 2. AudioContext + worklet
-        const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        const ctx = new AudioCtx();
-        audioCtxRef.current = ctx;
-        if (ctx.state === 'suspended') await ctx.resume();
-        await ctx.audioWorklet.addModule('/audio-worklet.js');
-        if (cancelled) return;
+    const micSource = ctx.createMediaStreamSource(stream);
+    const workletNode = new AudioWorkletNode(ctx, 'capture-processor');
+    micSource.connect(workletNode);
+    // NB: do NOT connect the worklet to ctx.destination — echo.
+    micSourceRef.current = micSource;
+    workletNodeRef.current = workletNode;
 
-        const micSource = ctx.createMediaStreamSource(stream);
-        const workletNode = new AudioWorkletNode(ctx, 'capture-processor');
-        micSource.connect(workletNode);
-        // NB: do NOT connect the worklet to ctx.destination — that would echo
-        // the local mic into the speakers.
-        micSourceRef.current = micSource;
-        workletNodeRef.current = workletNode;
+    const ws = new WebSocket(
+      `${WS_BASE}/ws/audio/${roomCode}/${currentPlayerId}`,
+    );
+    ws.binaryType = 'arraybuffer';
+    wsRef.current = ws;
 
-        // 3. WebSocket
-        const ws = new WebSocket(
-          `${WS_BASE}/ws/audio/${roomCode}/${currentPlayerId}`,
-        );
-        ws.binaryType = 'arraybuffer';
-        wsRef.current = ws;
+    const sampleRate = Math.round(ctx.sampleRate);
+    const rateHeader = new Uint8Array(2);
+    rateHeader[0] = (sampleRate >> 8) & 0xff;
+    rateHeader[1] = sampleRate & 0xff;
 
-        // Prepare a 2-byte sample rate header that prefixes every outbound chunk
-        const sampleRate = Math.round(ctx.sampleRate);
-        const rateHeader = new Uint8Array(2);
-        rateHeader[0] = (sampleRate >> 8) & 0xff;
-        rateHeader[1] = sampleRate & 0xff;
-
-        workletNode.port.onmessage = (ev) => {
-          if (!speakingRef.current) return;
-          if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
-          const pcm = new Uint8Array(ev.data);
-          const frame = new Uint8Array(rateHeader.length + pcm.length);
-          frame.set(rateHeader, 0);
-          frame.set(pcm, rateHeader.length);
-          wsRef.current.send(frame.buffer);
-        };
-
-        ws.onmessage = (ev) => {
-          if (!(ev.data instanceof ArrayBuffer)) return;
-          const view = new DataView(ev.data);
-          if (view.byteLength < 5) return;
-          const seat = view.getUint8(0);
-          // byte 1 reserved
-          const rate = view.getUint16(2, false); // big-endian
-          const pcmBytes = new Int16Array(
-            ev.data,
-            4,
-            (view.byteLength - 4) / 2,
-          );
-          playChunk(seat, rate, pcmBytes);
-        };
-
-        ws.onerror = () => setVoiceError('Connexion audio interrompue');
-        ws.onclose = () => {
-          // Silent on normal teardown; onerror will set the message if it was abnormal
-        };
-
-        setMicReady(true);
-      } catch (err) {
-        console.error('Voice init failed:', err);
-        setVoiceError(
-          err?.name === 'NotAllowedError'
-            ? "Microphone refusé. Autorisez l'accès dans le navigateur."
-            : "Impossible d'initialiser le vocal.",
-        );
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-      setMicReady(false);
-      setIsSpeaking(false);
-      speakingRef.current = false;
-
-      try {
-        workletNodeRef.current?.port?.close?.();
-        workletNodeRef.current?.disconnect?.();
-      } catch {}
-      try {
-        micSourceRef.current?.disconnect?.();
-      } catch {}
-      try {
-        audioCtxRef.current?.close?.();
-      } catch {}
-      workletNodeRef.current = null;
-      micSourceRef.current = null;
-      audioCtxRef.current = null;
-
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => t.stop());
-        streamRef.current = null;
-      }
-      if (wsRef.current) {
-        try {
-          wsRef.current.close();
-        } catch {}
-        wsRef.current = null;
-      }
-      playbackRef.current.clear();
+    workletNode.port.onmessage = (ev) => {
+      if (!speakingRef.current) return;
+      if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+      const pcm = new Uint8Array(ev.data);
+      const frame = new Uint8Array(rateHeader.length + pcm.length);
+      frame.set(rateHeader, 0);
+      frame.set(pcm, rateHeader.length);
+      wsRef.current.send(frame.buffer);
     };
-  }, [phase, roomCode, currentPlayerId, playChunk]);
+
+    ws.onmessage = (ev) => {
+      if (!(ev.data instanceof ArrayBuffer)) return;
+      const view = new DataView(ev.data);
+      if (view.byteLength < 5) return;
+      const seat = view.getUint8(0);
+      const rate = view.getUint16(2, false);
+      const pcmBytes = new Int16Array(ev.data, 4, (view.byteLength - 4) / 2);
+      playChunk(seat, rate, pcmBytes);
+    };
+
+    ws.onerror = () => setVoiceError('Connexion audio interrompue');
+
+    // Wait for ws open (short) — otherwise first clicks send into a not-yet-open socket
+    await new Promise((resolve, reject) => {
+      if (ws.readyState === WebSocket.OPEN) return resolve();
+      const onOpen = () => { ws.removeEventListener('open', onOpen); resolve(); };
+      const onErr = () => { ws.removeEventListener('error', onErr); reject(new Error('ws failed')); };
+      ws.addEventListener('open', onOpen);
+      ws.addEventListener('error', onErr);
+    });
+  };
 
   // Force-stop speaking once the timer hits 0
   useEffect(() => {
@@ -206,20 +185,48 @@ const ConseilRoyaumePanel = ({
     }
   }, [timeLeft, isSpeaking]);
 
-  const toggleSpeaking = () => {
-    if (!micReady || timeLeft <= 0) return;
+  const handleMicButton = async () => {
+    if (timeLeft <= 0) return;
+
+    // First tap: init (this IS a user gesture — iOS-safe)
+    if (!micInitialized) {
+      if (initializing) return;
+      setInitializing(true);
+      setVoiceError(null);
+      try {
+        await initAudio();
+        setMicInitialized(true);
+        setIsSpeaking(true); // start speaking immediately on first tap
+        try {
+          const result = onSpeakToggle?.();
+          if (result && typeof result.catch === 'function') result.catch(() => {});
+        } catch {}
+      } catch (err) {
+        console.error('Voice init failed:', err);
+        setVoiceError(
+          err?.name === 'NotAllowedError'
+            ? "Microphone refusé. Autorisez l'accès dans les réglages du navigateur."
+            : "Impossible d'initialiser le vocal.",
+        );
+        teardown();
+      } finally {
+        setInitializing(false);
+      }
+      return;
+    }
+
+    // Subsequent taps: toggle speaking state only
     setIsSpeaking((prev) => !prev);
-    // Fire-and-forget — updates the server-side speakers list for the UI
     try {
       const result = onSpeakToggle?.();
       if (result && typeof result.catch === 'function') result.catch(() => {});
-    } catch {
-      // ignore
-    }
+    } catch {}
   };
 
   const formatTime = (seconds) =>
     `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`;
+
+  const buttonDisabled = timeLeft <= 0 || initializing;
 
   return (
     <Card className="bg-amber-900 border-amber-700 shadow-lg">
@@ -244,7 +251,9 @@ const ConseilRoyaumePanel = ({
             Vous pouvez parler librement pendant cette phase
           </p>
           <p className="text-amber-200 text-sm">
-            Cliquez sur le micro pour prendre la parole
+            {micInitialized
+              ? 'Cliquez sur le micro pour parler / couper'
+              : 'Appuyez sur le micro pour activer le vocal'}
           </p>
         </div>
 
@@ -256,8 +265,8 @@ const ConseilRoyaumePanel = ({
 
         <div className="flex justify-center">
           <Button
-            onClick={toggleSpeaking}
-            disabled={!micReady || timeLeft <= 0}
+            onClick={handleMicButton}
+            disabled={buttonDisabled}
             className={`h-16 w-16 rounded-full transition-all ${
               isSpeaking
                 ? 'bg-red-600 hover:bg-red-700 shadow-lg shadow-red-500/50'
@@ -273,8 +282,10 @@ const ConseilRoyaumePanel = ({
         </div>
 
         <div className="text-center">
-          {!micReady ? (
+          {initializing ? (
             <p className="text-amber-300 font-medium">⏳ Initialisation du micro…</p>
+          ) : !micInitialized ? (
+            <p className="text-amber-200 font-medium">🎙️ Appuyez pour activer</p>
           ) : isSpeaking ? (
             <p className="text-red-400 font-medium">🔴 Microphone actif</p>
           ) : (
