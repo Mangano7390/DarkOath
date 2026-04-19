@@ -179,7 +179,11 @@ class WebSocketManager:
         # Assign roles to players
         for i, player in enumerate(game_state.players[:player_count]):
             player.role = roles[i]
-        
+
+        # Randomize starting regent (seat). Previously always seat 1 = room creator.
+        alive_seats = [p.seat for p in game_state.players if p.alive]
+        game_state.turn.regent_seat = random.choice(alive_seats)
+
         game_state.status = "in_progress"
         game_state.turn.phase = Phase.NOMINATION
         game_state.version += 1

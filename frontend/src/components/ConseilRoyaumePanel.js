@@ -326,14 +326,18 @@ const ConseilRoyaumePanel = ({
               Actuellement en train de parler :
             </h4>
             <div className="flex flex-wrap gap-2">
-              {speakingPlayers.map((seat) => (
-                <span
-                  key={seat}
-                  className="bg-red-600 text-white px-2 py-1 rounded-full text-sm font-medium"
-                >
-                  🔴 Siège {seat}
-                </span>
-              ))}
+              {speakingPlayers.map((seat) => {
+                const p = gameState?.players?.find((pl) => pl.seat === seat);
+                const label = p?.name || `Siège ${seat}`;
+                return (
+                  <span
+                    key={seat}
+                    className="bg-red-600 text-white px-2 py-1 rounded-full text-sm font-medium"
+                  >
+                    🔴 {label}
+                  </span>
+                );
+              })}
             </div>
           </div>
         )}
