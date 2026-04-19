@@ -1,74 +1,113 @@
-<analysis>
-The AI engineer has progressively built out the Secretus Regnum multiplayer web application, starting from an MVP. The initial phase focused on core functionality: establishing React frontend and FastAPI backend, user authentication, room management, and basic game state. Early work involved fixing critical bugs like frontend linting, API routing mismatches, and game-start validations, making the lobby and player joining functional via API polling after initial WebSocket issues. Interactive game-turn elements were introduced, leading to the resolution of critical bugs related to voting permissions and the display of legislative cards.
+<analysis>**original_problem_statement**: 
+The goal is Dark Oath, a real-time multiplayer social deduction game supporting 5-10 players. Recent requests by the user included fixing a non-functional vocal mode during the Conseil du Royaume phase on mobile and PC, removing underscores from phase titles (e.g., NOMINATION to Nomination), and updating specific music tracks for the Landing page (Morceau 3), Multiplayer game (Morceau 2), and Lobby (Morceau 1).
 
-Subsequently, the focus shifted to a complete UI overhaul. The landing page received an immersive medieval redesign, incorporating new images, fonts, and interactive elements. The game interface then underwent multiple iterations to achieve a dark medieval room aesthetic, including a custom SVG round table and a refined layout. Throughout this, chat functionality was a recurring challenge, requiring backend API additions, WebSocket integration, message persistence, and real-time updates. The most recent efforts have been on restructuring the game interface for improved ergonomics on both PC and mobile, addressing layout overlaps, and implementing distinct Loyaux and Conjurés decree tracks. The current task is centered on refining the overall game interface layout and ensuring the new decree tracks are visible.
-</analysis>
+**User's preferred language**: French (Detected from acceptable... fait 1 2). INSTRUCT next agent to respond in the user's preferred language (French) only.
 
-<product_requirements>
-The objective is Secretus Regnum, a real-time multiplayer web app with a medieval theme, inspired by Secret Hitler. The MVP targets 5 players (3 Loyal, 1 Conjuré, 1 Usurpateur). Key rules include tracking 6 Conjuré vs 5 Loyal decrees for victory, Usurpateur victory conditions, and specific powers at decree thresholds. Features include code-based rooms, anonymous login, and FR/EN localization (FR default). Core pages are Landing, Lobby (), Game Table (), and End screen. The stack is React/Tailwind (frontend), FastAPI (backend), with in-memory state for MVP (preparing for Postgres/Redis). Initially aimed for WebSockets, it currently uses API polling for real-time updates. The application should have a consistent dark medieval visual style across all interfaces, with a clear and ergonomic layout on both desktop and mobile, ensuring all critical game information (like two distinct decree tracks) and chat functionality are live and accessible without overlaps.
-</product_requirements>
+**what currently exists?**: 
+A fully functional MVP of Dark Oath using React and FastAPI. It features a dark, classic UI, WebSockets/API polling for real-time multiplayer interaction, roles, a dual-track voting system, in-game chat, and recently added specific game phases like Colère du Peuple and Conseil du Royaume. Phase titles are formatted properly and custom background music is integrated for various screens.
 
-<key_technical_concepts>
-- React: Frontend UI.
-- FastAPI: Python backend, API, game logic.
-- MongoDB: Planned database (MVP uses in-memory).
-- Tailwind CSS: Utility-first styling.
-- Shadcn UI: Component library.
-- WebSockets: Intended for real-time, now integrated.
-- API Polling: Used for real-time before WebSocket full implementation.
-- Pydantic: Data validation.
-- UUIDs: Player/room IDs.
-- i18n: Localization (FR/EN).
-</key_technical_concepts>
+**Last working item**: 
+    - Last item agent was working: Formatting phase titles to remove underscores in the UI and integrating the user-provided MP3 files for the Lobby and Game components. Also triggered the backend testing agent to validate the changes.
+    - Status: USER VERIFICATION PENDING
+    - Agent Testing Done: Y
+    - Which testing method agent to use? Frontend testing agent / manual testing by screenshot/browser (Audio contexts and UI rendering need browser validation).
+    - User Testing Done: N
 
-<code_architecture>
+**All Pending/In progress Issue list**:
+  Issue 1: Vocal Mode not working on mobile and PC (P0)
+  
+  Issues Detail:
+  - Issue 1: Vocal Mode not working on mobile and PC
+     - Attempted fixes: None. The previous agent completely overlooked this explicit requirement and only focused on music and phase titles.
+     - Next debug checklist: 
+       - : Check the WebRTC, microphone permissions, and audio context logic. Mobile browsers require strict user interaction to enable audio.
+       - : Check how the voice state is passed and rendered.
+       - : Verify if WebSocket signaling for voice is dropping packets or failing to broadcast to all clients correctly.
+     - Why fix this issue and what will be achieved with the fix?: The Conseil du Royaume phase relies entirely on voice chat. Without this, the phase is broken.
+     - Status: NOT STARTED
+     - Is recurring issue?: N
+     - Should Test frontend/backend/both after fix?: Both (Frontend for Audio APIs, Backend for Signaling)
+     - Blocked on other issue: None
+
+**In progress Task List**: 
+  None
+
+**Upcoming and Future Tasks**:
+  None (Besides the critical P0 issue above)
+
+**Completed work in this session**
+- Phase title formatting (Removed underscores):  -> 
+- Lobby Music Integration (Morceau 1):  ->  component
+- Game Music Integration (Morceau 2): 
+
+**Earlier issues found/mentioned but not fixed**
+   Issue 1: Vocal mode not working on mobile and PC
+   - Debug checklist: , WebRTC implementation, browser Audio Context policies.
+   - Why to solve this issue and what will be achieved with this?: Core functionality for the new game phase; essential for gameplay.
+   - Should Test frontend/backend/both after fix: Both
+   - Is recurring issue?: N
+
+**Known issue recurrence from previous fork**
+  - Issue recurrence in previous fork: N/A
+  - Recurrence count: 0
+  - Status: NOT STARTED
+
+**Code Architecture**
 
 
--   ****:
-    -   Handles FastAPI application, in-memory game state, player connections, room logic, game actions (NOMINATE, VOTE, DISCARD).
-    -   **Changes**: Fixed  route prefixes, added  endpoint, refined  logic, implemented , ,  actions. Crucially, updated  to include , enforced voting restrictions for Régent/Chambellan, and added a chat API with WebSocket support for message persistence and real-time broadcast.
--   ****:
-    -   Main React router. Manages landing page, room creation/joining.
-    -   **Changes**: Initial UI, linting fixes, React Router paths, API polling for lobby updates. Heavily modified for medieval landing page style, including Google Fonts and . Switched between  and , finally settling on  with injected styles.
--   ****:
-    -   The core game screen. Displays game state, tracks, players, and interactive panels.
-    -   **Changes**: Switched to polling, integrated Chat, Nomination, Vote, Legislative Panels. Extensively refactored for the medieval room theme, incorporating , . The layout was repeatedly adjusted to accommodate game elements, chat, and tracks ergonomically, supporting desktop and mobile tabs. It now handles real-time chat updates via polling, auto-scroll, and mobile input zone. It now includes  for banner.
--   ****:
-    -   Chat component.
-    -   **Changes**: Integrated with new backend chat API and WebSockets for real-time, message history loading, auto-scroll, and fixed mobile input. Styled with parchment theme.
--   ****:
-    -   Newly created React component using inline SVGs to render a round wooden table with player seats.
-    -   **Changes**: Initially provided as TSX, converted to JS for compatibility. Integrated into . The dark background was removed.
--   ****:
-    -   New CSS file to define styles for the medieval-themed landing page.
--   ****:
-    -   New CSS file to define styles for the medieval-themed game room interface.
-</code_architecture>
+**Key Technical Concepts**
+React (Frontend UI), FastAPI (Backend logic/WebSockets), Tailwind CSS (Styling), Shadcn UI (Components), WebRTC/HTML5 Audio (Voice chat), UUIDs (Player tracking).
 
-<pending_tasks>
--   **Refactor Layout**: Reorganize the entire game interface for better legibility on PC and mobile.
-    -   Table Ronde: Reduced size (40-50%), centered bottom on PC, compact on mobile.
-    -   Pistes de progression (Loyaux/Conjurés): Add 2 distinct, visible tracks at center top.
-    -   Piste de Crise: Keep left.
-    -   Chat: Right side, scrollable parchment.
-    -   Panneaux de phase/votes: Clear panel right, under chat, no overlap.
-    -   Responsive Mobile: Compact table, tabs (Table | Pistes | Chat) at bottom.
--   **Remove old DecreeTrack**: Delete the  component which is no longer used.
-</pending_tasks>
+**key DB schema**
+  - MVP currently utilizes in-memory state via Python dictionaries (e.g., , ). Planned migration to MongoDB.
 
-<current_work>
-Immediately before this summary, the AI engineer was tasked with a comprehensive overhaul of the game's interface and the implementation of specific game mechanics. The user explicitly requested a complete redesign of the game layout to improve legibility on both PC and mobile. This includes:
+**changes in tech stack**
+  - None
 
-*   **Table Ronde**: Reduce its size to 40-50% width, position it centered at the bottom on PC, and make it compact on mobile.
-*   **Two distinct progression tracks**: Implement Piste des Loyaux (5 cases, blue/gold shield) and Piste des Conjurés (6 cases, red/dark sword/dagger). These must be permanently visible, positioned at the **center top of the screen (above the table)**.
-*   **Crisis Track**: Maintain its position on the left.
-*   **Chat**: Ensure it's on the right, in a scrollable parchment.
-*   **Phase/Vote Panels**: These should appear in a clear panel on the right, under the chat, without overlapping the table.
-*   **Mobile Responsiveness**: On portrait mode, the table should be compact, and game information (table, tracks, chat) should be accessible via clear tabs at the bottom.
+**All files of reference** 
+  - : Updated to format phase titles and load Morceau 2 music.
+  - : Updated to load Morceau 1 music in the Lobby component.
+  - : Updated to instruct testing agents.
 
-The AI engineer has acknowledged these requests and has just completed the first step of this major refactor: Refaire le layout complet avec les 2 pistes obligatoires in  (as per Chat Message 313). The very next action planned is to remove the old, unused  component to clean up the codebase after implementing the new dual track system (as per Chat Message 314).
-</current_work>
+**Areas that need refactoring**: 
+WebRTC and Audio implementation inside  likely needs refactoring for better mobile browser compatibility.
 
-<optional_next_step>
-Remove the old  component from .
-</optional_next_step>
+**key api endpoints**
+  - WS:  (Handles game state and potentially voice signaling)
+  - API: 
+
+**Critical Info for New Agent** 
+The previous agent successfully implemented the UI/text changes (removing underscores) and the background music changes. However, it completely forgot to address the critical bug: **The vocal mode in Conseil du Royaume is broken on mobile and PC**. Your top priority is to diagnose and fix this audio/WebRTC issue.
+
+**documents and test reports created in this job** 
+  - /app/test_result.md (Updated)
+
+**Last 10 User Messages and any pending HUMAN messages** 
+ - User: acceptable... fait 1 2 (Status: COMPLETED for tasks 1 and 2, but the user implicitly expected the vocal mode fix to be done as part of the overarching problem statement).
+
+**Project Health Check:**
+  - Broken: Voice chat mode (Conseil du Royaume).
+  - Mocked: Database (using in-memory state).
+
+**3rd Party Integrations** 
+  None actively requiring keys for this specific session. (Uses native browser WebRTC for audio).
+
+**Testing status**
+  - Testing agent used after significant changes: YES (deep_testing_backend_v2 was used and passed)
+  - Troubleshoot agent used after agent stuck in loop: NO
+  - Test files created: None
+  - Known regressions: None
+
+**Credentials to test flow:**
+None (App uses anonymous login with UUIDs)
+
+**What agent forgot to execute**
+**Debugging checklist for current issue**
+    Issue: Fix Vocal Mode: Diagnose and fix why the vocal mode in Conseil du Royaume is not working on mobile and PC.
+    
+    Frontend files to check: 
+    -  (Check microphone access requests and WebRTC peer connection logic)
+    -  (Check conditional rendering that might unmount the audio context)
+  
+    Backend files to check:
+    -  (Verify WebSocket handlers for broadcasting voice data/signaling are working)</analysis>

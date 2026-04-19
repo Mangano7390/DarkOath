@@ -3,7 +3,7 @@ import json
 
 def test_chat_after_fix():
     """Quick test to verify chat still works after removing duplicate endpoint"""
-    base_url = "https://shadow-council.preview.emergentagent.com"
+    base_url = "https://deduction-game-3.preview.emergentagent.com"
     api_url = f"{base_url}/api"
     
     print("🔧 Testing Chat System After Duplicate Endpoint Fix")

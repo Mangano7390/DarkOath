@@ -9,7 +9,7 @@ import json
 
 def test_nomination_and_voting():
     """Test nomination and voting flow with the created room"""
-    base_url = "https://shadow-council.preview.emergentagent.com"
+    base_url = "https://deduction-game-3.preview.emergentagent.com"
     api_url = f"{base_url}/api"
     
     # Room details from the previous test
