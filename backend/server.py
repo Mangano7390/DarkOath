@@ -850,10 +850,12 @@ async def audio_websocket_endpoint(websocket: WebSocket, room_code: str, player_
     """
     game_state = manager.get_game_state(room_code)
     if not game_state:
+        await websocket.accept()
         await websocket.close(code=4404)
         return
     player = next((p for p in game_state.players if p.id == player_id), None)
     if not player:
+        await websocket.accept()
         await websocket.close(code=4404)
         return
 

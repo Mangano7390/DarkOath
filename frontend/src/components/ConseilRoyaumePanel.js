@@ -172,13 +172,35 @@ const ConseilRoyaumePanel = ({
 
     ws.onerror = () => setVoiceError('Connexion audio interrompue');
 
+    const wsUrl = `${WS_BASE}/ws/audio/${roomCode}/${currentPlayerId}`;
+    console.log('[voice] opening ws:', wsUrl);
     // Wait for ws open (short) — otherwise first clicks send into a not-yet-open socket
     await new Promise((resolve, reject) => {
       if (ws.readyState === WebSocket.OPEN) return resolve();
-      const onOpen = () => { ws.removeEventListener('open', onOpen); resolve(); };
-      const onErr = () => { ws.removeEventListener('error', onErr); reject(new Error('ws failed')); };
-      ws.addEventListener('open', onOpen);
+      let settled = false;
+      const cleanup = () => {
+        ws.removeEventListener('open', onOpen);
+        ws.removeEventListener('error', onErr);
+        ws.removeEventListener('close', onClose);
+      };
+      const onOpen = () => { if (settled) return; settled = true; cleanup(); resolve(); };
+      const onErr = (e) => {
+        if (settled) return;
+        console.error('[voice] ws error event:', e);
+      };
+      const onClose = (e) => {
+        if (settled) return; settled = true; cleanup();
+        const detail = `code=${e.code} reason="${e.reason || ''}" wasClean=${e.wasClean} url=${wsUrl}`;
+        console.error('[voice] ws closed before open:', detail);
+        reject(new Error(`ws failed (${detail})`));
+      };
+      const timer = setTimeout(() => {
+        if (settled) return; settled = true; cleanup();
+        reject(new Error(`ws timeout after 10s (readyState=${ws.readyState}) url=${wsUrl}`));
+      }, 10000);
+      ws.addEventListener('open', () => { clearTimeout(timer); onOpen(); });
       ws.addEventListener('error', onErr);
+      ws.addEventListener('close', (e) => { clearTimeout(timer); onClose(e); });
     });
   };
 
