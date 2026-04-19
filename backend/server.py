@@ -264,45 +264,53 @@ class WebSocketManager:
                 game_state.version += 1
                 
                 await self.broadcast_to_room(room_code, {
-                    "type": "game_update", 
+                    "type": "game_update",
                     "data": "conseil_timeout",
                     "version": game_state.version
                 })
-        """Advance the game phase after Conseil du Royaume ends"""
-        # Check if powers should be unlocked based on tracks
-        if game_state.tracks.conjure >= 3 and not game_state.powers["investigation_unlocked"]:
-            game_state.powers["investigation_unlocked"] = True
-        
-        if game_state.tracks.conjure >= 4 and not game_state.powers["execution_unlocked"]:
-            game_state.powers["execution_unlocked"] = True
-        
-        # Move to POWER phase if powers are available, otherwise move to next regent
-        if (game_state.powers["investigation_unlocked"] or game_state.powers["execution_unlocked"]) and game_state.turn.regent_seat:
-            game_state.turn.phase = Phase.POWER
-        else:
-            # Move to next regent
-            current_seat = game_state.turn.regent_seat
-            alive_seats = [p.seat for p in game_state.players if p.alive]
-            alive_seats.sort()
-            current_index = alive_seats.index(current_seat)
-            
-            # Find next regent (skip disgraced player if applicable)
-            next_index = (current_index + 1) % len(alive_seats)
-            next_regent_seat = alive_seats[next_index]
-            
-            if game_state.turn.disgraced_player_seat == next_regent_seat:
-                next_index = (next_index + 1) % len(alive_seats)
-                next_regent_seat = alive_seats[next_index]
-            
-            game_state.turn.regent_seat = next_regent_seat
-            game_state.turn.phase = Phase.NOMINATION
-        
-        # Clear conseil-specific state
-        game_state.turn.conseil_royaume_timer = None
-        game_state.turn.conseil_royaume_start_time = None
-        game_state.turn.speaking_players = []
 
 manager = WebSocketManager()
+
+
+# --- Audio relay for Conseil du Royaume voice chat ---
+# Wire format for binary frames relayed between clients:
+#   bytes 0      : sender seat (uint8, 1-10)
+#   bytes 1      : reserved (0)
+#   bytes 2-3    : sender sample rate, big-endian uint16 (e.g. 48000)
+#   bytes 4..    : Int16 little-endian PCM mono payload
+class AudioRelay:
+    def __init__(self):
+        # room_code -> { player_id -> WebSocket }
+        self.connections: Dict[str, Dict[str, WebSocket]] = {}
+
+    async def connect(self, room_code: str, player_id: str, websocket: WebSocket):
+        await websocket.accept()
+        self.connections.setdefault(room_code, {})[player_id] = websocket
+
+    def disconnect(self, room_code: str, player_id: str):
+        room = self.connections.get(room_code)
+        if not room:
+            return
+        room.pop(player_id, None)
+        if not room:
+            self.connections.pop(room_code, None)
+
+    async def relay(self, room_code: str, sender_id: str, payload: bytes):
+        room = self.connections.get(room_code)
+        if not room:
+            return
+        # Snapshot to avoid mutation during iteration
+        for pid, ws in list(room.items()):
+            if pid == sender_id:
+                continue
+            try:
+                await ws.send_bytes(payload)
+            except Exception:
+                # Drop stale connections silently; the disconnect handler will clean up
+                pass
+
+
+audio_relay = AudioRelay()
 
 # API Routes
 @api_router.get("/")
@@ -829,6 +837,69 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str, player_id: st
                 if player.id == player_id:
                     player.connected = False
                     break
+
+
+@app.websocket("/ws/audio/{room_code}/{player_id}")
+async def audio_websocket_endpoint(websocket: WebSocket, room_code: str, player_id: str):
+    """Relays PCM audio chunks between players during Conseil du Royaume.
+
+    Each inbound frame is a raw PCM chunk without header. The server stamps the
+    sender's seat + sample rate and rebroadcasts to every other player in the room.
+    Frames are dropped silently when the room is not in CONSEIL_ROYAUME phase or
+    when the sender is dead — no error is returned to keep the stream warm.
+    """
+    game_state = manager.get_game_state(room_code)
+    if not game_state:
+        await websocket.close(code=4404)
+        return
+    player = next((p for p in game_state.players if p.id == player_id), None)
+    if not player:
+        await websocket.close(code=4404)
+        return
+
+    await audio_relay.connect(room_code, player_id, websocket)
+    try:
+        while True:
+            msg = await websocket.receive()
+            # Expect either a text JSON control frame (sample rate announcement)
+            # or binary PCM data.
+            if "bytes" in msg and msg["bytes"] is not None:
+                data: bytes = msg["bytes"]
+                # Client prepends 2 bytes: big-endian uint16 sample rate.
+                if len(data) < 3:
+                    continue
+
+                current_state = manager.get_game_state(room_code)
+                if not current_state:
+                    continue
+                current_player = next(
+                    (p for p in current_state.players if p.id == player_id),
+                    None,
+                )
+                if not current_player or not current_player.alive:
+                    continue
+                if current_state.turn.phase != Phase.CONSEIL_ROYAUME:
+                    continue
+                # Honor the 60s council window on the server side too
+                start = current_state.turn.conseil_royaume_start_time
+                if start is None:
+                    continue
+                import time as _time
+                if _time.time() - start > 60:
+                    continue
+
+                sample_rate_bytes = data[:2]
+                pcm = data[2:]
+                header = bytes([current_player.seat, 0]) + sample_rate_bytes
+                await audio_relay.relay(room_code, player_id, header + pcm)
+            elif msg.get("type") == "websocket.disconnect":
+                break
+            # Text frames are ignored for now — reserved for future control messages.
+    except WebSocketDisconnect:
+        pass
+    finally:
+        audio_relay.disconnect(room_code, player_id)
+
 
 # Include router
 app.include_router(api_router)

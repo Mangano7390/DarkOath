@@ -576,6 +576,7 @@ const GameInterface = ({ roomCode }) => {
               {gameState.phase === 'CONSEIL_ROYAUME' && (
                 <ConseilRoyaumePanel
                   gameState={gameState}
+                  roomCode={roomCode}
                   currentPlayerId={currentPlayerId}
                   onSpeakToggle={handleSpeakToggle}
                   speakingPlayers={gameState.speaking_players || []}
