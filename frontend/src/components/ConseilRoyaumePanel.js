@@ -30,6 +30,8 @@ const ConseilRoyaumePanel = ({
   const wsRef = useRef(null);
   const speakingRef = useRef(false);
   const playbackRef = useRef(new Map());
+  const playbackDestRef = useRef(null); // MediaStreamAudioDestinationNode for iOS routing
+  const playbackElRef = useRef(null);   // <audio> sink — routes output to loudspeaker on iOS
 
   useEffect(() => {
     speakingRef.current = isSpeaking;
@@ -48,7 +50,9 @@ const ConseilRoyaumePanel = ({
     buffer.copyToChannel(float32, 0);
     const src = ctx.createBufferSource();
     src.buffer = buffer;
-    src.connect(ctx.destination);
+    // Route through MediaStream sink if available (iOS loudspeaker fix),
+    // otherwise fall back to the default destination.
+    src.connect(playbackDestRef.current || ctx.destination);
 
     const state = playbackRef.current.get(seat) || { nextTime: 0 };
     const now = ctx.currentTime;
@@ -76,6 +80,14 @@ const ConseilRoyaumePanel = ({
     workletNodeRef.current = null;
     micSourceRef.current = null;
     audioCtxRef.current = null;
+
+    if (playbackElRef.current) {
+      try { playbackElRef.current.pause(); } catch {}
+      try { playbackElRef.current.srcObject = null; } catch {}
+      try { playbackElRef.current.remove(); } catch {}
+      playbackElRef.current = null;
+    }
+    playbackDestRef.current = null;
 
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
@@ -126,6 +138,29 @@ const ConseilRoyaumePanel = ({
       silentSrc.connect(ctx.destination);
       silentSrc.start(0);
     } catch {}
+
+    // iOS loudspeaker fix: when getUserMedia is active, Safari routes audio
+    // output to the earpiece (like a phone call). Piping playback through an
+    // <audio> element's MediaStream keeps it on the loudspeaker.
+    try {
+      const dest = ctx.createMediaStreamDestination();
+      const audioEl = document.createElement('audio');
+      audioEl.autoplay = true;
+      audioEl.playsInline = true;
+      audioEl.setAttribute('playsinline', '');
+      audioEl.setAttribute('webkit-playsinline', '');
+      audioEl.muted = false;
+      audioEl.volume = 1.0;
+      audioEl.srcObject = dest.stream;
+      audioEl.style.display = 'none';
+      document.body.appendChild(audioEl);
+      // Must await play() inside the user gesture for iOS
+      try { await audioEl.play(); } catch (e) { console.warn('[voice] audio.play:', e); }
+      playbackDestRef.current = dest;
+      playbackElRef.current = audioEl;
+    } catch (e) {
+      console.warn('[voice] loudspeaker sink setup failed, fallback to ctx.destination:', e);
+    }
 
     if (!ctx.audioWorklet) {
       throw new Error('AudioWorklet non supporté (iOS < 14.5 ou navigateur ancien)');
