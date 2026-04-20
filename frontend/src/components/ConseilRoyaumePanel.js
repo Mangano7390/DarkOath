@@ -1,7 +1,49 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Mic, MicOff } from 'lucide-react';
+import { Mic, MicOff, Clock } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+
+const ConseilTimer = ({ startTime }) => {
+  const [timeLeft, setTimeLeft] = useState(30);
+  useEffect(() => {
+    if (!startTime) return;
+    const tick = () => {
+      const elapsed = Date.now() / 1000 - startTime;
+      setTimeLeft(Math.max(0, Math.ceil(30 - elapsed)));
+    };
+    tick();
+    const id = setInterval(tick, 250);
+    return () => clearInterval(id);
+  }, [startTime]);
+  const urgent = timeLeft <= 10;
+  return (
+    <div
+      className="flex items-center justify-center gap-3 p-4 rounded-lg"
+      style={{
+        background: urgent ? 'rgba(127, 29, 29, 0.55)' : 'rgba(120, 53, 15, 0.35)',
+        border: `2px solid ${urgent ? '#dc2626' : '#c7a869'}`,
+        boxShadow: urgent ? '0 0 18px rgba(220, 38, 38, 0.55)' : '0 0 10px rgba(199, 168, 105, 0.25)',
+        animation: urgent ? 'pulse 1s infinite' : 'none',
+      }}
+    >
+      <Clock className={`h-6 w-6 ${urgent ? 'text-red-200' : 'text-amber-200'}`} />
+      <div className="flex flex-col items-center leading-tight">
+        <span
+          className="uppercase tracking-widest text-[10px] opacity-80"
+          style={{ fontFamily: "'Cinzel', serif", color: urgent ? '#fecaca' : '#e8d9a8' }}
+        >
+          Conseil du Royaume
+        </span>
+        <span
+          className="font-bold tabular-nums"
+          style={{ fontSize: '2rem', color: urgent ? '#fecaca' : '#e8d9a8', fontFamily: "'Cinzel', serif" }}
+        >
+          {timeLeft}s
+        </span>
+      </div>
+    </div>
+  );
+};
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
 const WS_BASE = BACKEND_URL.replace(/^http/, 'ws');
@@ -285,6 +327,10 @@ const ConseilRoyaumePanel = ({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {gameState?.phase === 'CONSEIL_ROYAUME' && gameState?.conseil_royaume_start_time && (
+          <ConseilTimer startTime={gameState.conseil_royaume_start_time} />
+        )}
+
         <div className="text-center p-3 rounded-lg" style={{ background: 'rgba(199, 168, 105, 0.1)', border: '1px solid rgba(199, 168, 105, 0.25)' }}>
           <p className="text-amber-200 text-sm">
             {micInitialized
