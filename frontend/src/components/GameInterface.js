@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Crown, Sword, Shield, Users, Clock, Vote, Gavel, Eye, Skull, Send, MessageCircle, Zap } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Crown, Sword, Shield, Users, Clock, Vote, Gavel, Eye, Skull, Send, MessageCircle, Zap, Volume2, VolumeX } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
@@ -219,6 +219,50 @@ const GovernmentBadge = ({ label, icon, seat, players, color }) => {
   );
 };
 
+// Music control: toggle + volume slider (expandable)
+const MusicControl = ({ enabled, volume, onToggle, onVolume }) => {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div
+      className="flex items-center gap-2 px-2 py-1.5 rounded-full"
+      style={{
+        background: 'rgba(20, 14, 8, 0.7)',
+        border: '1px solid rgba(199, 168, 105, 0.4)',
+      }}
+    >
+      <button
+        onClick={onToggle}
+        className="flex items-center justify-center rounded-full transition-colors"
+        style={{ width: 28, height: 28, color: enabled ? '#e8d9a8' : '#8a6d3a' }}
+        title={enabled ? 'Couper la musique' : 'Activer la musique'}
+        aria-label={enabled ? 'Couper la musique' : 'Activer la musique'}
+      >
+        {enabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+      </button>
+      <button
+        onClick={() => setExpanded(v => !v)}
+        className="text-[10px] uppercase tracking-widest opacity-70 hover:opacity-100"
+        style={{ color: '#e8d9a8', fontFamily: "'Cinzel', serif" }}
+        aria-label="Régler le volume"
+      >
+        Musique
+      </button>
+      {expanded && (
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.05"
+          value={volume}
+          onChange={(e) => onVolume(parseFloat(e.target.value))}
+          className="w-20 accent-amber-500"
+          aria-label="Volume de la musique"
+        />
+      )}
+    </div>
+  );
+};
+
 // Main Game Interface Component
 const GameInterface = ({ roomCode }) => {
   const { t } = useTranslation();
@@ -238,18 +282,47 @@ const GameInterface = ({ roomCode }) => {
   const currentPlayerName = localStorage.getItem('playerName') || 'Joueur';
   
   // Multiplayer game music - Morceau 2
+  const musicRef = useRef(null);
+  const [musicEnabled, setMusicEnabled] = useState(() => {
+    const saved = localStorage.getItem('darkoath_music_enabled');
+    return saved === null ? true : saved === 'true';
+  });
+  const [musicVolume, setMusicVolume] = useState(() => {
+    const saved = localStorage.getItem('darkoath_music_volume');
+    return saved === null ? 0.2 : parseFloat(saved);
+  });
+
   useEffect(() => {
     const audio = new Audio('https://customer-assets.emergentagent.com/job_1a735b74-0d1b-4cfc-aa0c-5d6b585ff99b/artifacts/249imtyo_Morceau%202.mp3');
     audio.loop = true;
-    audio.volume = 0.2;
-    
-    // Auto-play game music
-    audio.play().catch(console.error);
-    
+    audio.volume = musicVolume;
+    musicRef.current = audio;
+
+    if (musicEnabled) {
+      audio.play().catch(console.error);
+    }
+
     return () => {
       audio.pause();
+      musicRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    if (!musicRef.current) return;
+    musicRef.current.volume = musicVolume;
+    localStorage.setItem('darkoath_music_volume', String(musicVolume));
+  }, [musicVolume]);
+
+  useEffect(() => {
+    if (!musicRef.current) return;
+    if (musicEnabled) {
+      musicRef.current.play().catch(console.error);
+    } else {
+      musicRef.current.pause();
+    }
+    localStorage.setItem('darkoath_music_enabled', String(musicEnabled));
+  }, [musicEnabled]);
   
   // Detect "Colère du Peuple" trigger
   useEffect(() => {
@@ -531,6 +604,13 @@ const GameInterface = ({ roomCode }) => {
                 color="#8a6d3a"
               />
             )}
+
+            <MusicControl
+              enabled={musicEnabled}
+              volume={musicVolume}
+              onToggle={() => setMusicEnabled(v => !v)}
+              onVolume={setMusicVolume}
+            />
           </div>
         </div>
       </div>
