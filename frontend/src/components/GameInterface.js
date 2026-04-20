@@ -56,7 +56,7 @@ const formatPhaseName = (phase) => {
     case 'LEGIS_REGENT':
       return 'Législatif Roi';
     case 'LEGIS_CHAMBELLAN':
-      return 'Législatif Chancelier';
+      return 'Législatif Conseiller';
     case 'CONSEIL_ROYAUME':
       return 'Conseil du Royaume';
     default:
@@ -115,7 +115,7 @@ const RoleCard = ({ role, teammates = [], players = [] }) => {
   const info = {
     LOYAL:       { name: 'Fidèle',  icon: '🛡️', color: '#3b82f6', glow: 'rgba(59, 130, 246, 0.5)', bg: 'rgba(30, 58, 138, 0.3)', tagline: 'Défendre la Couronne', desc: 'Démasquez les Traîtres et exécutez le Tyran.' },
     CONJURE:     { name: 'Traître', icon: '⚔️', color: '#dc2626', glow: 'rgba(220, 38, 38, 0.5)',  bg: 'rgba(127, 29, 29, 0.3)', tagline: 'Conspirer dans l\'ombre', desc: 'Sabotez la Couronne et installez le Tyran au pouvoir.' },
-    USURPATEUR:  { name: 'Tyran',   icon: '👑', color: '#a855f7', glow: 'rgba(168, 85, 247, 0.5)', bg: 'rgba(88, 28, 135, 0.3)', tagline: 'Régner par le chaos', desc: 'Faites-vous élire Chancelier après 3 Décrets de Trahison.' },
+    USURPATEUR:  { name: 'Tyran',   icon: '👑', color: '#a855f7', glow: 'rgba(168, 85, 247, 0.5)', bg: 'rgba(88, 28, 135, 0.3)', tagline: 'Régner par le chaos', desc: 'Faites-vous élire Conseiller après 3 Décrets de Trahison.' },
   }[role] || null;
 
   if (!info) return null;
@@ -524,7 +524,7 @@ const GameInterface = ({ roomCode }) => {
             )}
             {gameState.nominee_seat && (gameState.phase === 'VOTE' || gameState.phase === 'LEGIS_CHAMBELLAN') && (
               <GovernmentBadge
-                label="Chancelier"
+                label="Conseiller"
                 icon="🗝️"
                 seat={gameState.nominee_seat}
                 players={gameState.players || []}

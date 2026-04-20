@@ -6,8 +6,8 @@ import { Badge } from './ui/badge';
 
 const LegislativePanel = ({ phase, mySeat, regentSeat, chambellanSeat, players, cards, onDiscard }) => {
   const isRegent = mySeat === regentSeat;
-  const isChancelier = mySeat === chambellanSeat;
-  const isActivePlayer = (phase === 'LEGIS_REGENT' && isRegent) || (phase === 'LEGIS_CHAMBELLAN' && isChancelier);
+  const isConseiller = mySeat === chambellanSeat;
+  const isActivePlayer = (phase === 'LEGIS_REGENT' && isRegent) || (phase === 'LEGIS_CHAMBELLAN' && isConseiller);
   
   const regent = players.find(p => p.seat === regentSeat);
   const chambellan = players.find(p => p.seat === chambellanSeat);
@@ -17,7 +17,7 @@ const LegislativePanel = ({ phase, mySeat, regentSeat, chambellanSeat, players, 
       case 'LEGIS_REGENT':
         return 'Session Législative - Roi';
       case 'LEGIS_CHAMBELLAN':
-        return 'Session Législative - Chancelier';
+        return 'Session Législative - Conseiller';
       default:
         return 'Session Législative';
     }
@@ -27,12 +27,12 @@ const LegislativePanel = ({ phase, mySeat, regentSeat, chambellanSeat, players, 
     switch(phase) {
       case 'LEGIS_REGENT':
         return isRegent 
-          ? 'Vous devez défausser une carte et passer les 2 restantes au Chancelier'
+          ? 'Vous devez défausser une carte et passer les 2 restantes au Conseiller'
           : `Le Roi (${regent?.name}) examine 3 cartes et en défausse une`;
       case 'LEGIS_CHAMBELLAN':
-        return isChancelier
+        return isConseiller
           ? 'Choisissez une carte à adopter et défaussez l\'autre'
-          : `Le Chancelier (${chambellan?.name}) choisit la carte à adopter`;
+          : `Le Conseiller (${chambellan?.name}) choisit la carte à adopter`;
       default:
         return 'Session législative en cours';
     }
@@ -75,7 +75,7 @@ const LegislativePanel = ({ phase, mySeat, regentSeat, chambellanSeat, players, 
           {/* Role Info */}
           <div className="bg-amber-100 p-3 rounded-lg">
             <p className="text-amber-800 font-medium mb-2">
-              {phase === 'LEGIS_REGENT' ? '👑 Vous êtes le Roi' : '🏛️ Vous êtes le Chancelier'}
+              {phase === 'LEGIS_REGENT' ? '👑 Vous êtes le Roi' : '🏛️ Vous êtes le Conseiller'}
             </p>
             <p className="text-amber-700 text-sm">
               {getPhaseDescription()}
@@ -135,7 +135,7 @@ const LegislativePanel = ({ phase, mySeat, regentSeat, chambellanSeat, players, 
                 <p className="text-xs text-gray-600">Siège {regentSeat}</p>
               </div>
               <div className="text-center">
-                <Badge variant="secondary" className="mb-1">Chancelier</Badge>
+                <Badge variant="secondary" className="mb-1">Conseiller</Badge>
                 <p className="text-sm font-medium">{chambellan?.name}</p>
                 <p className="text-xs text-gray-600">Siège {chambellanSeat}</p>
               </div>
@@ -146,8 +146,8 @@ const LegislativePanel = ({ phase, mySeat, regentSeat, chambellanSeat, players, 
           <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
             <p className="text-xs text-blue-700">
               <strong>Règle :</strong> {phase === 'LEGIS_REGENT' 
-                ? 'Le Roi tire 3 cartes, en défausse 1 secrètement, et passe les 2 restantes au Chancelier.'
-                : 'Le Chancelier reçoit 2 cartes du Roi, en adopte 1, et défausse l\'autre secrètement.'
+                ? 'Le Roi tire 3 cartes, en défausse 1 secrètement, et passe les 2 restantes au Conseiller.'
+                : 'Le Conseiller reçoit 2 cartes du Roi, en adopte 1, et défausse l\'autre secrètement.'
               }
             </p>
           </div>

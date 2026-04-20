@@ -202,8 +202,8 @@ const MedievalGameRoom = ({ roomCode }) => {
   const renderPlayerSeat = (player, index) => {
     const isCurrentPlayer = player.id === currentPlayerId;
     const isRegent = player.seat === gameState?.regent_seat;
-    const isChancelier = player.seat === gameState?.nominee_seat;
-    const isActive = isRegent || isChancelier;
+    const isConseiller = player.seat === gameState?.nominee_seat;
+    const isActive = isRegent || isConseiller;
 
     return (
       <div key={player.id} className={`player-seat ${isActive ? 'player-active' : ''} ${!player.alive ? 'player-dead' : ''}`}>
@@ -217,8 +217,8 @@ const MedievalGameRoom = ({ roomCode }) => {
               👑
             </div>
           )}
-          {isChancelier && (
-            <div className="role-indicator role-chambellan" title="Chancelier">
+          {isConseiller && (
+            <div className="role-indicator role-chambellan" title="Conseiller">
               🏛️
             </div>
           )}
@@ -394,7 +394,7 @@ const MedievalGameRoom = ({ roomCode }) => {
         {/* Phase-specific actions rendered as wax seals */}
         {gameState.phase === 'NOMINATION' && currentPlayer?.seat === gameState.regent_seat && (
           <div className="text-center">
-            <p className="text-yellow-300 font-cinzel mb-4">Choisissez votre Chancelier</p>
+            <p className="text-yellow-300 font-cinzel mb-4">Choisissez votre Conseiller</p>
             {/* This would integrate with NominationPanel logic */}
           </div>
         )}

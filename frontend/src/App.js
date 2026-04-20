@@ -175,7 +175,7 @@ const LandingPage = () => {
                   Dark Oath est un jeu de <strong>déduction sociale</strong> pour <strong>5 à 10 joueurs</strong>. Deux camps s'affrontent en secret&nbsp;: les <strong className="text-blue-300">Fidèles</strong> défendent la Couronne, les <strong className="text-red-400">Traîtres</strong> et leur <strong className="text-purple-300">Tyran</strong> la font tomber.
                 </p>
                 <p className="text-amber-100/85 leading-relaxed" style={{ fontFamily: "'IM Fell English', serif" }}>
-                  À chaque tour, un <strong>Roi</strong> choisit un <strong>Chancelier</strong>, la table vote pour les approuver, puis ils adoptent un décret. Les décrets remplissent deux pistes&nbsp;: l'une mène à la victoire des Fidèles, l'autre à celle des Traîtres. Mentir, démasquer, manipuler&nbsp;: tout est permis.
+                  À chaque tour, un <strong>Roi</strong> choisit un <strong>Conseiller</strong>, la table vote pour les approuver, puis ils adoptent un décret. Les décrets remplissent deux pistes&nbsp;: l'une mène à la victoire des Fidèles, l'autre à celle des Traîtres. Mentir, démasquer, manipuler&nbsp;: tout est permis.
                 </p>
               </section>
 
@@ -195,12 +195,12 @@ const LandingPage = () => {
                   </div>
                   <div className="role-card role-card--traitre p-5">
                     <h4 className="font-bold text-red-300 mb-2 text-lg" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.1em' }}>⚔️ TRAÎTRE</h4>
-                    <p className="text-sm text-amber-100/90 mb-2 leading-relaxed"><strong>But&nbsp;:</strong> saboter la Couronne en adoptant 6 Décrets de Trahison, ou en faisant élire le Tyran au poste de Chancelier après 3+ Décrets de Trahison.</p>
+                    <p className="text-sm text-amber-100/90 mb-2 leading-relaxed"><strong>But&nbsp;:</strong> saboter la Couronne en adoptant 6 Décrets de Trahison, ou en faisant élire le Tyran au poste de Conseiller après 3+ Décrets de Trahison.</p>
                     <p className="text-sm text-amber-100/75 leading-relaxed"><strong>Ce que vous savez&nbsp;:</strong> l'identité des autres Traîtres <strong>et</strong> du Tyran. Votre mission&nbsp;: semer le doute sans vous faire démasquer.</p>
                   </div>
                   <div className="role-card role-card--tyran p-5">
                     <h4 className="font-bold text-purple-300 mb-2 text-lg" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.1em' }}>👑 TYRAN</h4>
-                    <p className="text-sm text-amber-100/90 mb-2 leading-relaxed"><strong>But&nbsp;:</strong> être élu Chancelier après que 3 Décrets de Trahison ont été adoptés (victoire immédiate avec les Traîtres).</p>
+                    <p className="text-sm text-amber-100/90 mb-2 leading-relaxed"><strong>But&nbsp;:</strong> être élu Conseiller après que 3 Décrets de Trahison ont été adoptés (victoire immédiate avec les Traîtres).</p>
                     <p className="text-sm text-amber-100/75 leading-relaxed"><strong>Ce que vous savez&nbsp;:</strong>
                       {' '}À <strong>5-6 joueurs</strong>, vous connaissez les Traîtres. À <strong>7+ joueurs</strong>, vous êtes seul — les Traîtres savent qui vous êtes, mais vous les ignorez. Agissez comme un Fidèle pour passer inaperçu jusqu'au bon moment.
                     </p>
@@ -247,10 +247,10 @@ const LandingPage = () => {
                 </h3>
                 <div className="space-y-3">
                   {[
-                    { num: '1', title: 'Nomination', text: "Le Roi (désigné à tour de rôle autour de la table) propose un Chancelier parmi les joueurs éligibles." },
+                    { num: '1', title: 'Nomination', text: "Le Roi (désigné à tour de rôle autour de la table) propose un Conseiller parmi les joueurs éligibles." },
                     { num: '2', title: 'Vote', text: "Tous les joueurs vivants votent OUI ou NON à la majorité simple. Si OUI, le gouvernement est formé. Si NON ou égalité, on passe au joueur suivant et la Piste de Crise avance d'une case." },
-                    { num: '3', title: 'Législation — le Roi', text: "Le Roi pioche 3 décrets, en défausse 1 secrètement, et transmet les 2 restants au Chancelier." },
-                    { num: '4', title: 'Législation — le Chancelier', text: "Le Chancelier défausse 1 décret en secret et révèle le dernier. Ce décret est appliqué et avance la piste correspondante (Fidèles ou Trahison)." },
+                    { num: '3', title: 'Législation — le Roi', text: "Le Roi pioche 3 décrets, en défausse 1 secrètement, et transmet les 2 restants au Conseiller." },
+                    { num: '4', title: 'Législation — le Conseiller', text: "Le Conseiller défausse 1 décret en secret et révèle le dernier. Ce décret est appliqué et avance la piste correspondante (Fidèles ou Trahison)." },
                     { num: '5', title: 'Pouvoir du Roi (si déclenché)', text: "Dès le 2ᵉ puis le 4ᵉ Décret de Trahison posé sur la piste des Traîtres, le Roi débloque un pouvoir (voir section Pouvoirs)." },
                     { num: '6', title: 'Conseil du Royaume', text: "Après chaque décret révélé, 30 secondes de discussion en vocal ouvert. Chacun peut s'exprimer, accuser, se justifier." },
                   ].map((step) => (
@@ -294,12 +294,12 @@ const LandingPage = () => {
                     <h4 className="font-bold text-red-300 mb-2" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' }}>⚔️ TRAÎTRES gagnent si</h4>
                     <ul className="text-sm text-amber-100/85 leading-relaxed space-y-1 list-disc list-inside">
                       <li>6 Décrets de Trahison adoptés, <strong>ou</strong></li>
-                      <li>le Tyran est élu Chancelier après 3+ Trahison.</li>
+                      <li>le Tyran est élu Conseiller après 3+ Trahison.</li>
                     </ul>
                   </div>
                   <div className="role-card role-card--tyran p-5">
                     <h4 className="font-bold text-purple-300 mb-2" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' }}>👑 TYRAN gagne</h4>
-                    <p className="text-sm text-amber-100/85 leading-relaxed">avec les Traîtres — sa victoire personnelle est d'être élu Chancelier après 3 Décrets de Trahison.</p>
+                    <p className="text-sm text-amber-100/85 leading-relaxed">avec les Traîtres — sa victoire personnelle est d'être élu Conseiller après 3 Décrets de Trahison.</p>
                   </div>
                 </div>
               </section>
@@ -367,7 +367,7 @@ const LandingPage = () => {
                     <ul className="text-sm space-y-2 list-disc list-inside text-amber-100/85">
                       <li>Jouez la normalité tant que votre camp ne domine pas la piste.</li>
                       <li>Accusez un Fidèle pour détourner les soupçons.</li>
-                      <li>À 3 Trahison, faites élire le Tyran au poste de Chancelier.</li>
+                      <li>À 3 Trahison, faites élire le Tyran au poste de Conseiller.</li>
                       <li>Le Tyran (7+ joueurs) doit se taire&nbsp;: il ignore qui sont ses alliés.</li>
                     </ul>
                   </div>
@@ -381,9 +381,9 @@ const LandingPage = () => {
                 </h3>
                 <ol className="space-y-2 text-sm md:text-base text-amber-100/90 leading-relaxed list-decimal list-inside" style={{ fontFamily: "'IM Fell English', serif" }}>
                   <li>Chaque joueur reçoit un rôle secret&nbsp;: <strong className="text-blue-300">Fidèle</strong>, <strong className="text-red-300">Traître</strong>, ou <strong className="text-purple-300">Tyran</strong>.</li>
-                  <li>À chaque tour, un Roi nomme un Chancelier, la table vote, puis un décret est adopté.</li>
+                  <li>À chaque tour, un Roi nomme un Conseiller, la table vote, puis un décret est adopté.</li>
                   <li>5 Décrets Loyaux = Fidèles gagnent. 6 Décrets de Trahison = Traîtres gagnent.</li>
-                  <li>Après 3 Trahison, élire le Tyran Chancelier fait gagner le camp du Mal <strong>immédiatement</strong>.</li>
+                  <li>Après 3 Trahison, élire le Tyran Conseiller fait gagner le camp du Mal <strong>immédiatement</strong>.</li>
                   <li>Exécuter le Tyran fait gagner les Fidèles. Mentez, déduisez, survivez.</li>
                 </ol>
               </section>

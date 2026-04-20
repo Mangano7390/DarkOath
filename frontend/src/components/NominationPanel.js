@@ -23,7 +23,7 @@ const NominationPanel = ({ meSeat, regentSeat, players, prevGovernment, disgrace
               En attente de la nomination du Roi
             </p>
             <p className="text-blue-600 text-sm">
-              Le Roi (Siège {regentSeat}) doit choisir un Chancelier
+              Le Roi (Siège {regentSeat}) doit choisir un Conseiller
             </p>
           </div>
         </CardContent>
@@ -59,7 +59,7 @@ const NominationPanel = ({ meSeat, regentSeat, players, prevGovernment, disgrace
       <CardHeader>
         <CardTitle className="text-lg flex items-center">
           <Crown className="h-5 w-5 mr-2 text-amber-600" />
-          Nomination du Chancelier
+          Nomination du Conseiller
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -69,7 +69,7 @@ const NominationPanel = ({ meSeat, regentSeat, players, prevGovernment, disgrace
               👑 Vous êtes le Roi !
             </p>
             <p className="text-amber-700 text-sm">
-              Choisissez un joueur pour être votre Chancelier. Ensemble, vous formerez le gouvernement.
+              Choisissez un joueur pour être votre Conseiller. Ensemble, vous formerez le gouvernement.
             </p>
           </div>
           
@@ -108,7 +108,7 @@ const NominationPanel = ({ meSeat, regentSeat, players, prevGovernment, disgrace
             <div className="bg-gray-100 p-3 rounded-lg">
               <p className="text-gray-700 text-sm">
                 <strong>Gouvernement précédent :</strong> Roi (Siège {prevGovernment.regent}), 
-                Chancelier (Siège {prevGovernment.chambellan}) - Exclus de la nomination
+                Conseiller (Siège {prevGovernment.chambellan}) - Exclus de la nomination
               </p>
             </div>
           )}

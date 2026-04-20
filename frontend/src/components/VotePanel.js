@@ -41,7 +41,7 @@ const VotePanel = ({ players, regentSeat, nomineeSeat, votes, myVote, mySeat, on
                   <p className="text-xs text-gray-600">Siège {regentSeat}</p>
                 </div>
                 <div className="text-center">
-                  <Badge variant="secondary" className="mb-1">Chancelier</Badge>
+                  <Badge variant="secondary" className="mb-1">Conseiller</Badge>
                   <p className="font-medium">{nominee?.name}</p>
                   <p className="text-xs text-gray-600">Siège {nomineeSeat}</p>
                 </div>
