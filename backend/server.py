@@ -129,26 +129,29 @@ class WebSocketManager:
     def get_game_state(self, room_code: str) -> Optional[GameState]:
         return self.game_states.get(room_code)
 
-    def add_player(self, room_code: str, player_id: str, player_name: str) -> bool:
+    def add_player(self, room_code: str, player_id: str, player_name: str) -> tuple[bool, str]:
         game_state = self.get_game_state(room_code)
         if not game_state:
-            return False
-        
-        # Check if player already exists first (allow reconnection even if room is full)
+            return False, "room_not_found"
+
+        # Allow reconnection by id even if room is full / name matches the caller
         for p in game_state.players:
             if p.id == player_id:
                 p.connected = True
-                return True
-        
-        # Only check room capacity for new players - now supports up to 10 players
+                return True, "ok"
+
         if len(game_state.players) >= 10:
-            return False
-        
-        # Add new player
+            return False, "room_full"
+
+        # Reject duplicate pseudos (case-insensitive, trimmed)
+        normalized = (player_name or "").strip().lower()
+        if any((p.name or "").strip().lower() == normalized for p in game_state.players):
+            return False, "name_taken"
+
         seat = len(game_state.players) + 1
         player = Player(id=player_id, name=player_name, seat=seat)
         game_state.players.append(player)
-        return True
+        return True, "ok"
 
     def start_game(self, room_code: str) -> bool:
         game_state = self.get_game_state(room_code)
@@ -346,9 +349,14 @@ async def get_room(room_code: str):
 
 @api_router.post("/rooms/{room_code}/join")
 async def join_room(room_code: str, player_id: str, player_name: str):
-    success = manager.add_player(room_code, player_id, player_name)
+    success, reason = manager.add_player(room_code, player_id, player_name)
     if not success:
-        raise HTTPException(status_code=400, detail="Cannot join room")
+        detail = {
+            "room_not_found": "Room not found",
+            "room_full": "Room is full",
+            "name_taken": "Ce pseudo est déjà pris dans cette partie",
+        }.get(reason, "Cannot join room")
+        raise HTTPException(status_code=400, detail=detail)
     
     game_state = manager.get_game_state(room_code)
     await manager.broadcast_to_room(room_code, {

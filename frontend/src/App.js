@@ -528,6 +528,11 @@ const Lobby = ({ roomCode }) => {
         console.log('Join room response:', response.data);
       } catch (error) {
         console.error('Error joining room:', error);
+        const detail = error?.response?.data?.detail;
+        if (detail) {
+          alert(detail);
+        }
+        navigate('/');
       }
     };
 
