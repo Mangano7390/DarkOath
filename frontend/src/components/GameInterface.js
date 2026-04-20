@@ -655,13 +655,18 @@ const GameInterface = ({ roomCode }) => {
           <div className="w-full max-w-md">
             <MedievalTable
               players={gameState.players?.map(player => ({
+                id: player.id,
                 seat: player.seat,
                 name: player.name + (player.id === currentPlayerId ? ' (Vous)' : ''),
-                active: player.seat === gameState.regent_seat || player.seat === gameState.nominee_seat
+                alive: player.alive,
               })) || []}
               size={360}
               disgracedPlayerSeat={gameState.disgraced_player_seat}
               speakingPlayers={gameState.speaking_players || []}
+              regentSeat={gameState.regent_seat}
+              nomineeSeat={gameState.nominee_seat}
+              votedPlayerIds={Object.keys(gameState.votes || {})}
+              phase={gameState.phase}
             />
           </div>
         </div>
@@ -940,15 +945,20 @@ const GameInterface = ({ roomCode }) => {
               
               {/* Compact Table */}
               <div className="w-full max-w-xs">
-                <MedievalTable 
+                <MedievalTable
                   players={gameState.players?.map(player => ({
+                    id: player.id,
                     seat: player.seat,
                     name: player.name.length > 8 ? player.name.substring(0, 8) + '...' : player.name,
-                    active: player.seat === gameState.regent_seat || player.seat === gameState.nominee_seat
+                    alive: player.alive,
                   })) || []}
                   size={240}
                   disgracedPlayerSeat={gameState.disgraced_player_seat}
                   speakingPlayers={gameState.speaking_players || []}
+                  regentSeat={gameState.regent_seat}
+                  nomineeSeat={gameState.nominee_seat}
+                  votedPlayerIds={Object.keys(gameState.votes || {})}
+                  phase={gameState.phase}
                 />
               </div>
             </div>

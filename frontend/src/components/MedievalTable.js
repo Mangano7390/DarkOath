@@ -1,10 +1,22 @@
 import React from "react";
 
-const MedievalTable = ({ players, size = 500, disgracedPlayerSeat = null, speakingPlayers = [] }) => {
+const MedievalTable = ({
+  players,
+  size = 500,
+  disgracedPlayerSeat = null,
+  speakingPlayers = [],
+  regentSeat = null,
+  nomineeSeat = null,
+  votedPlayerIds = [],
+  phase = null,
+}) => {
+  const count = Math.max(players?.length || 0, 1);
   const radius = size / 2 - 55;
   const tableRadius = size / 3;
   const cx = size / 2;
   const cy = size / 2;
+  const votedSet = new Set(votedPlayerIds);
+  const showVoteSeals = phase === 'VOTE';
 
   return (
     <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} className="mx-auto">
@@ -40,53 +52,17 @@ const MedievalTable = ({ players, size = 500, disgracedPlayerSeat = null, speaki
       <circle cx={cx} cy={cy} r={tableRadius + 10} fill="#000" opacity={0.6} />
 
       {/* Wooden table */}
-      <circle
-        cx={cx}
-        cy={cy}
-        r={tableRadius}
-        fill="url(#tableWood)"
-        stroke="#c7a869"
-        strokeWidth={3}
-      />
-
-      {/* Inner golden trim */}
-      <circle
-        cx={cx}
-        cy={cy}
-        r={tableRadius - 14}
-        fill="none"
-        stroke="#8a6d3a"
-        strokeWidth={1.5}
-        opacity={0.8}
-      />
-      <circle
-        cx={cx}
-        cy={cy}
-        r={tableRadius - 22}
-        fill="none"
-        stroke="#c7a869"
-        strokeWidth={0.8}
-        opacity={0.5}
-      />
+      <circle cx={cx} cy={cy} r={tableRadius} fill="url(#tableWood)" stroke="#c7a869" strokeWidth={3} />
+      <circle cx={cx} cy={cy} r={tableRadius - 14} fill="none" stroke="#8a6d3a" strokeWidth={1.5} opacity={0.8} />
+      <circle cx={cx} cy={cy} r={tableRadius - 22} fill="none" stroke="#c7a869" strokeWidth={0.8} opacity={0.5} />
 
       {/* Central brazier glow */}
       <circle cx={cx} cy={cy} r={tableRadius - 30} fill="url(#brazierGlow)">
         <animate attributeName="opacity" values="0.75;1;0.75" dur="3s" repeatCount="indefinite" />
       </circle>
-
-      {/* Brazier icon */}
-      <text
-        x={cx}
-        y={cy - 6}
-        textAnchor="middle"
-        dominantBaseline="middle"
-        fontSize={Math.max(28, size / 14)}
-        filter="url(#glow)"
-      >
+      <text x={cx} y={cy - 6} textAnchor="middle" dominantBaseline="middle" fontSize={Math.max(28, size / 14)} filter="url(#glow)">
         🔥
       </text>
-
-      {/* Title */}
       <text
         x={cx}
         y={cy + size / 16}
@@ -101,52 +77,31 @@ const MedievalTable = ({ players, size = 500, disgracedPlayerSeat = null, speaki
         DARK OATH
       </text>
 
-      {Array.from({ length: 10 }).map((_, i) => {
-        const angle = (i / 10) * 2 * Math.PI - Math.PI / 2;
+      {players.map((player, i) => {
+        const angle = (i / count) * 2 * Math.PI - Math.PI / 2;
         const x = cx + radius * Math.cos(angle);
         const y = cy + radius * Math.sin(angle);
 
-        const player = players.find((p) => p.seat === i + 1);
-        const name = player?.name || `Siège ${i + 1}`;
+        const seat = player.seat;
+        const name = player.name || `Siège ${seat}`;
         const seatSize = Math.max(38, size / 13);
-        const isDisgraced = disgracedPlayerSeat === i + 1;
-        const isSpeaking = speakingPlayers.includes(i + 1);
-        const isActive = player?.active;
+        const isDisgraced = disgracedPlayerSeat === seat;
+        const isSpeaking = speakingPlayers.includes(seat);
+        const isRegent = regentSeat === seat;
+        const isNominee = nomineeSeat === seat;
+        const isActive = isRegent || isNominee;
+        const isDead = player.alive === false;
+        const hasVoted = showVoteSeals && player.id && votedSet.has(player.id) && !isRegent && !isNominee;
 
         return (
-          <g key={i} transform={`translate(${x}, ${y})`}>
-            {/* Speaking halo — warm candle glow */}
-            {isSpeaking && (
+          <g key={seat} transform={`translate(${x}, ${y})`} opacity={isDead ? 0.35 : 1}>
+            {isSpeaking && !isDead && (
               <>
-                <circle
-                  cx={0}
-                  cy={0}
-                  r={seatSize / 2 + 10}
-                  fill="#ffb347"
-                  opacity={0.25}
-                >
-                  <animate
-                    attributeName="opacity"
-                    values="0.15;0.4;0.15"
-                    dur="1.4s"
-                    repeatCount="indefinite"
-                  />
+                <circle cx={0} cy={0} r={seatSize / 2 + 10} fill="#ffb347" opacity={0.25}>
+                  <animate attributeName="opacity" values="0.15;0.4;0.15" dur="1.4s" repeatCount="indefinite" />
                 </circle>
-                <circle
-                  cx={0}
-                  cy={0}
-                  r={seatSize / 2 + 5}
-                  fill="none"
-                  stroke="#ffb347"
-                  strokeWidth={2}
-                  opacity={0.9}
-                >
-                  <animate
-                    attributeName="opacity"
-                    values="0.5;1;0.5"
-                    dur="1.4s"
-                    repeatCount="indefinite"
-                  />
+                <circle cx={0} cy={0} r={seatSize / 2 + 5} fill="none" stroke="#ffb347" strokeWidth={2} opacity={0.9}>
+                  <animate attributeName="opacity" values="0.5;1;0.5" dur="1.4s" repeatCount="indefinite" />
                 </circle>
               </>
             )}
@@ -175,49 +130,105 @@ const MedievalTable = ({ players, size = 500, disgracedPlayerSeat = null, speaki
               stroke={
                 isDisgraced ? "#6b4a28" :
                 isSpeaking ? "#ffb347" :
+                isRegent ? "#f4d88f" :
+                isNominee ? "#c7a869" :
                 isActive ? "#f4d88f" : "#8a6d3a"
               }
               strokeWidth={isSpeaking || isActive ? 2.5 : 1.5}
               opacity={isDisgraced ? 0.45 : 1}
             />
 
+            {/* Role crown on Roi */}
+            {isRegent && !isDead && (
+              <text
+                x={-seatSize / 2 - 4}
+                y={-seatSize / 2 - 4}
+                textAnchor="middle"
+                fontSize={Math.max(18, size / 20)}
+                filter="url(#glow)"
+              >
+                👑
+              </text>
+            )}
+
+            {/* Key icon on Conseiller */}
+            {isNominee && !isRegent && !isDead && (
+              <text
+                x={-seatSize / 2 - 4}
+                y={-seatSize / 2 - 4}
+                textAnchor="middle"
+                fontSize={Math.max(16, size / 22)}
+                filter="url(#glow)"
+              >
+                🗝️
+              </text>
+            )}
+
+            {/* Voted seal (during VOTE phase only — value hidden) */}
+            {hasVoted && (
+              <g transform={`translate(${seatSize / 2 + 2}, ${-seatSize / 2 - 2})`}>
+                <circle r={Math.max(9, size / 40)} fill="#5b3a1a" stroke="#c7a869" strokeWidth={1.5} />
+                <text
+                  y={Math.max(4, size / 90)}
+                  textAnchor="middle"
+                  fill="#ffeccc"
+                  fontSize={Math.max(11, size / 34)}
+                  fontFamily="'Cinzel', serif"
+                  fontWeight="700"
+                >
+                  ✓
+                </text>
+              </g>
+            )}
+
             {/* Disgraced mark */}
             {isDisgraced && (
-              <text
-                y={-seatSize / 2 - 20}
-                textAnchor="middle"
-                fill="#c7411a"
-                fontSize={Math.max(16, size / 22)}
-              >
+              <text y={-seatSize / 2 - 20} textAnchor="middle" fill="#c7411a" fontSize={Math.max(16, size / 22)}>
                 ⚡
               </text>
             )}
 
-            {/* Seat number */}
-            <text
-              y={6}
-              textAnchor="middle"
-              fill={isActive ? "#1e140a" : (isDisgraced ? "#6b4a28" : "#c7a869")}
-              fontSize={Math.max(12, size / 26)}
-              fontFamily="'Cinzel', serif"
-              fontWeight="700"
-              opacity={isDisgraced ? 0.6 : 1}
-            >
-              {i + 1}
-            </text>
+            {/* Dead mark */}
+            {isDead && (
+              <text
+                y={6}
+                textAnchor="middle"
+                fill="#4a2a1a"
+                fontSize={Math.max(20, size / 16)}
+                fontFamily="'Cinzel', serif"
+              >
+                ✕
+              </text>
+            )}
+
+            {/* Seat number — hide if dead since ✕ takes the spot */}
+            {!isDead && (
+              <text
+                y={6}
+                textAnchor="middle"
+                fill={isActive ? "#1e140a" : (isDisgraced ? "#6b4a28" : "#c7a869")}
+                fontSize={Math.max(12, size / 26)}
+                fontFamily="'Cinzel', serif"
+                fontWeight="700"
+                opacity={isDisgraced ? 0.6 : 1}
+              >
+                {seat}
+              </text>
+            )}
 
             {/* Player name */}
             <text
               y={-seatSize / 2 - 8}
               textAnchor="middle"
-              fill={isDisgraced ? "#6b4a28" : "#e8d9a8"}
+              fill={isDisgraced || isDead ? "#6b4a28" : "#e8d9a8"}
               fontSize={Math.max(10, size / 32)}
               fontFamily="'Cinzel', 'IM Fell English', serif"
               fontWeight="500"
-              opacity={isDisgraced ? 0.6 : 1}
+              opacity={isDisgraced || isDead ? 0.6 : 1}
               style={{ textShadow: "0 1px 2px rgba(0,0,0,0.8)" }}
             >
-              {name.length > 11 ? name.substring(0, 11) + "…" : name}
+              <title>{name}</title>
+              {name.length > 13 ? name.substring(0, 13) + "…" : name}
             </text>
           </g>
         );
