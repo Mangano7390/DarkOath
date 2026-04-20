@@ -725,6 +725,24 @@ async def get_game_state(room_code: str, player_id: str):
         # Chambellan can see the cards during LEGIS_CHAMBELLAN phase
         legislative_cards = game_state.turn.legislative_cards
     
+    # Compute teammates (secret info visible to this player only)
+    teammates = []
+    player_count = len(game_state.players)
+    if player.role == Role.CONJURE:
+        # Conjurés see each other AND the Tyran
+        teammates = [
+            {"seat": p.seat, "name": p.name, "role": p.role}
+            for p in game_state.players
+            if p.id != player.id and p.role in (Role.CONJURE, Role.USURPATEUR)
+        ]
+    elif player.role == Role.USURPATEUR and player_count <= 6:
+        # In 5-6 player games, Tyran knows the Conjurés
+        teammates = [
+            {"seat": p.seat, "name": p.name, "role": p.role}
+            for p in game_state.players
+            if p.id != player.id and p.role == Role.CONJURE
+        ]
+
     return {
         "status": game_state.status,
         "phase": game_state.turn.phase,
@@ -735,6 +753,7 @@ async def get_game_state(room_code: str, player_id: str):
         "tracks": game_state.tracks.dict(),
         "crisis": game_state.tracks.crisis,
         "your_role": player.role if player.role else None,
+        "teammates": teammates,
         "players": [{"id": p.id, "name": p.name, "seat": p.seat, "alive": p.alive, "connected": p.connected} for p in game_state.players],
         "winner": game_state.winner,
         "version": game_state.version,

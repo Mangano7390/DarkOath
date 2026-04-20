@@ -64,36 +64,128 @@ const formatPhaseName = (phase) => {
   }
 };
 
-// Track Component for clean display
-const TrackComponent = ({ title, current, max, color, icon: Icon }) => {
+// Track Component — dark atmospheric style with clear progress
+const TrackComponent = ({ title, current, max, variant }) => {
+  const variants = {
+    fidele:  { accent: '#3b82f6', glow: 'rgba(59, 130, 246, 0.4)', icon: '🛡️', tag: 'Fidèles',  goal: 'Victoire' },
+    traitre: { accent: '#dc2626', glow: 'rgba(220, 38, 38, 0.4)',  icon: '⚔️', tag: 'Trahison', goal: 'Victoire' },
+    crise:   { accent: '#f59e0b', glow: 'rgba(245, 158, 11, 0.4)', icon: '⚡', tag: 'Crise',    goal: 'Adoption auto' },
+  };
+  const v = variants[variant];
+
   return (
-    <Card className="bg-gray-800 border-gray-700 shadow-lg">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg flex items-center space-x-2 text-gray-100">
-          <Icon className={`h-5 w-5 text-${color}-400`} />
-          <span>{title}</span>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="flex space-x-2 mb-3">
-          {Array.from({ length: max }, (_, i) => (
+    <div className="darkoath-panel rounded-lg p-4">
+      <div className="flex items-center justify-between mb-3">
+        <span className="font-bold uppercase tracking-widest text-sm" style={{ fontFamily: "'Cinzel', serif", color: v.accent, textShadow: `0 0 8px ${v.glow}` }}>
+          {v.icon} {title}
+        </span>
+        <span className="text-xs font-bold" style={{ color: v.accent }}>{current}/{max}</span>
+      </div>
+      <div className="flex space-x-1.5 mb-2">
+        {Array.from({ length: max }, (_, i) => {
+          const filled = i < current;
+          return (
             <div
               key={i}
-              className={`w-10 h-10 rounded-lg border-2 flex items-center justify-center text-lg font-bold transition-all ${
-                i < current
-                  ? `bg-${color}-600 border-${color}-500 text-white shadow-md` 
-                  : `border-${color}-300 text-${color}-300 bg-gray-700`
-              }`}
+              className="flex-1 h-9 rounded flex items-center justify-center transition-all"
+              style={{
+                background: filled
+                  ? `linear-gradient(180deg, ${v.accent}, ${v.accent}88)`
+                  : 'rgba(20, 14, 8, 0.6)',
+                border: `1px solid ${filled ? v.accent : 'rgba(199, 168, 105, 0.2)'}`,
+                boxShadow: filled ? `0 0 10px ${v.glow}, inset 0 1px 0 rgba(255,255,255,0.15)` : 'none',
+                fontSize: '0.9rem',
+                opacity: filled ? 1 : 0.4,
+              }}
             >
-              {title === 'Fidèles' ? '🛡️' : title === 'Trahison' ? '⚔️' : '⚡'}
+              {filled ? v.icon : ''}
             </div>
-          ))}
+          );
+        })}
+      </div>
+      <div className="text-xs text-center" style={{ color: 'rgba(232, 217, 168, 0.6)', fontFamily: "'IM Fell English', serif", fontStyle: 'italic' }}>
+        → {v.goal}
+      </div>
+    </div>
+  );
+};
+
+// Player's role card — prominent display with team info
+const RoleCard = ({ role, teammates = [], players = [] }) => {
+  const info = {
+    LOYAL:       { name: 'Fidèle',  icon: '🛡️', color: '#3b82f6', glow: 'rgba(59, 130, 246, 0.5)', bg: 'rgba(30, 58, 138, 0.3)', tagline: 'Défendre la Couronne', desc: 'Démasquez les Traîtres et exécutez le Tyran.' },
+    CONJURE:     { name: 'Traître', icon: '⚔️', color: '#dc2626', glow: 'rgba(220, 38, 38, 0.5)',  bg: 'rgba(127, 29, 29, 0.3)', tagline: 'Conspirer dans l\'ombre', desc: 'Sabotez la Couronne et installez le Tyran au pouvoir.' },
+    USURPATEUR:  { name: 'Tyran',   icon: '👑', color: '#a855f7', glow: 'rgba(168, 85, 247, 0.5)', bg: 'rgba(88, 28, 135, 0.3)', tagline: 'Régner par le chaos', desc: 'Faites-vous élire Chancelier après 3 Décrets de Trahison.' },
+  }[role] || null;
+
+  if (!info) return null;
+
+  const teammateRoleLabel = (r) => r === 'USURPATEUR' ? 'Tyran' : r === 'CONJURE' ? 'Traître' : 'Fidèle';
+
+  return (
+    <div className="rounded-lg p-4" style={{
+      background: `linear-gradient(180deg, ${info.bg}, rgba(10, 6, 4, 0.9))`,
+      border: `2px solid ${info.color}`,
+      boxShadow: `0 0 20px ${info.glow}, inset 0 1px 0 rgba(255,255,255,0.08)`,
+    }}>
+      <div className="text-center mb-3">
+        <div className="text-xs uppercase tracking-widest mb-1" style={{ color: 'rgba(232, 217, 168, 0.7)', fontFamily: "'Cinzel', serif" }}>
+          Votre Rôle
         </div>
-        <div className={`text-sm font-medium text-${color}-400 text-center`}>
-          {current}/{max} {title === 'Crise' ? '→ Adoption auto' : '→ Victoire'}
+        <div className="text-5xl mb-1" style={{ filter: `drop-shadow(0 0 12px ${info.glow})` }}>
+          {info.icon}
         </div>
-      </CardContent>
-    </Card>
+        <div className="text-2xl font-bold" style={{ fontFamily: "'Cinzel', serif", color: info.color, letterSpacing: '0.15em', textShadow: `0 0 10px ${info.glow}` }}>
+          {info.name.toUpperCase()}
+        </div>
+        <div className="text-sm italic mt-1" style={{ color: 'rgba(232, 217, 168, 0.85)', fontFamily: "'IM Fell English', serif" }}>
+          {info.tagline}
+        </div>
+      </div>
+      <div className="text-xs text-center px-2 pb-2" style={{ color: 'rgba(232, 217, 168, 0.75)', lineHeight: 1.5 }}>
+        {info.desc}
+      </div>
+
+      {teammates.length > 0 && (
+        <div className="pt-3 mt-2 border-t" style={{ borderColor: 'rgba(199, 168, 105, 0.25)' }}>
+          <div className="text-xs uppercase tracking-widest text-center mb-2" style={{ color: 'rgba(232, 217, 168, 0.75)', fontFamily: "'Cinzel', serif" }}>
+            🗡️ Vos Complices
+          </div>
+          <div className="space-y-1.5">
+            {teammates.map((t) => (
+              <div key={t.seat} className="flex items-center justify-between px-3 py-1.5 rounded" style={{
+                background: 'rgba(0, 0, 0, 0.4)',
+                border: `1px solid ${t.role === 'USURPATEUR' ? '#a855f7' : '#dc2626'}`,
+              }}>
+                <span className="text-sm font-medium" style={{ color: '#e8d9a8' }}>
+                  {t.role === 'USURPATEUR' ? '👑' : '⚔️'} {t.name}
+                </span>
+                <span className="text-xs" style={{ color: t.role === 'USURPATEUR' ? '#a855f7' : '#dc2626' }}>
+                  {teammateRoleLabel(t.role)} · S{t.seat}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Current government indicator
+const GovernmentBadge = ({ label, icon, seat, players, color }) => {
+  const player = players.find(p => p.seat === seat);
+  if (!player) return null;
+  return (
+    <div className="flex items-center space-x-2 px-3 py-1.5 rounded-full text-sm" style={{
+      background: 'rgba(20, 14, 8, 0.7)',
+      border: `1px solid ${color}`,
+      color: '#e8d9a8',
+    }}>
+      <span>{icon}</span>
+      <span className="uppercase tracking-wider text-xs opacity-80" style={{ fontFamily: "'Cinzel', serif" }}>{label}</span>
+      <span className="font-semibold">{player.name}</span>
+    </div>
   );
 };
 
@@ -373,32 +465,38 @@ const GameInterface = ({ roomCode }) => {
       
       {/* Header Bar */}
       <div className="darkoath-header px-4 py-3 relative z-10">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <div className="flex items-center space-x-4">
+        <div className="flex items-center justify-between max-w-7xl mx-auto gap-3 flex-wrap">
+          <div className="flex items-center space-x-3">
             <h1 className="text-xl font-bold text-amber-400" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.15em' }}>DARK OATH</h1>
-            <Badge className="bg-amber-600 text-black">
-              {roomCode}
-            </Badge>
+            <Badge className="bg-amber-600 text-black">{roomCode}</Badge>
+            <span className="px-3 py-1 rounded text-xs uppercase tracking-widest" style={{
+              background: 'rgba(199, 168, 105, 0.15)',
+              border: '1px solid rgba(199, 168, 105, 0.4)',
+              color: '#e8d9a8',
+              fontFamily: "'Cinzel', serif",
+            }}>
+              {formatPhaseName(gameState.phase)}
+            </span>
           </div>
-          
-          <div className="flex items-center space-x-4">
-            <span className="text-sm text-gray-400">Phase: {
-              formatPhaseName(gameState.phase)
-            }</span>
+
+          <div className="flex items-center gap-2 flex-wrap">
             {gameState.regent_seat && (
-              <span className="text-sm text-gray-400 hidden md:block">
-                Roi: Siège {gameState.regent_seat}
-              </span>
+              <GovernmentBadge
+                label="Roi"
+                icon="👑"
+                seat={gameState.regent_seat}
+                players={gameState.players || []}
+                color="#c7a869"
+              />
             )}
-            {playerRole && (
-              <div className="flex items-center space-x-2">
-                {getRoleInfo(playerRole).icon === Shield && <span className="text-blue-400">🛡️</span>}
-                {getRoleInfo(playerRole).icon === Sword && <span className="text-red-400">⚔️</span>}
-                {getRoleInfo(playerRole).icon === Crown && <span className="text-purple-400">👑</span>}
-                <span className="text-sm font-medium text-gray-300">
-                  {getRoleInfo(playerRole).name}
-                </span>
-              </div>
+            {gameState.nominee_seat && (gameState.phase === 'VOTE' || gameState.phase === 'LEGIS_CHAMBELLAN') && (
+              <GovernmentBadge
+                label="Chancelier"
+                icon="🗝️"
+                seat={gameState.nominee_seat}
+                players={gameState.players || []}
+                color="#8a6d3a"
+              />
             )}
           </div>
         </div>
@@ -407,34 +505,36 @@ const GameInterface = ({ roomCode }) => {
       {/* DESKTOP LAYOUT (≥1024px) */}
       <div className="hidden lg:flex h-full" style={{ height: 'calc(100dvh - 73px)' }}>
         
-        {/* Left Column - Tracks (Pistes) */}
-        <div className="w-80 p-4 space-y-4 darkoath-sidebar border-r relative z-10">
-          {/* Piste des Fidèles (5 cases) */}
-          <TrackComponent
-            title="Fidèles"
-            current={gameState.tracks?.loyal || 0}
-            max={5}
-            color="blue"
-            icon={Shield}
-          />
+        {/* Left Column — Your Role + Tracks */}
+        <div className="w-80 p-4 space-y-4 darkoath-sidebar border-r relative z-10 overflow-y-auto">
+          {playerRole && (
+            <RoleCard
+              role={playerRole}
+              teammates={gameState.teammates || []}
+              players={gameState.players || []}
+            />
+          )}
 
-          {/* Piste de Trahison (6 cases) */}
-          <TrackComponent
-            title="Trahison"
-            current={gameState.tracks?.conjure || 0}
-            max={6}
-            color="red"
-            icon={Sword}
-          />
-          
-          {/* Piste de Crise (3 cases) */}
-          <TrackComponent 
-            title="Crise"
-            current={gameState.tracks?.crisis || 0}
-            max={3}
-            color="yellow"
-            icon={Zap}
-          />
+          <div className="space-y-3">
+            <TrackComponent
+              title="Fidèles"
+              current={gameState.tracks?.loyal || 0}
+              max={5}
+              variant="fidele"
+            />
+            <TrackComponent
+              title="Trahison"
+              current={gameState.tracks?.conjure || 0}
+              max={6}
+              variant="traitre"
+            />
+            <TrackComponent
+              title="Crise"
+              current={gameState.tracks?.crisis || 0}
+              max={3}
+              variant="crise"
+            />
+          </div>
         </div>
 
         {/* Center Column - Table */}
@@ -744,92 +844,16 @@ const GameInterface = ({ roomCode }) => {
           {/* Tracks Tab */}
           {mobileTab === 'tracks' && (
             <div className="space-y-4">
-              {/* Piste des Fidèles (5 cases) */}
-              <Card className="bg-gray-800 border-gray-700">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center space-x-2 text-gray-100">
-                    <Shield className="h-5 w-5 text-blue-400" />
-                    <span>Fidèles</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex space-x-2 mb-3">
-                    {Array.from({ length: 5 }, (_, i) => (
-                      <div
-                        key={i}
-                        className={`w-12 h-12 rounded-lg border-2 flex items-center justify-center text-xl font-bold transition-all ${
-                          i < (gameState.tracks?.loyal || 0)
-                            ? 'bg-blue-600 border-blue-500 text-white shadow-md' 
-                            : 'border-blue-300 text-blue-300 bg-gray-700'
-                        }`}
-                      >
-                        🛡️
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-sm text-blue-400 text-center font-medium">
-                    {gameState.tracks?.loyal || 0}/5 → Victoire
-                  </p>
-                </CardContent>
-              </Card>
-
-              {/* Piste de Trahison (6 cases) */}
-              <Card className="bg-gray-800 border-gray-700">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center space-x-2 text-gray-100">
-                    <Sword className="h-5 w-5 text-red-400" />
-                    <span>Trahison</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex space-x-2 mb-3">
-                    {Array.from({ length: 6 }, (_, i) => (
-                      <div
-                        key={i}
-                        className={`w-12 h-12 rounded-lg border-2 flex items-center justify-center text-xl font-bold transition-all ${
-                          i < (gameState.tracks?.conjure || 0)
-                            ? 'bg-red-600 border-red-500 text-white shadow-md' 
-                            : 'border-red-300 text-red-300 bg-gray-700'
-                        }`}
-                      >
-                        ⚔️
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-sm text-red-400 text-center font-medium">
-                    {gameState.tracks?.conjure || 0}/6 → Victoire
-                  </p>
-                </CardContent>
-              </Card>
-
-              {/* Piste de Crise (3 cases) */}
-              <Card className="bg-gray-800 border-gray-700">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center space-x-2 text-gray-100">
-                    <Zap className="h-5 w-5 text-yellow-400" />
-                    <span>Crise</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex space-x-2 mb-3">
-                    {Array.from({ length: 3 }, (_, i) => (
-                      <div
-                        key={i}
-                        className={`w-12 h-12 rounded-lg border-2 flex items-center justify-center text-xl font-bold transition-all ${
-                          i < (gameState.tracks?.crisis || 0)
-                            ? 'bg-yellow-600 border-yellow-500 text-white shadow-md' 
-                            : 'border-yellow-300 text-yellow-300 bg-gray-700'
-                        }`}
-                      >
-                        ⚡
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-sm text-yellow-400 text-center font-medium">
-                    {gameState.tracks?.crisis || 0}/3 → Adoption auto
-                  </p>
-                </CardContent>
-              </Card>
+              {playerRole && (
+                <RoleCard
+                  role={playerRole}
+                  teammates={gameState.teammates || []}
+                  players={gameState.players || []}
+                />
+              )}
+              <TrackComponent title="Fidèles"  current={gameState.tracks?.loyal   || 0} max={5} variant="fidele" />
+              <TrackComponent title="Trahison" current={gameState.tracks?.conjure || 0} max={6} variant="traitre" />
+              <TrackComponent title="Crise"    current={gameState.tracks?.crisis  || 0} max={3} variant="crise" />
             </div>
           )}
 
@@ -925,7 +949,7 @@ const GameInterface = ({ roomCode }) => {
               }`}
               style={{ minHeight: '44px' }}
             >
-              📊 Pistes
+              🎭 Rôle
             </button>
             <button 
               onClick={() => setMobileTab('chat')}
