@@ -134,32 +134,32 @@ const LandingPage = () => {
             <CardContent className="text-gray-300 space-y-6">
               <section>
                 <h3 className="text-xl font-bold text-amber-400 mb-3">🎯 Objectif du Jeu</h3>
-                <p>Dark Oath est un jeu de déduction sociale où Chevaliers et traîtres s'affrontent dans l'ombre. Les <strong className="text-blue-400">Chevaliers</strong> tentent de préserver la stabilité du royaume, tandis que les <strong className="text-red-400">Conjurés</strong> et leur mystérieux <strong className="text-purple-400">Usurpateur</strong> conspirent pour prendre le pouvoir.</p>
+                <p>Dark Oath est un jeu de déduction sociale où Fidèles et Traîtres s'affrontent dans l'ombre. Les <strong className="text-blue-400">Fidèles</strong> tentent de préserver la Couronne, tandis que les <strong className="text-red-400">Traîtres</strong> et leur mystérieux <strong className="text-purple-400">Tyran</strong> conspirent pour prendre le pouvoir.</p>
               </section>
 
               <section>
                 <h3 className="text-xl font-bold text-amber-400 mb-3">👥 Composition (5-10 joueurs)</h3>
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="bg-gray-700 p-4 rounded-lg">
-                    <h4 className="font-bold text-blue-400 mb-2">🛡️ Chevaliers</h4>
+                    <h4 className="font-bold text-blue-400 mb-2">🛡️ Fidèles</h4>
                     <ul className="text-sm space-y-1">
-                      <li>5 joueurs : 3 Chevaliers</li>
-                      <li>6 joueurs : 4 Chevaliers</li>
-                      <li>7 joueurs : 4 Chevaliers</li>
-                      <li>8 joueurs : 5 Chevaliers</li>
-                      <li>9 joueurs : 5 Chevaliers</li>
-                      <li>10 joueurs : 6 Chevaliers</li>
+                      <li>5 joueurs : 3 Fidèles</li>
+                      <li>6 joueurs : 4 Fidèles</li>
+                      <li>7 joueurs : 4 Fidèles</li>
+                      <li>8 joueurs : 5 Fidèles</li>
+                      <li>9 joueurs : 5 Fidèles</li>
+                      <li>10 joueurs : 6 Fidèles</li>
                     </ul>
                   </div>
                   <div className="bg-gray-700 p-4 rounded-lg">
-                    <h4 className="font-bold text-red-400 mb-2">⚔️ Conjurés + 👑 Usurpateur</h4>
+                    <h4 className="font-bold text-red-400 mb-2">⚔️ Traîtres + 👑 Tyran</h4>
                     <ul className="text-sm space-y-1">
-                      <li>5 joueurs : 1 Conjuré + 1 Usurpateur</li>
-                      <li>6 joueurs : 1 Conjuré + 1 Usurpateur</li>
-                      <li>7 joueurs : 2 Conjurés + 1 Usurpateur</li>
-                      <li>8 joueurs : 2 Conjurés + 1 Usurpateur</li>
-                      <li>9 joueurs : 3 Conjurés + 1 Usurpateur</li>
-                      <li>10 joueurs : 3 Conjurés + 1 Usurpateur</li>
+                      <li>5 joueurs : 1 Traître + 1 Tyran</li>
+                      <li>6 joueurs : 1 Traître + 1 Tyran</li>
+                      <li>7 joueurs : 2 Traîtres + 1 Tyran</li>
+                      <li>8 joueurs : 2 Traîtres + 1 Tyran</li>
+                      <li>9 joueurs : 3 Traîtres + 1 Tyran</li>
+                      <li>10 joueurs : 3 Traîtres + 1 Tyran</li>
                     </ul>
                   </div>
                 </div>
@@ -169,16 +169,16 @@ const LandingPage = () => {
                 <h3 className="text-xl font-bold text-amber-400 mb-3">🏆 Conditions de Victoire</h3>
                 <div className="grid md:grid-cols-3 gap-4">
                   <div className="bg-blue-900 p-4 rounded-lg border border-blue-700">
-                    <h4 className="font-bold text-blue-300 mb-2">🛡️ Victoire Chevaliers</h4>
-                    <p className="text-sm">Adopter 5 Décrets Loyaux OU exécuter l'Usurpateur</p>
+                    <h4 className="font-bold text-blue-300 mb-2">🛡️ Victoire Fidèles</h4>
+                    <p className="text-sm">Adopter 5 Décrets Loyaux OU exécuter le Tyran</p>
                   </div>
                   <div className="bg-red-900 p-4 rounded-lg border border-red-700">
-                    <h4 className="font-bold text-red-300 mb-2">⚔️ Victoire Conjurés</h4>
-                    <p className="text-sm">Adopter 6 Décrets Conjurés OU l'Usurpateur devient Sénéchal après 4+ Décrets Conjurés</p>
+                    <h4 className="font-bold text-red-300 mb-2">⚔️ Victoire Traîtres</h4>
+                    <p className="text-sm">Adopter 6 Décrets de Trahison OU le Tyran devient Chancelier après 3+ Décrets de Trahison</p>
                   </div>
                   <div className="bg-purple-900 p-4 rounded-lg border border-purple-700">
-                    <h4 className="font-bold text-purple-300 mb-2">👑 Victoire Usurpateur</h4>
-                    <p className="text-sm">Être élu Sénéchal après 4 Décrets Conjurés adoptés (gagne avec les Conjurés)</p>
+                    <h4 className="font-bold text-purple-300 mb-2">👑 Victoire Tyran</h4>
+                    <p className="text-sm">Être élu Chancelier après 3 Décrets de Trahison adoptés (gagne avec les Traîtres)</p>
                   </div>
                 </div>
               </section>
@@ -193,19 +193,19 @@ const LandingPage = () => {
                 <div className="space-y-3">
                   <div className="bg-gray-700 p-3 rounded-lg">
                     <h4 className="font-bold text-yellow-400">1. Nomination</h4>
-                    <p className="text-sm">Le Seigneur nomme un Sénéchal pour l'assister.</p>
+                    <p className="text-sm">Le Roi nomme un Chancelier pour l'assister.</p>
                   </div>
                   <div className="bg-gray-700 p-3 rounded-lg">
                     <h4 className="font-bold text-yellow-400">2. Vote</h4>
-                    <p className="text-sm">Tous les joueurs (sauf Seigneur et Sénéchal) votent OUI ou NON pour approuver le gouvernement.</p>
+                    <p className="text-sm">Tous les joueurs (sauf Roi et Chancelier) votent OUI ou NON pour approuver le gouvernement.</p>
                   </div>
                   <div className="bg-gray-700 p-3 rounded-lg">
                     <h4 className="font-bold text-yellow-400">3. Phase Législative</h4>
-                    <p className="text-sm">Si approuvé : le Seigneur puis le Sénéchal choisissent quels décrets adopter parmi 3 cartes tirées.</p>
+                    <p className="text-sm">Si approuvé : le Roi puis le Chancelier choisissent quels décrets adopter parmi 3 cartes tirées.</p>
                   </div>
                   <div className="bg-gray-700 p-3 rounded-lg">
                     <h4 className="font-bold text-yellow-400">4. Pouvoirs Spéciaux</h4>
-                    <p className="text-sm">Certains décrets conjurés accordent des pouvoirs (Investigation à 2+, Exécution à 4+).</p>
+                    <p className="text-sm">Certains décrets de trahison accordent des pouvoirs au Roi (Investigation à 2+, Exécution à 4+).</p>
                   </div>
                 </div>
               </section>
@@ -214,21 +214,21 @@ const LandingPage = () => {
                 <h3 className="text-xl font-bold text-amber-400 mb-3">🎭 Conseils Tactiques</h3>
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
-                    <h4 className="font-bold text-blue-400 mb-2">Pour les Chevaliers :</h4>
+                    <h4 className="font-bold text-blue-400 mb-2">Pour les Fidèles :</h4>
                     <ul className="text-sm space-y-1 list-disc list-inside">
                       <li>Observez les votes et comportements suspects</li>
                       <li>Utilisez les pouvoirs d'investigation à bon escient</li>
                       <li>Méfiez-vous des joueurs trop coopératifs</li>
-                      <li>Identifiez et exécutez l'Usurpateur</li>
+                      <li>Identifiez et exécutez le Tyran</li>
                     </ul>
                   </div>
                   <div>
-                    <h4 className="font-bold text-red-400 mb-2">Pour les Conjurés :</h4>
+                    <h4 className="font-bold text-red-400 mb-2">Pour les Traîtres :</h4>
                     <ul className="text-sm space-y-1 list-disc list-inside">
                       <li>Semez la discorde sans vous exposer</li>
-                      <li>Aidez l'Usurpateur à accéder au poste de Sénéchal</li>
+                      <li>Aidez le Tyran à accéder au poste de Chancelier</li>
                       <li>Votez stratégiquement pour faire échouer les bons gouvernements</li>
-                      <li>Adoptez 4+ décrets conjurés avant de pousser l'Usurpateur</li>
+                      <li>Adoptez 3+ Décrets de Trahison avant de pousser le Tyran</li>
                     </ul>
                   </div>
                 </div>
@@ -240,23 +240,38 @@ const LandingPage = () => {
     );
   }
 
+  // Deterministic ember positions — avoids re-randomizing every render
+  const embers = Array.from({ length: 24 }, (_, i) => ({
+    left: `${(i * 4.16) % 100}%`,
+    delay: `${(i * 0.73) % 8}s`,
+    duration: `${8 + ((i * 1.31) % 6)}s`,
+    size: 2 + (i % 3),
+  }));
+
   return (
-    <div 
-      className="min-h-screen relative overflow-hidden bg-cover bg-center bg-no-repeat md:bg-cover sm:bg-contain bg-fixed sm:bg-scroll"
-      style={{
-        backgroundImage: `url('https://customer-assets.emergentagent.com/job_1a735b74-0d1b-4cfc-aa0c-5d6b585ff99b/artifacts/yixjj87a_ChatGPT%20Image%2015%20sept.%202025%2C%2015_57_13.png')`
-      }}
-    >
-      {/* Dark overlay for readability */}
-      <div className="absolute inset-0 bg-black bg-opacity-60"></div>
-      
+    <div className="darkoath-landing">
+      {/* Floating embers */}
+      {embers.map((e, i) => (
+        <span
+          key={i}
+          className="ember"
+          style={{
+            left: e.left,
+            animationDelay: e.delay,
+            animationDuration: e.duration,
+            width: `${e.size}px`,
+            height: `${e.size}px`,
+          }}
+        />
+      ))}
+
       {/* Music Control */}
       <div className="absolute top-4 right-4 z-20">
         <Button
           onClick={() => setMusicEnabled(!musicEnabled)}
           variant="outline"
           size="sm"
-          className="border-amber-600 text-amber-400 hover:bg-amber-900/50"
+          className="border-amber-700/60 text-amber-300 hover:bg-amber-900/30 bg-black/40 backdrop-blur-sm"
         >
           {musicEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
         </Button>
@@ -264,140 +279,146 @@ const LandingPage = () => {
 
       {/* Language Toggle */}
       <div className="absolute top-4 left-4 z-20">
-        <Button 
+        <Button
           onClick={() => i18n.changeLanguage(i18n.language === 'fr' ? 'en' : 'fr')}
-          variant="outline" 
+          variant="outline"
           size="sm"
-          className="border-amber-600 text-amber-400 hover:bg-amber-900/50"
+          className="border-amber-700/60 text-amber-300 hover:bg-amber-900/30 bg-black/40 backdrop-blur-sm"
         >
           <Globe className="h-4 w-4 mr-2" />
           {i18n.language.toUpperCase()}
         </Button>
       </div>
 
-      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center p-4">
-        
+      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center p-4 py-16">
+
         {/* Hero Section */}
-        <div className="text-center mb-12">
-          <h1 className="text-6xl md:text-8xl font-bold mb-6" 
-              style={{
-                background: 'linear-gradient(45deg, #d97706, #f59e0b, #fbbf24)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                textShadow: '2px 2px 4px rgba(0,0,0,0.5)'
-              }}>
+        <div className="text-center mb-14 max-w-3xl">
+          <div className="darkoath-subtitle text-sm md:text-base mb-4 uppercase">
+            ✦ Un serment scellé dans l'ombre ✦
+          </div>
+          <h1 className="darkoath-title text-5xl md:text-8xl mb-6">
             DARK OATH
           </h1>
-          <p className="text-xl md:text-2xl text-gray-300 mb-8 font-medium">
-            Un royaume en péril. Les trahisons se murmurent dans l'ombre.
+          <p className="darkoath-tagline text-xl md:text-2xl mb-3">
+            Trois camps. Un trône. Une seule vérité.
           </p>
-          <p className="text-lg text-gray-400 mb-8">
-            Saurez-vous préserver la Couronne ou laisser l'Usurpateur s'en emparer ?
+          <p className="darkoath-subtitle text-base md:text-lg mb-8 italic">
+            Derrière chaque sourire, une lame. Derrière chaque vote, un complot.
           </p>
-          
-          {/* Rules Button */}
+
           <Button
             onClick={() => setShowRules(true)}
             variant="outline"
-            className="mb-8 border-amber-600 text-amber-400 hover:bg-amber-900/50"
+            className="border-amber-700/70 text-amber-300 hover:bg-amber-950/40 bg-black/40 backdrop-blur-sm"
           >
             <BookOpen className="h-4 w-4 mr-2" />
-            Règles du Jeu
+            Parchemin des Règles
           </Button>
         </div>
 
-        {/* Game Cards */}
-        <div className="grid md:grid-cols-3 gap-6 mb-12 max-w-4xl">
-          <Card className="bg-black/50 border-blue-600 backdrop-blur-sm">
-            <CardHeader className="text-center">
-              <Shield className="h-12 w-12 text-blue-400 mx-auto mb-4" />
-              <CardTitle className="text-blue-300">Chevaliers</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-300 text-center text-sm">
-                Défendez le royaume et démasquez les traîtres. Adoptez 5 décrets loyaux ou exécutez l'Usurpateur pour triompher.
+        {/* Role Cards */}
+        <div className="grid md:grid-cols-3 gap-5 mb-14 max-w-5xl w-full">
+          <Card className="role-card role-card--fidele p-6">
+            <div className="relative z-10 flex flex-col items-center text-center">
+              <Shield className="h-14 w-14 text-blue-300 mb-4" strokeWidth={1.5} />
+              <h3 className="darkoath-title text-2xl text-blue-200 mb-2">Fidèles</h3>
+              <div className="oath-divider w-full my-3">LOYAUX</div>
+              <p className="text-gray-300 text-sm leading-relaxed font-serif italic">
+                Les défenseurs de la Couronne. Démasquez le Tyran avant qu'il ne soit trop tard.
               </p>
-            </CardContent>
+            </div>
           </Card>
 
-          <Card className="bg-black/50 border-red-600 backdrop-blur-sm">
-            <CardHeader className="text-center">
-              <Sword className="h-12 w-12 text-red-400 mx-auto mb-4" />
-              <CardTitle className="text-red-300">Conjurés</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-300 text-center text-sm">
-                Répandez le chaos et aidez l'Usurpateur. 6 décrets conjurés ou l'Usurpateur Sénéchal après 4+ décrets = victoire.
+          <Card className="role-card role-card--traitre p-6">
+            <div className="relative z-10 flex flex-col items-center text-center">
+              <Sword className="h-14 w-14 text-red-400 mb-4" strokeWidth={1.5} />
+              <h3 className="darkoath-title text-2xl text-red-300 mb-2">Traîtres</h3>
+              <div className="oath-divider w-full my-3">CONJURATION</div>
+              <p className="text-gray-300 text-sm leading-relaxed font-serif italic">
+                Semez la discorde en secret. Faites tomber le royaume pièce par pièce.
               </p>
-            </CardContent>
+            </div>
           </Card>
 
-          <Card className="bg-black/50 border-purple-600 backdrop-blur-sm">
-            <CardHeader className="text-center">
-              <Crown className="h-12 w-12 text-purple-400 mx-auto mb-4" />
-              <CardTitle className="text-purple-300">Usurpateur</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-300 text-center text-sm">
-                Prenez le pouvoir en secret. Devenez Sénéchal après 4 décrets conjurés pour régner avec les Conjurés.
+          <Card className="role-card role-card--tyran p-6">
+            <div className="relative z-10 flex flex-col items-center text-center">
+              <Crown className="h-14 w-14 text-purple-300 mb-4" strokeWidth={1.5} />
+              <h3 className="darkoath-title text-2xl text-purple-200 mb-2">Le Tyran</h3>
+              <div className="oath-divider w-full my-3">USURPATION</div>
+              <p className="text-gray-300 text-sm leading-relaxed font-serif italic">
+                L'ombre derrière le trône. Saisissez la couronne quand la nuit sera noire.
               </p>
-            </CardContent>
+            </div>
           </Card>
         </div>
 
         {/* Game Creation */}
-        <Card className="w-full max-w-md bg-black/70 border-amber-600 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="text-center text-2xl text-amber-400">Rejoindre la Conspiration</CardTitle>
-            <CardDescription className="text-center text-gray-400">
-              5-10 joueurs • 30-45 minutes
+        <Card className="oath-card w-full max-w-md">
+          <CardHeader className="text-center pb-3">
+            <CardTitle className="darkoath-title text-3xl text-amber-200">
+              Prêter Serment
+            </CardTitle>
+            <CardDescription className="darkoath-subtitle italic mt-2">
+              5 à 10 âmes • 30 à 45 minutes
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-5">
             <div>
-              <Label className="text-gray-300 mb-2 block">Votre nom de conspirateur</Label>
+              <Label className="text-amber-200/80 mb-2 block font-serif text-sm tracking-wider uppercase">
+                Votre Nom
+              </Label>
               <Input
                 value={playerName}
                 onChange={(e) => setPlayerName(e.target.value)}
-                placeholder="Entrez votre nom..."
-                className="bg-gray-800 border-gray-600 text-gray-100 placeholder-gray-400"
+                placeholder="Entrez dans l'arène…"
+                className="bg-black/50 border-amber-800/50 text-amber-50 placeholder-amber-200/30 font-serif"
               />
             </div>
-            
+
             <Tabs defaultValue="create" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 bg-gray-800 border-gray-600">
-                <TabsTrigger value="create" className="text-gray-300">Créer</TabsTrigger>
-                <TabsTrigger value="join" className="text-gray-300">Rejoindre</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2 bg-black/50 border border-amber-800/40">
+                <TabsTrigger value="create" className="text-amber-200/80 data-[state=active]:bg-amber-900/40 data-[state=active]:text-amber-100 font-serif">
+                  Forger un Pacte
+                </TabsTrigger>
+                <TabsTrigger value="join" className="text-amber-200/80 data-[state=active]:bg-amber-900/40 data-[state=active]:text-amber-100 font-serif">
+                  Rejoindre
+                </TabsTrigger>
               </TabsList>
-              
-              <TabsContent value="create" className="space-y-4">
-                <Button 
+
+              <TabsContent value="create" className="space-y-4 pt-4">
+                <Button
                   onClick={createRoom}
                   disabled={!playerName.trim()}
-                  className="w-full bg-amber-600 hover:bg-amber-700 text-black font-bold"
+                  className="w-full oath-btn-primary py-6"
                 >
-                  Créer une Nouvelle Conspiration
+                  Sceller le Serment
                 </Button>
               </TabsContent>
-              
-              <TabsContent value="join" className="space-y-4">
+
+              <TabsContent value="join" className="space-y-4 pt-4">
                 <Input
                   value={roomCode}
                   onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                  placeholder="Code de la salle..."
-                  className="bg-gray-800 border-gray-600 text-gray-100 placeholder-gray-400"
+                  placeholder="Code du royaume…"
+                  className="bg-black/50 border-amber-800/50 text-amber-50 placeholder-amber-200/30 font-serif tracking-widest text-center uppercase"
+                  maxLength={6}
                 />
-                <Button 
+                <Button
                   onClick={joinRoom}
                   disabled={!playerName.trim() || !roomCode.trim()}
-                  className="w-full bg-amber-600 hover:bg-amber-700 text-black font-bold"
+                  className="w-full oath-btn-primary py-6"
                 >
-                  Infiltrer la Conspiration
+                  Entrer dans l'Ombre
                 </Button>
               </TabsContent>
             </Tabs>
           </CardContent>
         </Card>
+
+        <p className="darkoath-subtitle text-xs mt-10 italic tracking-wider">
+          « Que celui qui jure ne brise pas son serment. »
+        </p>
       </div>
     </div>
   );

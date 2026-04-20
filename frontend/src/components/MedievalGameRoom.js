@@ -188,11 +188,11 @@ const MedievalGameRoom = ({ roomCode }) => {
   const getRoleInfo = (role) => {
     switch(role) {
       case 'LOYAL': 
-        return { name: 'Chevalier Loyal', color: 'text-blue-400', icon: '🛡️' };
+        return { name: 'Fidèle', color: 'text-blue-400', icon: '🛡️' };
       case 'CONJURE': 
-        return { name: 'Conjuré', color: 'text-red-400', icon: '⚔️' };
+        return { name: 'Traître', color: 'text-red-400', icon: '⚔️' };
       case 'USURPATEUR': 
-        return { name: 'Usurpateur', color: 'text-purple-400', icon: '👑' };
+        return { name: 'Tyran', color: 'text-purple-400', icon: '👑' };
       default: 
         return { name: 'Noble', color: 'text-gray-400', icon: '🏰' };
     }
@@ -202,8 +202,8 @@ const MedievalGameRoom = ({ roomCode }) => {
   const renderPlayerSeat = (player, index) => {
     const isCurrentPlayer = player.id === currentPlayerId;
     const isRegent = player.seat === gameState?.regent_seat;
-    const isChambellan = player.seat === gameState?.nominee_seat;
-    const isActive = isRegent || isChambellan;
+    const isChancelier = player.seat === gameState?.nominee_seat;
+    const isActive = isRegent || isChancelier;
 
     return (
       <div key={player.id} className={`player-seat ${isActive ? 'player-active' : ''} ${!player.alive ? 'player-dead' : ''}`}>
@@ -213,12 +213,12 @@ const MedievalGameRoom = ({ roomCode }) => {
           
           {/* Role indicators */}
           {isRegent && (
-            <div className="role-indicator role-regent" title="Régent">
+            <div className="role-indicator role-regent" title="Roi">
               👑
             </div>
           )}
-          {isChambellan && (
-            <div className="role-indicator role-chambellan" title="Chambellan">
+          {isChancelier && (
+            <div className="role-indicator role-chambellan" title="Chancelier">
               🏛️
             </div>
           )}
@@ -311,7 +311,7 @@ const MedievalGameRoom = ({ roomCode }) => {
             <span className="font-cinzel font-bold">{gameState.tracks?.loyal || 0}/5</span>
           </div>
           <div className="flex justify-between">
-            <span className="font-fell text-red-700">⚔️ Décrets Conjurés</span>
+            <span className="font-fell text-red-700">⚔️ Décrets de Trahison</span>
             <span className="font-cinzel font-bold">{gameState.tracks?.conjure || 0}/6</span>
           </div>
           <div className="flex justify-between">
@@ -394,7 +394,7 @@ const MedievalGameRoom = ({ roomCode }) => {
         {/* Phase-specific actions rendered as wax seals */}
         {gameState.phase === 'NOMINATION' && currentPlayer?.seat === gameState.regent_seat && (
           <div className="text-center">
-            <p className="text-yellow-300 font-cinzel mb-4">Choisissez votre Chambellan</p>
+            <p className="text-yellow-300 font-cinzel mb-4">Choisissez votre Chancelier</p>
             {/* This would integrate with NominationPanel logic */}
           </div>
         )}

@@ -36,12 +36,12 @@ const VotePanel = ({ players, regentSeat, nomineeSeat, votes, myVote, mySeat, on
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <div className="text-center">
-                  <Badge variant="secondary" className="mb-1">Seigneur</Badge>
+                  <Badge variant="secondary" className="mb-1">Roi</Badge>
                   <p className="font-medium">{regent?.name}</p>
                   <p className="text-xs text-gray-600">Siège {regentSeat}</p>
                 </div>
                 <div className="text-center">
-                  <Badge variant="secondary" className="mb-1">Sénéchal</Badge>
+                  <Badge variant="secondary" className="mb-1">Chancelier</Badge>
                   <p className="font-medium">{nominee?.name}</p>
                   <p className="text-xs text-gray-600">Siège {nomineeSeat}</p>
                 </div>

@@ -20,28 +20,28 @@ const API = `${BACKEND_URL}/api`;
 // Get role display info
 const getRoleInfo = (role) => {
   switch(role) {
-    case 'LOYAL': 
-      return { 
-        name: 'Chevalier', 
-        color: 'blue', 
+    case 'LOYAL':
+      return {
+        name: 'Fidèle',
+        color: 'blue',
         icon: Shield,
-        description: 'Défendez le royaume et démasquez les traîtres'
+        description: 'Défendez la Couronne et démasquez les traîtres'
       };
-    case 'CONJURE': 
-      return { 
-        name: 'Conjuré', 
-        color: 'red', 
+    case 'CONJURE':
+      return {
+        name: 'Traître',
+        color: 'red',
         icon: Sword,
-        description: 'Répandez le chaos et aidez l\'Usurpateur'
+        description: 'Répandez le chaos et aidez le Tyran'
       };
-    case 'USURPATEUR': 
-      return { 
-        name: 'Usurpateur', 
-        color: 'purple', 
+    case 'USURPATEUR':
+      return {
+        name: 'Tyran',
+        color: 'purple',
         icon: Crown,
         description: 'Prenez le pouvoir en secret'
       };
-    default: 
+    default:
       return { name: 'Inconnu', color: 'gray', icon: Users, description: '' };
   }
 };
@@ -54,13 +54,12 @@ const formatPhaseName = (phase) => {
     case 'VOTE':
       return 'Vote';
     case 'LEGIS_REGENT':
-      return 'Législatif Seigneur';
+      return 'Législatif Roi';
     case 'LEGIS_CHAMBELLAN':
-      return 'Législatif Sénéchal';
+      return 'Législatif Chancelier';
     case 'CONSEIL_ROYAUME':
       return 'Conseil du Royaume';
     default:
-      // Fallback: replace underscores with spaces and capitalize first letter
       return phase.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
   }
 };
@@ -86,7 +85,7 @@ const TrackComponent = ({ title, current, max, color, icon: Icon }) => {
                   : `border-${color}-300 text-${color}-300 bg-gray-700`
               }`}
             >
-              {title === 'Chevaliers' ? '🛡️' : title === 'Conjurés' ? '⚔️' : '⚡'}
+              {title === 'Fidèles' ? '🛡️' : title === 'Trahison' ? '⚔️' : '⚡'}
             </div>
           ))}
         </div>
@@ -356,10 +355,10 @@ const GameInterface = ({ roomCode }) => {
             </CardHeader>
             <CardContent className="text-center">
               <p className="text-red-200 text-lg mb-4">
-                ⚡ Un décret est imposé et le Seigneur est désavoué !
+                ⚡ Un décret est imposé et le Roi est désavoué !
               </p>
               <p className="text-red-300 text-sm">
-                Le Seigneur désavoué ne peut plus être élu au tour suivant.
+                Le Roi désavoué ne peut plus être élu au tour suivant.
               </p>
               <Button 
                 onClick={() => setShowPeoplesAnger(false)}
@@ -388,7 +387,7 @@ const GameInterface = ({ roomCode }) => {
             }</span>
             {gameState.regent_seat && (
               <span className="text-sm text-gray-400 hidden md:block">
-                Seigneur: Siège {gameState.regent_seat}
+                Roi: Siège {gameState.regent_seat}
               </span>
             )}
             {playerRole && (
@@ -410,18 +409,18 @@ const GameInterface = ({ roomCode }) => {
         
         {/* Left Column - Tracks (Pistes) */}
         <div className="w-80 p-4 space-y-4 bg-gray-900 border-r border-gray-700">
-          {/* Piste des Chevaliers (5 cases) */}
-          <TrackComponent 
-            title="Chevaliers"
+          {/* Piste des Fidèles (5 cases) */}
+          <TrackComponent
+            title="Fidèles"
             current={gameState.tracks?.loyal || 0}
             max={5}
             color="blue"
             icon={Shield}
           />
-          
-          {/* Piste des Conjurés (6 cases) */}
-          <TrackComponent 
-            title="Conjurés"
+
+          {/* Piste de Trahison (6 cases) */}
+          <TrackComponent
+            title="Trahison"
             current={gameState.tracks?.conjure || 0}
             max={6}
             color="red"
@@ -744,12 +743,12 @@ const GameInterface = ({ roomCode }) => {
           {/* Tracks Tab */}
           {mobileTab === 'tracks' && (
             <div className="space-y-4">
-              {/* Piste des Chevaliers (5 cases) */}
+              {/* Piste des Fidèles (5 cases) */}
               <Card className="bg-gray-800 border-gray-700">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg flex items-center space-x-2 text-gray-100">
                     <Shield className="h-5 w-5 text-blue-400" />
-                    <span>Chevaliers</span>
+                    <span>Fidèles</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -773,12 +772,12 @@ const GameInterface = ({ roomCode }) => {
                 </CardContent>
               </Card>
 
-              {/* Piste des Conjurés (6 cases) */}
+              {/* Piste de Trahison (6 cases) */}
               <Card className="bg-gray-800 border-gray-700">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg flex items-center space-x-2 text-gray-100">
                     <Sword className="h-5 w-5 text-red-400" />
-                    <span>Conjurés</span>
+                    <span>Trahison</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>

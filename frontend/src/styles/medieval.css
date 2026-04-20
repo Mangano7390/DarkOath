@@ -289,3 +289,168 @@
     font-size: 12px;
   }
 }
+/* ========== DarkOath Landing — Cinematic Dark Atmosphere ========== */
+
+.darkoath-landing {
+  position: relative;
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse at center, rgba(120, 20, 30, 0.35) 0%, transparent 55%),
+    radial-gradient(ellipse at 20% 30%, rgba(90, 40, 20, 0.25) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 70%, rgba(50, 10, 20, 0.35) 0%, transparent 50%),
+    linear-gradient(180deg, #0a0606 0%, #120808 40%, #0a0606 100%);
+  overflow: hidden;
+  font-family: 'IM Fell English', serif;
+}
+
+/* Film grain overlay */
+.darkoath-landing::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.08;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+
+/* Heavy vignette */
+.darkoath-landing::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.85) 100%);
+}
+
+/* Floating embers */
+.ember {
+  position: absolute;
+  bottom: -10px;
+  width: 3px;
+  height: 3px;
+  background: radial-gradient(circle, #ffb347 0%, #ff6a00 50%, transparent 80%);
+  border-radius: 50%;
+  opacity: 0;
+  box-shadow: 0 0 6px 1px rgba(255, 140, 40, 0.6);
+  animation: ember-rise linear infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+@keyframes ember-rise {
+  0%   { transform: translateY(0) translateX(0); opacity: 0; }
+  10%  { opacity: 0.9; }
+  50%  { transform: translateY(-50vh) translateX(20px); opacity: 0.6; }
+  100% { transform: translateY(-110vh) translateX(-20px); opacity: 0; }
+}
+
+/* Oath title with ember glow */
+.darkoath-title {
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: #f5e6c8;
+  text-shadow:
+    0 0 10px rgba(255, 120, 40, 0.5),
+    0 0 30px rgba(180, 40, 20, 0.4),
+    0 0 60px rgba(120, 10, 10, 0.3),
+    2px 2px 4px rgba(0, 0, 0, 0.8);
+  animation: title-flicker 4s ease-in-out infinite;
+}
+
+@keyframes title-flicker {
+  0%, 100% { text-shadow: 0 0 10px rgba(255, 120, 40, 0.5), 0 0 30px rgba(180, 40, 20, 0.4), 0 0 60px rgba(120, 10, 10, 0.3), 2px 2px 4px rgba(0, 0, 0, 0.8); }
+  45% { text-shadow: 0 0 14px rgba(255, 140, 50, 0.6), 0 0 38px rgba(200, 50, 25, 0.45), 0 0 70px rgba(140, 15, 15, 0.35), 2px 2px 4px rgba(0, 0, 0, 0.8); }
+  50% { text-shadow: 0 0 8px rgba(255, 100, 35, 0.45), 0 0 24px rgba(160, 35, 18, 0.35), 2px 2px 4px rgba(0, 0, 0, 0.8); }
+  55% { text-shadow: 0 0 14px rgba(255, 140, 50, 0.6), 0 0 38px rgba(200, 50, 25, 0.45), 0 0 70px rgba(140, 15, 15, 0.35), 2px 2px 4px rgba(0, 0, 0, 0.8); }
+}
+
+.darkoath-tagline {
+  font-family: 'IM Fell English', serif;
+  font-style: italic;
+  color: #c9b78a;
+  letter-spacing: 0.05em;
+}
+
+.darkoath-subtitle {
+  font-family: 'IM Fell English', serif;
+  color: #8f7a5c;
+  letter-spacing: 0.03em;
+}
+
+/* Role card — atmospheric */
+.role-card {
+  position: relative;
+  background:
+    linear-gradient(145deg, rgba(20, 12, 10, 0.85), rgba(8, 4, 4, 0.95));
+  border: 1px solid rgba(140, 100, 60, 0.3);
+  backdrop-filter: blur(6px);
+  transition: transform 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
+  overflow: hidden;
+}
+
+.role-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 0%, var(--role-glow, rgba(200, 100, 50, 0.15)) 0%, transparent 65%);
+  pointer-events: none;
+}
+
+.role-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--role-accent, rgba(200, 100, 50, 0.6));
+  box-shadow: 0 8px 30px var(--role-glow, rgba(200, 100, 50, 0.2));
+}
+
+.role-card--fidele   { --role-accent: rgba(90, 160, 220, 0.7);  --role-glow: rgba(40, 100, 180, 0.18); }
+.role-card--traitre  { --role-accent: rgba(200, 60, 50, 0.7);   --role-glow: rgba(160, 30, 20, 0.22); }
+.role-card--tyran    { --role-accent: rgba(150, 80, 200, 0.7);  --role-glow: rgba(90, 20, 120, 0.25); }
+
+/* Entry card */
+.oath-card {
+  background: linear-gradient(180deg, rgba(15, 8, 8, 0.92), rgba(5, 3, 3, 0.95));
+  border: 1px solid rgba(200, 150, 80, 0.35);
+  box-shadow:
+    0 0 40px rgba(180, 60, 30, 0.15),
+    inset 0 1px 0 rgba(255, 200, 140, 0.08);
+  backdrop-filter: blur(8px);
+}
+
+.oath-btn-primary {
+  background: linear-gradient(180deg, #c98a3a 0%, #8e5618 100%);
+  color: #1a0e06;
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: 1px solid #5e3810;
+  box-shadow: 0 4px 15px rgba(180, 90, 30, 0.35), inset 0 1px 0 rgba(255, 220, 160, 0.4);
+  transition: all 0.2s ease;
+}
+
+.oath-btn-primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #d99a4a 0%, #9e6628 100%);
+  box-shadow: 0 6px 22px rgba(200, 110, 40, 0.5), inset 0 1px 0 rgba(255, 220, 160, 0.5);
+  transform: translateY(-1px);
+}
+
+.oath-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #8f7a5c;
+  font-family: 'Cinzel', serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+
+.oath-divider::before,
+.oath-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(200, 150, 80, 0.4), transparent);
+}

@@ -8,15 +8,15 @@ const resources = {
       
       gameDescription: {
         title: "À propos du jeu",
-        text: "Dans Secretus Regnum, incarnez un noble dans un royaume en péril. Les Chevaliers Loyaux tentent de préserver la stabilité du royaume, tandis que les Conjurés et leur mystérieux Usurpateur conspirent pour prendre le pouvoir. Qui pouvez-vous faire confiance ?"
+        text: "Dans Secretus Regnum, incarnez un noble dans un royaume en péril. Les Fidèles tentent de préserver la stabilité du royaume, tandis que les Traîtres et leur mystérieux Tyran conspirent pour prendre le pouvoir. Qui pouvez-vous faire confiance ?"
       },
       
       roles: {
-        loyal: "Chevaliers Loyaux",
+        loyal: "Fidèles",
         loyalDesc: "Défendez le royaume et démasquez les traîtres",
-        conjure: "Conjurés",
-        conjureDesc: "Répandez le chaos et aidez l'Usurpateur",
-        usurpateur: "Usurpateur",
+        conjure: "Traîtres",
+        conjureDesc: "Répandez le chaos et aidez l'Tyran",
+        tyran: "Tyran",
         usurpateurDesc: "Prenez le pouvoir en secret"
       },
       
@@ -52,15 +52,15 @@ const resources = {
         phases: {
           nomination: "Nomination du Chambellan",
           vote: "Vote pour le gouvernement", 
-          legis_regent: "Session législative - Régent",
+          legis_regent: "Session législative - Roi",
           legis_chambellan: "Session législative - Chambellan",
-          power: "Pouvoir du Régent"
+          power: "Pouvoir du Roi"
         },
         
         roles: {
-          loyal: "Chevalier Loyal",
-          conjure: "Conjuré", 
-          usurpateur: "Usurpateur"
+          loyal: "Fidèle",
+          conjure: "Traître", 
+          tyran: "Tyran"
         },
         
         actions: {
@@ -89,7 +89,7 @@ const resources = {
         loyalDesc: "Defend the kingdom and unmask traitors",
         conjure: "Conspirators",
         conjureDesc: "Spread chaos and help the Usurper",
-        usurpateur: "Usurper",
+        tyran: "Usurper",
         usurpateurDesc: "Seize power in secret"
       },
       
@@ -133,7 +133,7 @@ const resources = {
         roles: {
           loyal: "Loyal Knight",
           conjure: "Conspirator",
-          usurpateur: "Usurper"
+          tyran: "Usurper"
         },
         
         actions: {
