@@ -251,7 +251,7 @@ const LandingPage = () => {
                     { num: '2', title: 'Vote', text: "Tous les joueurs vivants votent OUI ou NON à la majorité simple. Si OUI, le gouvernement est formé. Si NON ou égalité, on passe au joueur suivant et la Piste de Crise avance d'une case." },
                     { num: '3', title: 'Législation — le Roi', text: "Le Roi pioche 3 décrets, en défausse 1 secrètement, et transmet les 2 restants au Chancelier." },
                     { num: '4', title: 'Législation — le Chancelier', text: "Le Chancelier défausse 1 décret en secret et révèle le dernier. Ce décret est appliqué et avance la piste correspondante (Fidèles ou Trahison)." },
-                    { num: '5', title: 'Pouvoir du Roi (si déclenché)', text: "Certains Décrets de Trahison déclenchent un pouvoir réservé au Roi (voir section Pouvoirs)." },
+                    { num: '5', title: 'Pouvoir du Roi (si déclenché)', text: "Dès le 2ᵉ puis le 4ᵉ Décret de Trahison posé sur la piste des Traîtres, le Roi débloque un pouvoir (voir section Pouvoirs)." },
                     { num: '6', title: 'Conseil du Royaume', text: "Après chaque décret révélé, 30 secondes de discussion en vocal ouvert. Chacun peut s'exprimer, accuser, se justifier." },
                   ].map((step) => (
                     <div key={step.num} className="flex gap-4 items-start p-4 rounded-lg" style={{
@@ -310,15 +310,15 @@ const LandingPage = () => {
                   ⚜️ &nbsp;Pouvoirs du Roi
                 </h3>
                 <p className="text-amber-100/85 text-sm leading-relaxed mb-4" style={{ fontFamily: "'IM Fell English', serif" }}>
-                  Quand un <strong className="text-red-300">Décret de Trahison</strong> est révélé, le Roi débloque un pouvoir selon la progression de la piste&nbsp;:
+                  Les pouvoirs se débloquent selon le <strong>nombre de Décrets de Trahison</strong> posés sur la piste des Traîtres (et non selon le nombre de joueurs)&nbsp;:
                 </p>
                 <div className="space-y-2 text-sm">
                   <div className="flex gap-3 p-3 rounded" style={{ background: 'rgba(20, 14, 8, 0.6)', border: '1px solid rgba(199, 168, 105, 0.2)' }}>
-                    <span className="text-red-300 font-bold min-w-[4rem]" style={{ fontFamily: "'Cinzel', serif" }}>2+</span>
+                    <span className="text-red-300 font-bold min-w-[9rem]" style={{ fontFamily: "'Cinzel', serif" }}>2<sup>e</sup> Trahison</span>
                     <span className="text-amber-100/85"><strong>Investigation&nbsp;:</strong> le Roi consulte secrètement le camp (Fidèle / Traîtres) d'un autre joueur.</span>
                   </div>
                   <div className="flex gap-3 p-3 rounded" style={{ background: 'rgba(20, 14, 8, 0.6)', border: '1px solid rgba(199, 168, 105, 0.2)' }}>
-                    <span className="text-red-300 font-bold min-w-[4rem]" style={{ fontFamily: "'Cinzel', serif" }}>4+</span>
+                    <span className="text-red-300 font-bold min-w-[9rem]" style={{ fontFamily: "'Cinzel', serif" }}>4<sup>e</sup> Trahison</span>
                     <span className="text-amber-100/85"><strong>Exécution&nbsp;:</strong> le Roi élimine définitivement un joueur. Si c'était le Tyran, les Fidèles gagnent.</span>
                   </div>
                 </div>
@@ -359,7 +359,7 @@ const LandingPage = () => {
                       <li>Surveillez qui vote pour quels gouvernements.</li>
                       <li>Méfiez-vous des défausses trop commodes.</li>
                       <li>Utilisez vite l'Investigation — et communiquez ce que vous apprenez.</li>
-                      <li>À 4+ Trahison, exécutez — mais choisissez bien votre cible.</li>
+                      <li>Au 4<sup>e</sup> Décret de Trahison, exécutez — mais choisissez bien votre cible.</li>
                     </ul>
                   </div>
                   <div className="role-card role-card--traitre p-5">
