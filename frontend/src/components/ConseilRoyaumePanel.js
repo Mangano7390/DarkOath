@@ -13,11 +13,14 @@ const ConseilRoyaumePanel = ({
   onSpeakToggle,
   speakingPlayers = [],
 }) => {
-  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
   const [timeLeft, setTimeLeft] = useState(60);
   const [micInitialized, setMicInitialized] = useState(false);
   const [initializing, setInitializing] = useState(false);
   const [voiceError, setVoiceError] = useState(null);
+
+  // Mic is "open" whenever initialized AND not muted by user.
+  const isSpeaking = micInitialized && !isMuted;
 
   const phase = gameState?.phase;
   const startTime = gameState?.conseil_royaume_start_time;
@@ -73,7 +76,7 @@ const ConseilRoyaumePanel = ({
   // Teardown helper — idempotent
   const teardown = useCallback(() => {
     setMicInitialized(false);
-    setIsSpeaking(false);
+    setIsMuted(false);
     speakingRef.current = false;
 
     try {
@@ -204,17 +207,8 @@ const ConseilRoyaumePanel = ({
     });
   };
 
-  // Force-stop speaking once the timer hits 0
-  useEffect(() => {
-    if (timeLeft <= 0 && isSpeaking) {
-      setIsSpeaking(false);
-    }
-  }, [timeLeft, isSpeaking]);
-
   const handleMicButton = async () => {
-    if (timeLeft <= 0) return;
-
-    // First tap: init (this IS a user gesture — iOS-safe)
+    // First tap: init (this IS a user gesture — iOS-safe). Mic stays open afterwards.
     if (!micInitialized) {
       if (initializing) return;
       setInitializing(true);
@@ -222,7 +216,7 @@ const ConseilRoyaumePanel = ({
       try {
         await initAudio();
         setMicInitialized(true);
-        setIsSpeaking(true); // start speaking immediately on first tap
+        setIsMuted(false); // mic always open after init
         try {
           const result = onSpeakToggle?.();
           if (result && typeof result.catch === 'function') result.catch(() => {});
@@ -242,18 +236,21 @@ const ConseilRoyaumePanel = ({
       return;
     }
 
-    // Subsequent taps: toggle speaking state only
-    setIsSpeaking((prev) => !prev);
-    try {
-      const result = onSpeakToggle?.();
-      if (result && typeof result.catch === 'function') result.catch(() => {});
-    } catch {}
+    // Subsequent taps: mute / unmute (mic pipeline stays alive)
+    setIsMuted((prev) => {
+      const next = !prev;
+      try {
+        const result = onSpeakToggle?.();
+        if (result && typeof result.catch === 'function') result.catch(() => {});
+      } catch {}
+      return next;
+    });
   };
 
   const formatTime = (seconds) =>
     `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`;
 
-  const buttonDisabled = timeLeft <= 0 || initializing;
+  const buttonDisabled = initializing;
 
   return (
     <Card className="bg-amber-900 border-amber-700 shadow-lg">
@@ -279,7 +276,7 @@ const ConseilRoyaumePanel = ({
           </p>
           <p className="text-amber-200 text-sm">
             {micInitialized
-              ? 'Cliquez sur le micro pour parler / couper'
+              ? '🔊 Vocal ouvert en continu — cliquez pour couper'
               : 'Appuyez sur le micro pour activer le vocal'}
           </p>
         </div>
@@ -314,9 +311,9 @@ const ConseilRoyaumePanel = ({
           ) : !micInitialized ? (
             <p className="text-amber-200 font-medium">🎙️ Appuyez pour activer</p>
           ) : isSpeaking ? (
-            <p className="text-red-400 font-medium">🔴 Microphone actif</p>
+            <p className="text-red-400 font-medium">🔴 Micro ouvert — on vous entend</p>
           ) : (
-            <p className="text-green-400 font-medium">⚪ Microphone inactif</p>
+            <p className="text-gray-300 font-medium">🔇 Coupé — cliquez pour rouvrir</p>
           )}
         </div>
 
