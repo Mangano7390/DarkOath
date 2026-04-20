@@ -112,37 +112,82 @@ const LandingPage = () => {
   };
 
   if (showRules) {
+    const rulesEmbers = Array.from({ length: 20 }, (_, i) => ({
+      left: `${(i * 5.1) % 100}%`,
+      delay: `${(i * 0.83) % 8}s`,
+      duration: `${9 + ((i * 1.17) % 6)}s`,
+      size: 2 + (i % 3),
+    }));
+
     return (
-      <div className="min-h-screen bg-slate-900 p-6">
-        <div className="max-w-4xl mx-auto">
-          <Card className="bg-gray-800 border-gray-700">
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle className="text-3xl text-gray-100 flex items-center space-x-3">
-                  <BookOpen className="h-8 w-8 text-amber-400" />
-                  <span>Règles de Dark Oath</span>
-                </CardTitle>
-                <Button 
-                  onClick={() => setShowRules(false)}
-                  variant="outline"
-                  className="border-gray-600 text-gray-300 hover:bg-gray-700"
-                >
-                  Retour
-                </Button>
+      <div className="darkoath-landing">
+        {rulesEmbers.map((e, i) => (
+          <span
+            key={i}
+            className="ember"
+            style={{
+              left: e.left,
+              animationDelay: e.delay,
+              animationDuration: e.duration,
+              width: `${e.size}px`,
+              height: `${e.size}px`,
+            }}
+          />
+        ))}
+
+        <div className="relative z-10 min-h-screen p-6 py-12">
+          <div className="max-w-4xl mx-auto">
+
+            {/* Header */}
+            <div className="flex justify-between items-center mb-10">
+              <Button
+                onClick={() => setShowRules(false)}
+                variant="outline"
+                size="sm"
+                className="border-amber-700/60 text-amber-300 hover:bg-amber-900/30 bg-black/40 backdrop-blur-sm"
+              >
+                ← Retour
+              </Button>
+              <div className="darkoath-subtitle text-xs md:text-sm uppercase">
+                ✦ Le Codex ✦
               </div>
-            </CardHeader>
-            <CardContent className="text-gray-300 space-y-6">
-              <section>
-                <h3 className="text-xl font-bold text-amber-400 mb-3">🎯 Objectif du Jeu</h3>
-                <p>Dark Oath est un jeu de déduction sociale où Fidèles et Traîtres s'affrontent dans l'ombre. Les <strong className="text-blue-400">Fidèles</strong> tentent de préserver la Couronne, tandis que les <strong className="text-red-400">Traîtres</strong> et leur mystérieux <strong className="text-purple-400">Tyran</strong> conspirent pour prendre le pouvoir.</p>
+              <div className="w-20" />
+            </div>
+
+            {/* Hero */}
+            <div className="text-center mb-12">
+              <h1 className="darkoath-title text-4xl md:text-6xl mb-3">
+                LES RÈGLES DU SERMENT
+              </h1>
+              <p className="darkoath-tagline text-lg md:text-xl italic">
+                Que nul ne franchisse le seuil sans connaître le pacte.
+              </p>
+            </div>
+
+            <div className="space-y-8">
+
+              {/* Objectif */}
+              <section className="oath-card p-6 md:p-8">
+                <h3 className="darkoath-title text-2xl md:text-3xl mb-4" style={{ fontSize: '1.6rem' }}>
+                  🎯 &nbsp;Objectif du Jeu
+                </h3>
+                <p className="text-amber-100/90 leading-relaxed" style={{ fontFamily: "'IM Fell English', serif" }}>
+                  Dark Oath est un jeu de déduction sociale où Fidèles et Traîtres s'affrontent dans l'ombre.
+                  Les <strong className="text-blue-300">Fidèles</strong> tentent de préserver la Couronne,
+                  tandis que les <strong className="text-red-400">Traîtres</strong> et leur mystérieux
+                  <strong className="text-purple-300"> Tyran</strong> conspirent pour prendre le pouvoir.
+                </p>
               </section>
 
-              <section>
-                <h3 className="text-xl font-bold text-amber-400 mb-3">👥 Composition (5-10 joueurs)</h3>
+              {/* Composition */}
+              <section className="oath-card p-6 md:p-8">
+                <h3 className="darkoath-title text-2xl md:text-3xl mb-5" style={{ fontSize: '1.6rem' }}>
+                  👥 &nbsp;Composition (5-10 joueurs)
+                </h3>
                 <div className="grid md:grid-cols-2 gap-4">
-                  <div className="bg-gray-700 p-4 rounded-lg">
-                    <h4 className="font-bold text-blue-400 mb-2">🛡️ Fidèles</h4>
-                    <ul className="text-sm space-y-1">
+                  <div className="role-card role-card--fidele p-5">
+                    <h4 className="font-bold text-blue-300 mb-3 text-lg" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.1em' }}>🛡️ FIDÈLES</h4>
+                    <ul className="text-sm space-y-1.5 text-amber-100/85">
                       <li>5 joueurs : 3 Fidèles</li>
                       <li>6 joueurs : 4 Fidèles</li>
                       <li>7 joueurs : 4 Fidèles</li>
@@ -151,9 +196,9 @@ const LandingPage = () => {
                       <li>10 joueurs : 6 Fidèles</li>
                     </ul>
                   </div>
-                  <div className="bg-gray-700 p-4 rounded-lg">
-                    <h4 className="font-bold text-red-400 mb-2">⚔️ Traîtres + 👑 Tyran</h4>
-                    <ul className="text-sm space-y-1">
+                  <div className="role-card role-card--traitre p-5">
+                    <h4 className="font-bold text-red-300 mb-3 text-lg" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.1em' }}>⚔️ TRAÎTRES + 👑 TYRAN</h4>
+                    <ul className="text-sm space-y-1.5 text-amber-100/85">
                       <li>5 joueurs : 1 Traître + 1 Tyran</li>
                       <li>6 joueurs : 1 Traître + 1 Tyran</li>
                       <li>7 joueurs : 2 Traîtres + 1 Tyran</li>
@@ -165,66 +210,88 @@ const LandingPage = () => {
                 </div>
               </section>
 
-              <section>
-                <h3 className="text-xl font-bold text-amber-400 mb-3">🏆 Conditions de Victoire</h3>
+              {/* Victoire */}
+              <section className="oath-card p-6 md:p-8">
+                <h3 className="darkoath-title text-2xl md:text-3xl mb-5" style={{ fontSize: '1.6rem' }}>
+                  🏆 &nbsp;Conditions de Victoire
+                </h3>
                 <div className="grid md:grid-cols-3 gap-4">
-                  <div className="bg-blue-900 p-4 rounded-lg border border-blue-700">
-                    <h4 className="font-bold text-blue-300 mb-2">🛡️ Victoire Fidèles</h4>
-                    <p className="text-sm">Adopter 5 Décrets Loyaux OU exécuter le Tyran</p>
+                  <div className="role-card role-card--fidele p-5">
+                    <h4 className="font-bold text-blue-300 mb-2" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' }}>🛡️ FIDÈLES</h4>
+                    <p className="text-sm text-amber-100/85 leading-relaxed">Adopter 5 Décrets Loyaux OU exécuter le Tyran.</p>
                   </div>
-                  <div className="bg-red-900 p-4 rounded-lg border border-red-700">
-                    <h4 className="font-bold text-red-300 mb-2">⚔️ Victoire Traîtres</h4>
-                    <p className="text-sm">Adopter 6 Décrets de Trahison OU le Tyran devient Chancelier après 3+ Décrets de Trahison</p>
+                  <div className="role-card role-card--traitre p-5">
+                    <h4 className="font-bold text-red-300 mb-2" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' }}>⚔️ TRAÎTRES</h4>
+                    <p className="text-sm text-amber-100/85 leading-relaxed">Adopter 6 Décrets de Trahison OU faire élire le Tyran Chancelier après 3+ Décrets de Trahison.</p>
                   </div>
-                  <div className="bg-purple-900 p-4 rounded-lg border border-purple-700">
-                    <h4 className="font-bold text-purple-300 mb-2">👑 Victoire Tyran</h4>
-                    <p className="text-sm">Être élu Chancelier après 3 Décrets de Trahison adoptés (gagne avec les Traîtres)</p>
+                  <div className="role-card role-card--tyran p-5">
+                    <h4 className="font-bold text-purple-300 mb-2" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' }}>👑 TYRAN</h4>
+                    <p className="text-sm text-amber-100/85 leading-relaxed">Être élu Chancelier après 3 Décrets de Trahison adoptés (gagne avec les Traîtres).</p>
                   </div>
                 </div>
               </section>
 
-              <section>
-                <h3 className="text-xl font-bold text-amber-400 mb-3">⚡ Piste de Crise</h3>
-                <p>Quand un gouvernement est rejeté 3 fois consécutives, le décret du dessus de la pioche est automatiquement adopté. La piste de crise se remet à zéro après chaque gouvernement accepté.</p>
+              {/* Crise */}
+              <section className="oath-card p-6 md:p-8">
+                <h3 className="darkoath-title text-2xl md:text-3xl mb-3" style={{ fontSize: '1.6rem' }}>
+                  ⚡ &nbsp;Piste de Crise
+                </h3>
+                <p className="text-amber-100/90 leading-relaxed" style={{ fontFamily: "'IM Fell English', serif" }}>
+                  Quand un gouvernement est rejeté 3 fois consécutives, le décret du dessus de la pioche
+                  est automatiquement adopté. La piste de crise se remet à zéro après chaque gouvernement accepté.
+                </p>
               </section>
 
-              <section>
-                <h3 className="text-xl font-bold text-amber-400 mb-3">🎮 Déroulement d'une Manche</h3>
+              {/* Manche */}
+              <section className="oath-card p-6 md:p-8">
+                <h3 className="darkoath-title text-2xl md:text-3xl mb-5" style={{ fontSize: '1.6rem' }}>
+                  🎮 &nbsp;Déroulement d'une Manche
+                </h3>
                 <div className="space-y-3">
-                  <div className="bg-gray-700 p-3 rounded-lg">
-                    <h4 className="font-bold text-yellow-400">1. Nomination</h4>
-                    <p className="text-sm">Le Roi nomme un Chancelier pour l'assister.</p>
-                  </div>
-                  <div className="bg-gray-700 p-3 rounded-lg">
-                    <h4 className="font-bold text-yellow-400">2. Vote</h4>
-                    <p className="text-sm">Tous les joueurs (sauf Roi et Chancelier) votent OUI ou NON pour approuver le gouvernement.</p>
-                  </div>
-                  <div className="bg-gray-700 p-3 rounded-lg">
-                    <h4 className="font-bold text-yellow-400">3. Phase Législative</h4>
-                    <p className="text-sm">Si approuvé : le Roi puis le Chancelier choisissent quels décrets adopter parmi 3 cartes tirées.</p>
-                  </div>
-                  <div className="bg-gray-700 p-3 rounded-lg">
-                    <h4 className="font-bold text-yellow-400">4. Pouvoirs Spéciaux</h4>
-                    <p className="text-sm">Certains décrets de trahison accordent des pouvoirs au Roi (Investigation à 2+, Exécution à 4+).</p>
-                  </div>
+                  {[
+                    { num: '1', title: 'Nomination', text: "Le Roi nomme un Chancelier pour l'assister." },
+                    { num: '2', title: 'Vote', text: "Tous les joueurs (sauf Roi et Chancelier) votent OUI ou NON pour approuver le gouvernement." },
+                    { num: '3', title: 'Phase Législative', text: "Si approuvé : le Roi puis le Chancelier choisissent quels décrets adopter parmi 3 cartes tirées." },
+                    { num: '4', title: 'Pouvoirs Spéciaux', text: "Certains décrets de trahison accordent des pouvoirs au Roi (Investigation à 2+, Exécution à 4+)." },
+                  ].map((step) => (
+                    <div key={step.num} className="flex gap-4 items-start p-4 rounded-lg" style={{
+                      background: 'linear-gradient(180deg, rgba(30, 20, 12, 0.6), rgba(18, 12, 8, 0.7))',
+                      border: '1px solid rgba(199, 168, 105, 0.2)',
+                    }}>
+                      <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-amber-200 font-bold" style={{
+                        background: 'radial-gradient(circle, rgba(199, 168, 105, 0.25), rgba(90, 60, 20, 0.4))',
+                        border: '1px solid rgba(199, 168, 105, 0.5)',
+                        fontFamily: "'Cinzel', serif",
+                      }}>
+                        {step.num}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-amber-300 mb-1" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' }}>{step.title}</h4>
+                        <p className="text-sm text-amber-100/85 leading-relaxed">{step.text}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </section>
 
-              <section>
-                <h3 className="text-xl font-bold text-amber-400 mb-3">🎭 Conseils Tactiques</h3>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <h4 className="font-bold text-blue-400 mb-2">Pour les Fidèles :</h4>
-                    <ul className="text-sm space-y-1 list-disc list-inside">
+              {/* Conseils */}
+              <section className="oath-card p-6 md:p-8">
+                <h3 className="darkoath-title text-2xl md:text-3xl mb-5" style={{ fontSize: '1.6rem' }}>
+                  🎭 &nbsp;Conseils Tactiques
+                </h3>
+                <div className="grid md:grid-cols-2 gap-5">
+                  <div className="role-card role-card--fidele p-5">
+                    <h4 className="font-bold text-blue-300 mb-3" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' }}>POUR LES FIDÈLES</h4>
+                    <ul className="text-sm space-y-2 list-disc list-inside text-amber-100/85">
                       <li>Observez les votes et comportements suspects</li>
                       <li>Utilisez les pouvoirs d'investigation à bon escient</li>
                       <li>Méfiez-vous des joueurs trop coopératifs</li>
                       <li>Identifiez et exécutez le Tyran</li>
                     </ul>
                   </div>
-                  <div>
-                    <h4 className="font-bold text-red-400 mb-2">Pour les Traîtres :</h4>
-                    <ul className="text-sm space-y-1 list-disc list-inside">
+                  <div className="role-card role-card--traitre p-5">
+                    <h4 className="font-bold text-red-300 mb-3" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' }}>POUR LES TRAÎTRES</h4>
+                    <ul className="text-sm space-y-2 list-disc list-inside text-amber-100/85">
                       <li>Semez la discorde sans vous exposer</li>
                       <li>Aidez le Tyran à accéder au poste de Chancelier</li>
                       <li>Votez stratégiquement pour faire échouer les bons gouvernements</li>
@@ -233,8 +300,16 @@ const LandingPage = () => {
                   </div>
                 </div>
               </section>
-            </CardContent>
-          </Card>
+
+              {/* Closing quote */}
+              <div className="text-center pt-4 pb-8">
+                <p className="darkoath-subtitle italic text-base md:text-lg">
+                  « Celui qui connaît les règles du serment le brise mieux. »
+                </p>
+              </div>
+
+            </div>
+          </div>
         </div>
       </div>
     );
