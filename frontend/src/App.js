@@ -168,91 +168,91 @@ const LandingPage = () => {
 
               {/* Objectif */}
               <section className="oath-card p-6 md:p-8">
-                <h3 className="darkoath-title text-2xl md:text-3xl mb-4" style={{ fontSize: '1.6rem' }}>
-                  🎯 &nbsp;Objectif du Jeu
+                <h3 className="darkoath-title mb-3" style={{ fontSize: '1.6rem' }}>
+                  🎯 &nbsp;Le Jeu en un Coup d'Œil
                 </h3>
-                <p className="text-amber-100/90 leading-relaxed" style={{ fontFamily: "'IM Fell English', serif" }}>
-                  Dark Oath est un jeu de déduction sociale où Fidèles et Traîtres s'affrontent dans l'ombre.
-                  Les <strong className="text-blue-300">Fidèles</strong> tentent de préserver la Couronne,
-                  tandis que les <strong className="text-red-400">Traîtres</strong> et leur mystérieux
-                  <strong className="text-purple-300"> Tyran</strong> conspirent pour prendre le pouvoir.
+                <p className="text-amber-100/90 leading-relaxed mb-3" style={{ fontFamily: "'IM Fell English', serif" }}>
+                  Dark Oath est un jeu de <strong>déduction sociale</strong> pour <strong>5 à 10 joueurs</strong>. Deux camps s'affrontent en secret&nbsp;: les <strong className="text-blue-300">Fidèles</strong> défendent la Couronne, les <strong className="text-red-400">Traîtres</strong> et leur <strong className="text-purple-300">Tyran</strong> la font tomber.
                 </p>
+                <p className="text-amber-100/85 leading-relaxed" style={{ fontFamily: "'IM Fell English', serif" }}>
+                  À chaque tour, un <strong>Roi</strong> choisit un <strong>Chancelier</strong>, la table vote pour les approuver, puis ils adoptent un décret. Les décrets remplissent deux pistes&nbsp;: l'une mène à la victoire des Fidèles, l'autre à celle des Traîtres. Mentir, démasquer, manipuler&nbsp;: tout est permis.
+                </p>
+              </section>
+
+              {/* Rôles — SECTION PRIORITAIRE */}
+              <section className="oath-card p-6 md:p-8">
+                <h3 className="darkoath-title mb-5" style={{ fontSize: '1.6rem' }}>
+                  🎭 &nbsp;Les Rôles
+                </h3>
+                <p className="text-amber-100/80 text-sm italic mb-5" style={{ fontFamily: "'IM Fell English', serif" }}>
+                  Votre rôle est <strong>secret</strong>. Il vous est révélé au début de la partie et ne change jamais.
+                </p>
+                <div className="space-y-4">
+                  <div className="role-card role-card--fidele p-5">
+                    <h4 className="font-bold text-blue-300 mb-2 text-lg" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.1em' }}>🛡️ FIDÈLE</h4>
+                    <p className="text-sm text-amber-100/90 mb-2 leading-relaxed"><strong>But&nbsp;:</strong> protéger la Couronne en adoptant 5 Décrets Loyaux, ou en faisant exécuter le Tyran.</p>
+                    <p className="text-sm text-amber-100/75 leading-relaxed"><strong>Ce que vous savez&nbsp;:</strong> uniquement votre propre rôle. Vous devez déduire qui sont les Traîtres à travers les votes, les décrets et les discussions.</p>
+                  </div>
+                  <div className="role-card role-card--traitre p-5">
+                    <h4 className="font-bold text-red-300 mb-2 text-lg" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.1em' }}>⚔️ TRAÎTRE</h4>
+                    <p className="text-sm text-amber-100/90 mb-2 leading-relaxed"><strong>But&nbsp;:</strong> saboter la Couronne en adoptant 6 Décrets de Trahison, ou en faisant élire le Tyran au poste de Chancelier après 3+ Décrets de Trahison.</p>
+                    <p className="text-sm text-amber-100/75 leading-relaxed"><strong>Ce que vous savez&nbsp;:</strong> l'identité des autres Traîtres <strong>et</strong> du Tyran. Votre mission&nbsp;: semer le doute sans vous faire démasquer.</p>
+                  </div>
+                  <div className="role-card role-card--tyran p-5">
+                    <h4 className="font-bold text-purple-300 mb-2 text-lg" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.1em' }}>👑 TYRAN</h4>
+                    <p className="text-sm text-amber-100/90 mb-2 leading-relaxed"><strong>But&nbsp;:</strong> être élu Chancelier après que 3 Décrets de Trahison ont été adoptés (victoire immédiate avec les Traîtres).</p>
+                    <p className="text-sm text-amber-100/75 leading-relaxed"><strong>Ce que vous savez&nbsp;:</strong>
+                      {' '}À <strong>5-6 joueurs</strong>, vous connaissez les Traîtres. À <strong>7+ joueurs</strong>, vous êtes seul — les Traîtres savent qui vous êtes, mais vous les ignorez. Agissez comme un Fidèle pour passer inaperçu jusqu'au bon moment.
+                    </p>
+                  </div>
+                </div>
               </section>
 
               {/* Composition */}
               <section className="oath-card p-6 md:p-8">
-                <h3 className="darkoath-title text-2xl md:text-3xl mb-5" style={{ fontSize: '1.6rem' }}>
-                  👥 &nbsp;Composition (5-10 joueurs)
+                <h3 className="darkoath-title mb-5" style={{ fontSize: '1.6rem' }}>
+                  👥 &nbsp;Répartition des Rôles
                 </h3>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="role-card role-card--fidele p-5">
-                    <h4 className="font-bold text-blue-300 mb-3 text-lg" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.1em' }}>🛡️ FIDÈLES</h4>
-                    <ul className="text-sm space-y-1.5 text-amber-100/85">
-                      <li>5 joueurs : 3 Fidèles</li>
-                      <li>6 joueurs : 4 Fidèles</li>
-                      <li>7 joueurs : 4 Fidèles</li>
-                      <li>8 joueurs : 5 Fidèles</li>
-                      <li>9 joueurs : 5 Fidèles</li>
-                      <li>10 joueurs : 6 Fidèles</li>
-                    </ul>
-                  </div>
-                  <div className="role-card role-card--traitre p-5">
-                    <h4 className="font-bold text-red-300 mb-3 text-lg" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.1em' }}>⚔️ TRAÎTRES + 👑 TYRAN</h4>
-                    <ul className="text-sm space-y-1.5 text-amber-100/85">
-                      <li>5 joueurs : 1 Traître + 1 Tyran</li>
-                      <li>6 joueurs : 1 Traître + 1 Tyran</li>
-                      <li>7 joueurs : 2 Traîtres + 1 Tyran</li>
-                      <li>8 joueurs : 2 Traîtres + 1 Tyran</li>
-                      <li>9 joueurs : 3 Traîtres + 1 Tyran</li>
-                      <li>10 joueurs : 3 Traîtres + 1 Tyran</li>
-                    </ul>
-                  </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm" style={{ color: '#e8d9a8' }}>
+                    <thead>
+                      <tr className="text-left border-b" style={{ borderColor: 'rgba(199, 168, 105, 0.3)', fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' }}>
+                        <th className="py-2 pr-3">Joueurs</th>
+                        <th className="py-2 pr-3 text-blue-300">Fidèles</th>
+                        <th className="py-2 pr-3 text-red-300">Traîtres</th>
+                        <th className="py-2 text-purple-300">Tyran</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        [5, 3, 1, 1], [6, 4, 1, 1], [7, 4, 2, 1],
+                        [8, 5, 2, 1], [9, 5, 3, 1], [10, 6, 3, 1],
+                      ].map(([n, f, t, u]) => (
+                        <tr key={n} className="border-b" style={{ borderColor: 'rgba(199, 168, 105, 0.1)' }}>
+                          <td className="py-2 pr-3 font-bold">{n}</td>
+                          <td className="py-2 pr-3 text-blue-200">{f}</td>
+                          <td className="py-2 pr-3 text-red-200">{t}</td>
+                          <td className="py-2 text-purple-200">{u}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </section>
 
-              {/* Victoire */}
+              {/* Tour */}
               <section className="oath-card p-6 md:p-8">
-                <h3 className="darkoath-title text-2xl md:text-3xl mb-5" style={{ fontSize: '1.6rem' }}>
-                  🏆 &nbsp;Conditions de Victoire
-                </h3>
-                <div className="grid md:grid-cols-3 gap-4">
-                  <div className="role-card role-card--fidele p-5">
-                    <h4 className="font-bold text-blue-300 mb-2" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' }}>🛡️ FIDÈLES</h4>
-                    <p className="text-sm text-amber-100/85 leading-relaxed">Adopter 5 Décrets Loyaux OU exécuter le Tyran.</p>
-                  </div>
-                  <div className="role-card role-card--traitre p-5">
-                    <h4 className="font-bold text-red-300 mb-2" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' }}>⚔️ TRAÎTRES</h4>
-                    <p className="text-sm text-amber-100/85 leading-relaxed">Adopter 6 Décrets de Trahison OU faire élire le Tyran Chancelier après 3+ Décrets de Trahison.</p>
-                  </div>
-                  <div className="role-card role-card--tyran p-5">
-                    <h4 className="font-bold text-purple-300 mb-2" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' }}>👑 TYRAN</h4>
-                    <p className="text-sm text-amber-100/85 leading-relaxed">Être élu Chancelier après 3 Décrets de Trahison adoptés (gagne avec les Traîtres).</p>
-                  </div>
-                </div>
-              </section>
-
-              {/* Crise */}
-              <section className="oath-card p-6 md:p-8">
-                <h3 className="darkoath-title text-2xl md:text-3xl mb-3" style={{ fontSize: '1.6rem' }}>
-                  ⚡ &nbsp;Piste de Crise
-                </h3>
-                <p className="text-amber-100/90 leading-relaxed" style={{ fontFamily: "'IM Fell English', serif" }}>
-                  Quand un gouvernement est rejeté 3 fois consécutives, le décret du dessus de la pioche
-                  est automatiquement adopté. La piste de crise se remet à zéro après chaque gouvernement accepté.
-                </p>
-              </section>
-
-              {/* Manche */}
-              <section className="oath-card p-6 md:p-8">
-                <h3 className="darkoath-title text-2xl md:text-3xl mb-5" style={{ fontSize: '1.6rem' }}>
-                  🎮 &nbsp;Déroulement d'une Manche
+                <h3 className="darkoath-title mb-5" style={{ fontSize: '1.6rem' }}>
+                  🎮 &nbsp;Déroulement d'un Tour
                 </h3>
                 <div className="space-y-3">
                   {[
-                    { num: '1', title: 'Nomination', text: "Le Roi nomme un Chancelier pour l'assister." },
-                    { num: '2', title: 'Vote', text: "Tous les joueurs (sauf Roi et Chancelier) votent OUI ou NON pour approuver le gouvernement." },
-                    { num: '3', title: 'Phase Législative', text: "Si approuvé : le Roi puis le Chancelier choisissent quels décrets adopter parmi 3 cartes tirées." },
-                    { num: '4', title: 'Pouvoirs Spéciaux', text: "Certains décrets de trahison accordent des pouvoirs au Roi (Investigation à 2+, Exécution à 4+)." },
+                    { num: '1', title: 'Nomination', text: "Le Roi (désigné à tour de rôle autour de la table) propose un Chancelier parmi les joueurs éligibles." },
+                    { num: '2', title: 'Vote', text: "Tous les joueurs vivants votent OUI ou NON à la majorité simple. Si OUI, le gouvernement est formé. Si NON ou égalité, on passe au joueur suivant et la Piste de Crise avance d'une case." },
+                    { num: '3', title: 'Législation — le Roi', text: "Le Roi pioche 3 décrets, en défausse 1 secrètement, et transmet les 2 restants au Chancelier." },
+                    { num: '4', title: 'Législation — le Chancelier', text: "Le Chancelier défausse 1 décret en secret et révèle le dernier. Ce décret est appliqué et avance la piste correspondante (Fidèles ou Trahison)." },
+                    { num: '5', title: 'Pouvoir du Roi (si déclenché)', text: "Certains Décrets de Trahison déclenchent un pouvoir réservé au Roi (voir section Pouvoirs)." },
+                    { num: '6', title: 'Conseil du Royaume', text: "Après chaque décret révélé, 30 secondes de discussion en vocal ouvert. Chacun peut s'exprimer, accuser, se justifier." },
                   ].map((step) => (
                     <div key={step.num} className="flex gap-4 items-start p-4 rounded-lg" style={{
                       background: 'linear-gradient(180deg, rgba(30, 20, 12, 0.6), rgba(18, 12, 8, 0.7))',
@@ -274,31 +274,118 @@ const LandingPage = () => {
                 </div>
               </section>
 
+              {/* Pistes & Victoire */}
+              <section className="oath-card p-6 md:p-8">
+                <h3 className="darkoath-title mb-5" style={{ fontSize: '1.6rem' }}>
+                  🏆 &nbsp;Pistes & Conditions de Victoire
+                </h3>
+                <p className="text-amber-100/85 text-sm leading-relaxed mb-5" style={{ fontFamily: "'IM Fell English', serif" }}>
+                  Chaque décret adopté avance la piste de son camp. Le premier camp à remplir sa piste gagne. D'autres conditions peuvent aussi clore la partie immédiatement.
+                </p>
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div className="role-card role-card--fidele p-5">
+                    <h4 className="font-bold text-blue-300 mb-2" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' }}>🛡️ FIDÈLES gagnent si</h4>
+                    <ul className="text-sm text-amber-100/85 leading-relaxed space-y-1 list-disc list-inside">
+                      <li>5 Décrets Loyaux adoptés, <strong>ou</strong></li>
+                      <li>le Tyran est exécuté.</li>
+                    </ul>
+                  </div>
+                  <div className="role-card role-card--traitre p-5">
+                    <h4 className="font-bold text-red-300 mb-2" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' }}>⚔️ TRAÎTRES gagnent si</h4>
+                    <ul className="text-sm text-amber-100/85 leading-relaxed space-y-1 list-disc list-inside">
+                      <li>6 Décrets de Trahison adoptés, <strong>ou</strong></li>
+                      <li>le Tyran est élu Chancelier après 3+ Trahison.</li>
+                    </ul>
+                  </div>
+                  <div className="role-card role-card--tyran p-5">
+                    <h4 className="font-bold text-purple-300 mb-2" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' }}>👑 TYRAN gagne</h4>
+                    <p className="text-sm text-amber-100/85 leading-relaxed">avec les Traîtres — sa victoire personnelle est d'être élu Chancelier après 3 Décrets de Trahison.</p>
+                  </div>
+                </div>
+              </section>
+
+              {/* Pouvoirs */}
+              <section className="oath-card p-6 md:p-8">
+                <h3 className="darkoath-title mb-3" style={{ fontSize: '1.6rem' }}>
+                  ⚜️ &nbsp;Pouvoirs du Roi
+                </h3>
+                <p className="text-amber-100/85 text-sm leading-relaxed mb-4" style={{ fontFamily: "'IM Fell English', serif" }}>
+                  Quand un <strong className="text-red-300">Décret de Trahison</strong> est révélé, le Roi débloque un pouvoir selon la progression de la piste&nbsp;:
+                </p>
+                <div className="space-y-2 text-sm">
+                  <div className="flex gap-3 p-3 rounded" style={{ background: 'rgba(20, 14, 8, 0.6)', border: '1px solid rgba(199, 168, 105, 0.2)' }}>
+                    <span className="text-red-300 font-bold min-w-[4rem]" style={{ fontFamily: "'Cinzel', serif" }}>2+</span>
+                    <span className="text-amber-100/85"><strong>Investigation&nbsp;:</strong> le Roi consulte secrètement le camp (Fidèle / Traîtres) d'un autre joueur.</span>
+                  </div>
+                  <div className="flex gap-3 p-3 rounded" style={{ background: 'rgba(20, 14, 8, 0.6)', border: '1px solid rgba(199, 168, 105, 0.2)' }}>
+                    <span className="text-red-300 font-bold min-w-[4rem]" style={{ fontFamily: "'Cinzel', serif" }}>4+</span>
+                    <span className="text-amber-100/85"><strong>Exécution&nbsp;:</strong> le Roi élimine définitivement un joueur. Si c'était le Tyran, les Fidèles gagnent.</span>
+                  </div>
+                </div>
+              </section>
+
+              {/* Crise */}
+              <section className="oath-card p-6 md:p-8">
+                <h3 className="darkoath-title mb-3" style={{ fontSize: '1.6rem' }}>
+                  ⚡ &nbsp;Colère du Peuple (Piste de Crise)
+                </h3>
+                <p className="text-amber-100/90 leading-relaxed" style={{ fontFamily: "'IM Fell English', serif" }}>
+                  À chaque gouvernement rejeté, la Piste de Crise avance d'une case. Au <strong>3<sup>e</sup> rejet consécutif</strong>, le décret du dessus de la pioche est adopté <strong>automatiquement</strong>, le Roi est désavoué (inéligible au tour suivant), et la piste repart à zéro. Un gouvernement accepté remet également la piste à zéro.
+                </p>
+              </section>
+
+              {/* Chat vocal */}
+              <section className="oath-card p-6 md:p-8">
+                <h3 className="darkoath-title mb-3" style={{ fontSize: '1.6rem' }}>
+                  🕯️ &nbsp;Vocal & Chat
+                </h3>
+                <p className="text-amber-100/85 leading-relaxed text-sm mb-2" style={{ fontFamily: "'IM Fell English', serif" }}>
+                  Le <strong>micro est ouvert en continu</strong> dès que la partie commence. Un chat écrit est également disponible à tout moment pour chuchoter, accuser ou conspirer.
+                </p>
+                <p className="text-amber-100/75 leading-relaxed text-sm" style={{ fontFamily: "'IM Fell English', serif" }}>
+                  Un <strong>Conseil du Royaume</strong> de 30 secondes marque chaque révélation de décret&nbsp;: moment clé pour débattre avant le tour suivant.
+                </p>
+              </section>
+
               {/* Conseils */}
               <section className="oath-card p-6 md:p-8">
-                <h3 className="darkoath-title text-2xl md:text-3xl mb-5" style={{ fontSize: '1.6rem' }}>
-                  🎭 &nbsp;Conseils Tactiques
+                <h3 className="darkoath-title mb-5" style={{ fontSize: '1.6rem' }}>
+                  🗡️ &nbsp;Conseils Tactiques
                 </h3>
                 <div className="grid md:grid-cols-2 gap-5">
                   <div className="role-card role-card--fidele p-5">
                     <h4 className="font-bold text-blue-300 mb-3" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' }}>POUR LES FIDÈLES</h4>
                     <ul className="text-sm space-y-2 list-disc list-inside text-amber-100/85">
-                      <li>Observez les votes et comportements suspects</li>
-                      <li>Utilisez les pouvoirs d'investigation à bon escient</li>
-                      <li>Méfiez-vous des joueurs trop coopératifs</li>
-                      <li>Identifiez et exécutez le Tyran</li>
+                      <li>Surveillez qui vote pour quels gouvernements.</li>
+                      <li>Méfiez-vous des défausses trop commodes.</li>
+                      <li>Utilisez vite l'Investigation — et communiquez ce que vous apprenez.</li>
+                      <li>À 4+ Trahison, exécutez — mais choisissez bien votre cible.</li>
                     </ul>
                   </div>
                   <div className="role-card role-card--traitre p-5">
-                    <h4 className="font-bold text-red-300 mb-3" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' }}>POUR LES TRAÎTRES</h4>
+                    <h4 className="font-bold text-red-300 mb-3" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' }}>POUR LES TRAÎTRES & LE TYRAN</h4>
                     <ul className="text-sm space-y-2 list-disc list-inside text-amber-100/85">
-                      <li>Semez la discorde sans vous exposer</li>
-                      <li>Aidez le Tyran à accéder au poste de Chancelier</li>
-                      <li>Votez stratégiquement pour faire échouer les bons gouvernements</li>
-                      <li>Adoptez 3+ Décrets de Trahison avant de pousser le Tyran</li>
+                      <li>Jouez la normalité tant que votre camp ne domine pas la piste.</li>
+                      <li>Accusez un Fidèle pour détourner les soupçons.</li>
+                      <li>À 3 Trahison, faites élire le Tyran au poste de Chancelier.</li>
+                      <li>Le Tyran (7+ joueurs) doit se taire&nbsp;: il ignore qui sont ses alliés.</li>
                     </ul>
                   </div>
                 </div>
+              </section>
+
+              {/* TL;DR */}
+              <section className="oath-card p-6 md:p-8" style={{ borderColor: 'rgba(199, 168, 105, 0.5)' }}>
+                <h3 className="darkoath-title mb-3" style={{ fontSize: '1.6rem' }}>
+                  📜 &nbsp;Résumé en 5 lignes
+                </h3>
+                <ol className="space-y-2 text-sm md:text-base text-amber-100/90 leading-relaxed list-decimal list-inside" style={{ fontFamily: "'IM Fell English', serif" }}>
+                  <li>Chaque joueur reçoit un rôle secret&nbsp;: <strong className="text-blue-300">Fidèle</strong>, <strong className="text-red-300">Traître</strong>, ou <strong className="text-purple-300">Tyran</strong>.</li>
+                  <li>À chaque tour, un Roi nomme un Chancelier, la table vote, puis un décret est adopté.</li>
+                  <li>5 Décrets Loyaux = Fidèles gagnent. 6 Décrets de Trahison = Traîtres gagnent.</li>
+                  <li>Après 3 Trahison, élire le Tyran Chancelier fait gagner le camp du Mal <strong>immédiatement</strong>.</li>
+                  <li>Exécuter le Tyran fait gagner les Fidèles. Mentez, déduisez, survivez.</li>
+                </ol>
               </section>
 
               {/* Closing quote */}
