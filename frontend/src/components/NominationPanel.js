@@ -1,120 +1,142 @@
 import React from 'react';
-import { Crown, Users } from 'lucide-react';
+import { Crown, Users, Hourglass } from 'lucide-react';
 import { Button } from './ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Badge } from './ui/badge';
 
 const NominationPanel = ({ meSeat, regentSeat, players, prevGovernment, disgracedPlayerSeat, onNominate }) => {
   const isRegent = meSeat === regentSeat;
-  
+  const regentName = players.find(p => p.seat === regentSeat)?.name;
+
   if (!isRegent) {
     return (
-      <Card className="bg-blue-50 border-blue-200">
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center">
-            <Crown className="h-5 w-5 mr-2 text-blue-600" />
-            Phase de Nomination
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center p-6">
-            <Users className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-            <p className="text-blue-800 text-lg mb-2">
-              En attente de la nomination du Roi
-            </p>
-            <p className="text-blue-600 text-sm">
-              Le Roi (Siège {regentSeat}) doit choisir un Conseiller
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="text-center py-6 px-3">
+        <Hourglass className="h-10 w-10 text-amber-400/80 mx-auto mb-3 animate-pulse" />
+        <p className="text-amber-200 text-base mb-1" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.05em' }}>
+          Le Roi délibère…
+        </p>
+        <p className="text-amber-100/70 text-sm">
+          {regentName ? <><strong className="text-amber-300">{regentName}</strong> (siège {regentSeat})</> : `Siège ${regentSeat}`} doit désigner son Conseiller.
+        </p>
+      </div>
     );
   }
 
-  // Filter out invalid nominees
   const validCandidates = players.filter(player => {
-    // Can't nominate self
     if (player.seat === regentSeat) return false;
-    
-    // Can't nominate dead players
     if (!player.alive) return false;
-    
-    // Can't nominate previous government members
     if (prevGovernment) {
       if (player.seat === prevGovernment.regent || player.seat === prevGovernment.chambellan) {
         return false;
       }
     }
-    
-    // Can't nominate disgraced player (Colère du Peuple)
     if (disgracedPlayerSeat && player.seat === disgracedPlayerSeat) {
       return false;
     }
-    
     return true;
   });
 
+  const excludedSeats = [];
+  if (prevGovernment?.regent) excludedSeats.push({ seat: prevGovernment.regent, reason: 'ancien Roi' });
+  if (prevGovernment?.chambellan) excludedSeats.push({ seat: prevGovernment.chambellan, reason: 'ancien Conseiller' });
+  if (disgracedPlayerSeat) excludedSeats.push({ seat: disgracedPlayerSeat, reason: 'désavoué' });
+
   return (
-    <Card className="bg-amber-50 border-amber-200">
-      <CardHeader>
-        <CardTitle className="text-lg flex items-center">
-          <Crown className="h-5 w-5 mr-2 text-amber-600" />
-          Nomination du Conseiller
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          <div className="bg-amber-100 p-3 rounded-lg">
-            <p className="text-amber-800 font-medium mb-2">
-              👑 Vous êtes le Roi !
-            </p>
-            <p className="text-amber-700 text-sm">
-              Choisissez un joueur pour être votre Conseiller. Ensemble, vous formerez le gouvernement.
-            </p>
-          </div>
-          
-          <div className="space-y-2">
-            <h4 className="font-medium text-amber-900">Candidats disponibles :</h4>
-            <div className="grid gap-2">
-              {validCandidates.map(player => (
-                <Button
-                  key={player.seat}
-                  onClick={() => onNominate(player.seat)}
-                  variant="outline"
-                  className="justify-start h-auto p-3 bg-white hover:bg-amber-100 border-amber-300"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 rounded-full bg-amber-200 flex items-center justify-center text-sm font-bold">
-                      {player.seat}
-                    </div>
-                    <div className="text-left">
-                      <p className="font-medium">{player.name}</p>
-                      <p className="text-xs text-gray-600">Siège {player.seat}</p>
-                    </div>
-                  </div>
-                </Button>
-              ))}
-            </div>
-            
-            {validCandidates.length === 0 && (
-              <div className="text-center p-4 bg-red-100 rounded-lg">
-                <p className="text-red-800">Aucun candidat disponible</p>
-                <p className="text-red-600 text-sm">Tous les joueurs éligibles ont été exclus</p>
-              </div>
-            )}
-          </div>
-          
-          {prevGovernment && (
-            <div className="bg-gray-100 p-3 rounded-lg">
-              <p className="text-gray-700 text-sm">
-                <strong>Gouvernement précédent :</strong> Roi (Siège {prevGovernment.regent}), 
-                Conseiller (Siège {prevGovernment.chambellan}) - Exclus de la nomination
-              </p>
-            </div>
-          )}
+    <div className="space-y-4">
+      <div
+        className="p-3 rounded-lg flex items-start gap-3"
+        style={{
+          background: 'rgba(199, 168, 105, 0.1)',
+          border: '1px solid rgba(199, 168, 105, 0.3)',
+        }}
+      >
+        <Crown className="h-5 w-5 text-amber-400 flex-shrink-0 mt-0.5" />
+        <div>
+          <p className="text-amber-200 font-medium text-sm mb-1" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.05em' }}>
+            Vous êtes le Roi
+          </p>
+          <p className="text-amber-100/80 text-xs leading-relaxed">
+            Désignez un <strong className="text-amber-300">Conseiller</strong> pour former votre gouvernement.
+          </p>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+
+      {validCandidates.length > 0 ? (
+        <div className="space-y-2">
+          {validCandidates.map(player => (
+            <Button
+              key={player.seat}
+              onClick={() => onNominate(player.seat)}
+              className="w-full justify-start h-auto p-3 transition-all"
+              style={{
+                background: 'rgba(20, 14, 8, 0.6)',
+                border: '1px solid rgba(199, 168, 105, 0.35)',
+                color: '#e8d9a8',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(120, 53, 15, 0.45)';
+                e.currentTarget.style.borderColor = '#c7a869';
+                e.currentTarget.style.boxShadow = '0 0 10px rgba(199, 168, 105, 0.35)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(20, 14, 8, 0.6)';
+                e.currentTarget.style.borderColor = 'rgba(199, 168, 105, 0.35)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              <div className="flex items-center gap-3 w-full">
+                <div
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
+                  style={{
+                    background: 'rgba(199, 168, 105, 0.2)',
+                    border: '1px solid rgba(199, 168, 105, 0.5)',
+                    color: '#e8d9a8',
+                    fontFamily: "'Cinzel', serif",
+                  }}
+                >
+                  {player.seat}
+                </div>
+                <span className="font-medium text-base truncate" style={{ fontFamily: "'Cinzel', serif" }}>
+                  {player.name}
+                </span>
+              </div>
+            </Button>
+          ))}
+        </div>
+      ) : (
+        <div
+          className="text-center p-4 rounded-lg"
+          style={{
+            background: 'rgba(127, 29, 29, 0.25)',
+            border: '1px solid rgba(220, 38, 38, 0.45)',
+          }}
+        >
+          <p className="text-red-200 font-medium text-sm mb-1" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.05em' }}>
+            Aucun candidat éligible
+          </p>
+          <p className="text-red-300/80 text-xs">
+            Tous les autres joueurs sont exclus (ancien gouvernement, désavoué ou éliminés).
+          </p>
+        </div>
+      )}
+
+      {excludedSeats.length > 0 && (
+        <div className="flex flex-wrap gap-2 text-xs text-amber-100/60">
+          <Users className="h-3.5 w-3.5 mt-0.5" />
+          <span className="uppercase tracking-widest" style={{ fontFamily: "'Cinzel', serif", fontSize: '10px' }}>Exclus&nbsp;:</span>
+          {excludedSeats.map(({ seat, reason }) => (
+            <span
+              key={`${seat}-${reason}`}
+              className="px-2 py-0.5 rounded"
+              style={{
+                background: 'rgba(40, 28, 18, 0.6)',
+                border: '1px solid rgba(199, 168, 105, 0.2)',
+              }}
+            >
+              Siège {seat} · {reason}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
   );
 };
 
