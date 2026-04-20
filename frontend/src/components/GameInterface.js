@@ -341,7 +341,7 @@ const GameInterface = ({ roomCode }) => {
   }
   
   return (
-    <div className="min-h-screen bg-slate-900 text-gray-100" style={{ minHeight: '100dvh' }}>
+    <div className="min-h-screen darkoath-game text-gray-100 relative" style={{ minHeight: '100dvh' }}>
       {/* Colère du Peuple Message */}
       {showPeoplesAnger && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
@@ -372,10 +372,10 @@ const GameInterface = ({ roomCode }) => {
       )}
       
       {/* Header Bar */}
-      <div className="bg-gray-800 border-b border-gray-700 px-4 py-3">
+      <div className="darkoath-header px-4 py-3 relative z-10">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center space-x-4">
-            <h1 className="text-xl font-bold text-amber-400">Dark Oath</h1>
+            <h1 className="text-xl font-bold text-amber-400" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.15em' }}>DARK OATH</h1>
             <Badge className="bg-amber-600 text-black">
               {roomCode}
             </Badge>
@@ -408,7 +408,7 @@ const GameInterface = ({ roomCode }) => {
       <div className="hidden lg:flex h-full" style={{ height: 'calc(100dvh - 73px)' }}>
         
         {/* Left Column - Tracks (Pistes) */}
-        <div className="w-80 p-4 space-y-4 bg-gray-900 border-r border-gray-700">
+        <div className="w-80 p-4 space-y-4 darkoath-sidebar border-r relative z-10">
           {/* Piste des Fidèles (5 cases) */}
           <TrackComponent
             title="Fidèles"
@@ -438,15 +438,15 @@ const GameInterface = ({ roomCode }) => {
         </div>
 
         {/* Center Column - Table */}
-        <div className="flex-1 flex flex-col items-center justify-center p-4 bg-slate-900">
+        <div className="flex-1 flex flex-col items-center justify-center p-4 darkoath-table-stage relative z-10">
           <div className="w-full max-w-md">
-            <MedievalTable 
+            <MedievalTable
               players={gameState.players?.map(player => ({
                 seat: player.seat,
                 name: player.name + (player.id === currentPlayerId ? ' (Vous)' : ''),
                 active: player.seat === gameState.regent_seat || player.seat === gameState.nominee_seat
               })) || []}
-              size={320}
+              size={360}
               disgracedPlayerSeat={gameState.disgraced_player_seat}
               speakingPlayers={gameState.speaking_players || []}
             />
@@ -454,7 +454,7 @@ const GameInterface = ({ roomCode }) => {
         </div>
 
         {/* Right Column - Chat + Actions */}
-        <div className="w-80 p-4 flex flex-col space-y-4 bg-gray-900 border-l border-gray-700">
+        <div className="w-80 p-4 flex flex-col space-y-4 darkoath-sidebar border-l relative z-10">
           
           {/* Chat */}
           <Card className="bg-gray-800 border-gray-700 flex-1 flex flex-col min-h-0">

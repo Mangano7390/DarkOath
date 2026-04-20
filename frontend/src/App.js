@@ -526,106 +526,148 @@ const Lobby = ({ roomCode }) => {
     }
   };
 
+  const embers = Array.from({ length: 18 }, (_, i) => ({
+    left: `${(i * 5.5) % 100}%`,
+    delay: `${(i * 0.9) % 8}s`,
+    duration: `${9 + ((i * 1.3) % 5)}s`,
+    size: 2 + (i % 3),
+  }));
+
   return (
-    <div className="min-h-screen bg-slate-900 p-4">
-      <div className="max-w-4xl mx-auto">
-        <Card className="bg-gray-800 border-gray-700 shadow-xl">
-          <CardHeader>
-            <div className="flex justify-between items-center">
-              <div>
-                <CardTitle className="text-3xl text-amber-400">
-                  Salle de Conspiration
-                </CardTitle>
-                <CardDescription className="text-xl text-gray-300">
-                  Code: <span className="font-mono font-bold text-amber-400">{roomCode}</span>
-                </CardDescription>
-              </div>
-              <Badge variant="secondary" className="text-lg px-4 py-2 bg-amber-600 text-black">
-                {players.length}/10 Conspirateurs
-              </Badge>
+    <div className="darkoath-landing">
+      {embers.map((e, i) => (
+        <span
+          key={i}
+          className="ember"
+          style={{
+            left: e.left,
+            animationDelay: e.delay,
+            animationDuration: e.duration,
+            width: `${e.size}px`,
+            height: `${e.size}px`,
+          }}
+        />
+      ))}
+
+      <div className="relative z-10 min-h-screen flex flex-col items-center justify-start p-4 py-12">
+        <div className="w-full max-w-3xl">
+          <div className="text-center mb-8">
+            <div className="darkoath-subtitle text-sm mb-3 uppercase tracking-widest">
+              ✦ Salle du Serment ✦
             </div>
-          </CardHeader>
-          
-          <CardContent className="space-y-6">
-            {loading && (
-              <div className="text-center p-6">
-                <div className="animate-spin h-8 w-8 border-4 border-amber-600 border-t-transparent rounded-full mx-auto mb-4"></div>
-                <p className="text-gray-300">Chargement du salon...</p>
+            <h1 className="darkoath-title text-4xl md:text-6xl mb-4">
+              L'Antichambre
+            </h1>
+            <p className="darkoath-tagline text-lg mb-3">
+              Les conjurés se rassemblent dans l'ombre…
+            </p>
+            <div className="inline-flex items-center gap-3 px-5 py-2 rounded border border-amber-700/50 bg-black/50 backdrop-blur-sm">
+              <span className="darkoath-subtitle text-xs uppercase tracking-widest">Code</span>
+              <span className="darkoath-title text-2xl text-amber-200 tracking-[0.3em]">{roomCode}</span>
+            </div>
+          </div>
+
+          <Card className="oath-card">
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div>
+                  <CardTitle className="darkoath-title text-2xl text-amber-200">
+                    Conspirateurs réunis
+                  </CardTitle>
+                  <CardDescription className="darkoath-subtitle italic mt-1">
+                    {players.length < 5
+                      ? `${5 - players.length} âme${5 - players.length > 1 ? 's' : ''} encore attendue${5 - players.length > 1 ? 's' : ''}…`
+                      : 'Le cercle est complet. Le serment peut être scellé.'}
+                  </CardDescription>
+                </div>
+                <div className="text-center px-4 py-2 rounded border border-amber-700/50 bg-black/40">
+                  <div className="darkoath-title text-2xl text-amber-200 leading-none">
+                    {players.length}<span className="text-amber-700/70">/10</span>
+                  </div>
+                  <div className="darkoath-subtitle text-[10px] uppercase tracking-widest mt-1">présents</div>
+                </div>
               </div>
-            )}
-            
-            {!loading && (
-              <>
-                {/* Players List */}
-                <div className="grid gap-4">
-                  <h3 className="text-xl font-bold text-gray-100">Liste des Conspirateurs</h3>
+            </CardHeader>
+
+            <CardContent className="space-y-6">
+              {loading && (
+                <div className="text-center p-6">
+                  <div className="animate-spin h-8 w-8 border-4 border-amber-700 border-t-transparent rounded-full mx-auto mb-4"></div>
+                  <p className="darkoath-subtitle italic">Ouverture des portes…</p>
+                </div>
+              )}
+
+              {!loading && (
+                <>
                   <div className="grid gap-2">
                     {[...Array(10)].map((_, index) => {
                       const player = players[index];
+                      const taken = !!player;
                       return (
                         <div
                           key={index}
-                          className={`p-4 rounded-lg border-2 ${
-                            player 
-                              ? 'bg-green-900 border-green-600 text-green-100' 
-                              : 'bg-gray-800 border-gray-600 text-gray-500'
+                          className={`p-3 rounded border transition-all ${
+                            taken
+                              ? 'bg-gradient-to-r from-amber-950/50 to-black/60 border-amber-700/60 shadow-[0_0_15px_rgba(180,90,30,0.15)]'
+                              : 'bg-black/40 border-amber-900/30 border-dashed'
                           }`}
                         >
-                          <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 rounded-full bg-amber-600 text-black flex items-center justify-center font-bold">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold shrink-0 ${
+                              taken
+                                ? 'bg-gradient-to-br from-amber-600 to-amber-900 text-amber-100 shadow-inner'
+                                : 'bg-black/60 text-amber-900/60 border border-amber-900/30'
+                            }`} style={{ fontFamily: 'Cinzel, serif' }}>
                               {index + 1}
                             </div>
-                            <span className="font-medium">
-                              {player ? player.name : 'En attente d\'un conspirateur...'}
+                            <span className={`flex-1 font-serif ${taken ? 'text-amber-100' : 'text-amber-900/60 italic'}`}>
+                              {player ? player.name : 'Siège vide…'}
                             </span>
-                            {player && (
-                              <Badge variant={player.connected ? "default" : "destructive"}>
-                                {player.connected ? 'Connecté' : 'Déconnecté'}
-                              </Badge>
+                            {taken && (
+                              <span className={`text-xs px-2 py-0.5 rounded font-serif tracking-wider ${
+                                player.connected
+                                  ? 'bg-green-900/50 text-green-300 border border-green-700/40'
+                                  : 'bg-red-900/50 text-red-300 border border-red-700/40'
+                              }`}>
+                                {player.connected ? '● présent' : '○ absent'}
+                              </span>
                             )}
                           </div>
                         </div>
                       );
                     })}
                   </div>
-                </div>
 
-                {/* Start Game Button */}
-                {players.length >= 5 && (
-                  <div className="space-y-4">
-                    <div className="text-center p-4 bg-green-900 rounded-lg border border-green-600">
-                      <p className="text-green-100 text-lg font-semibold">
-                        ✅ Assez de conspirateurs pour commencer !
+                  {players.length >= 5 ? (
+                    <div className="space-y-4">
+                      <div className="oath-divider">LE CERCLE EST COMPLET</div>
+                      <Button
+                        onClick={startGame}
+                        className="w-full oath-btn-primary py-6 text-lg"
+                        disabled={gameStarted}
+                      >
+                        {gameStarted ? 'Le Serment se scelle…' : 'Sceller le Serment'}
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="text-center p-4 rounded border border-amber-900/40 bg-black/40">
+                      <p className="darkoath-tagline italic">
+                        Il faut au moins 5 âmes pour sceller le serment.
                       </p>
-                      <p className="text-green-300 text-sm mt-1">
-                        {players.length} joueurs prêts • {5 - players.length < 0 ? 0 : 5 - players.length} minimum requis
+                      <p className="darkoath-subtitle text-sm mt-2">
+                        Partagez le code <span className="text-amber-300 tracking-widest">{roomCode}</span> à vos conspirateurs.
                       </p>
                     </div>
-                    
-                    <Button 
-                      onClick={startGame}
-                      className="w-full py-3 text-lg bg-amber-600 hover:bg-amber-700 text-black font-bold"
-                      disabled={gameStarted}
-                    >
-                      {gameStarted ? 'Démarrage en cours...' : 'Commencer Dark Oath'}
-                    </Button>
-                  </div>
-                )}
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
 
-                {players.length < 5 && (
-                  <div className="text-center p-4 bg-yellow-900 rounded-lg border border-yellow-600">
-                    <p className="text-yellow-100 text-lg font-semibold">
-                      ⏳ En attente de plus de conspirateurs
-                    </p>
-                    <p className="text-yellow-300 text-sm mt-1">
-                      {players.length}/5 minimum • Jusqu'à 10 joueurs possibles
-                    </p>
-                  </div>
-                )}
-              </>
-            )}
-          </CardContent>
-        </Card>
+          <p className="darkoath-subtitle text-xs mt-8 italic tracking-wider text-center">
+            « Celui qui trahit le serment scelle son propre destin. »
+          </p>
+        </div>
       </div>
     </div>
   );

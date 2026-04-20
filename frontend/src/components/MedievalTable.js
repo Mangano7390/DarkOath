@@ -1,122 +1,223 @@
 import React from "react";
 
 const MedievalTable = ({ players, size = 500, disgracedPlayerSeat = null, speakingPlayers = [] }) => {
-  const radius = size / 2 - 50;
+  const radius = size / 2 - 55;
   const tableRadius = size / 3;
+  const cx = size / 2;
+  const cy = size / 2;
 
   return (
     <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} className="mx-auto">
+      <defs>
+        <radialGradient id="tableWood" cx="50%" cy="45%" r="60%">
+          <stop offset="0%" stopColor="#6b4a28" />
+          <stop offset="55%" stopColor="#4a311a" />
+          <stop offset="100%" stopColor="#2a1a0d" />
+        </radialGradient>
+        <radialGradient id="brazierGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#ffb347" stopOpacity="0.9" />
+          <stop offset="40%" stopColor="#c7411a" stopOpacity="0.5" />
+          <stop offset="100%" stopColor="#000000" stopOpacity="0" />
+        </radialGradient>
+        <linearGradient id="seatParchment" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#3a2817" />
+          <stop offset="100%" stopColor="#1e140a" />
+        </linearGradient>
+        <linearGradient id="seatActive" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#c7a869" />
+          <stop offset="100%" stopColor="#8a6d3a" />
+        </linearGradient>
+        <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="4" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+
+      {/* Outer shadow ring */}
+      <circle cx={cx} cy={cy} r={tableRadius + 10} fill="#000" opacity={0.6} />
+
+      {/* Wooden table */}
       <circle
-        cx={size / 2}
-        cy={size / 2}
+        cx={cx}
+        cy={cy}
         r={tableRadius}
-        fill="#374151"
-        stroke="#6B7280"
-        strokeWidth={4}
+        fill="url(#tableWood)"
+        stroke="#c7a869"
+        strokeWidth={3}
       />
-      
+
+      {/* Inner golden trim */}
       <circle
-        cx={size / 2}
-        cy={size / 2}
-        r={tableRadius - 15}
+        cx={cx}
+        cy={cy}
+        r={tableRadius - 14}
         fill="none"
-        stroke="#4B5563"
-        strokeWidth={2}
-        opacity={0.7}
+        stroke="#8a6d3a"
+        strokeWidth={1.5}
+        opacity={0.8}
       />
-      
+      <circle
+        cx={cx}
+        cy={cy}
+        r={tableRadius - 22}
+        fill="none"
+        stroke="#c7a869"
+        strokeWidth={0.8}
+        opacity={0.5}
+      />
+
+      {/* Central brazier glow */}
+      <circle cx={cx} cy={cy} r={tableRadius - 30} fill="url(#brazierGlow)">
+        <animate attributeName="opacity" values="0.75;1;0.75" dur="3s" repeatCount="indefinite" />
+      </circle>
+
+      {/* Brazier icon */}
       <text
-        x={size / 2}
-        y={size / 2}
+        x={cx}
+        y={cy - 6}
         textAnchor="middle"
         dominantBaseline="middle"
-        fill="#E5E7EB"
-        fontSize={Math.max(16, size / 20)}
-        fontFamily="system-ui, -apple-system, sans-serif"
-        fontWeight="600"
+        fontSize={Math.max(28, size / 14)}
+        filter="url(#glow)"
       >
-        Table de Jeu
+        🔥
+      </text>
+
+      {/* Title */}
+      <text
+        x={cx}
+        y={cy + size / 16}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fill="#c7a869"
+        fontSize={Math.max(14, size / 24)}
+        fontFamily="'Cinzel', 'Trajan Pro', serif"
+        fontWeight="700"
+        letterSpacing="4"
+      >
+        DARK OATH
       </text>
 
       {Array.from({ length: 10 }).map((_, i) => {
         const angle = (i / 10) * 2 * Math.PI - Math.PI / 2;
-        const x = size / 2 + radius * Math.cos(angle);
-        const y = size / 2 + radius * Math.sin(angle);
+        const x = cx + radius * Math.cos(angle);
+        const y = cy + radius * Math.sin(angle);
 
         const player = players.find((p) => p.seat === i + 1);
         const name = player?.name || `Siège ${i + 1}`;
-        const seatSize = Math.max(32, size / 15);
+        const seatSize = Math.max(38, size / 13);
         const isDisgraced = disgracedPlayerSeat === i + 1;
         const isSpeaking = speakingPlayers.includes(i + 1);
+        const isActive = player?.active;
 
         return (
           <g key={i} transform={`translate(${x}, ${y})`}>
-            {/* Halo rouge pour joueur qui parle */}
+            {/* Speaking halo — warm candle glow */}
             {isSpeaking && (
-              <circle
-                cx={0}
-                cy={0}
-                r={seatSize/2 + 6}
-                fill="none"
-                stroke="#EF4444"
-                strokeWidth={3}
-                opacity={0.8}
-              >
-                <animate
-                  attributeName="opacity"
-                  values="0.4;1;0.4"
-                  dur="1.5s"
-                  repeatCount="indefinite"
-                />
-              </circle>
+              <>
+                <circle
+                  cx={0}
+                  cy={0}
+                  r={seatSize / 2 + 10}
+                  fill="#ffb347"
+                  opacity={0.25}
+                >
+                  <animate
+                    attributeName="opacity"
+                    values="0.15;0.4;0.15"
+                    dur="1.4s"
+                    repeatCount="indefinite"
+                  />
+                </circle>
+                <circle
+                  cx={0}
+                  cy={0}
+                  r={seatSize / 2 + 5}
+                  fill="none"
+                  stroke="#ffb347"
+                  strokeWidth={2}
+                  opacity={0.9}
+                >
+                  <animate
+                    attributeName="opacity"
+                    values="0.5;1;0.5"
+                    dur="1.4s"
+                    repeatCount="indefinite"
+                  />
+                </circle>
+              </>
             )}
-            
+
+            {/* Seat shadow */}
             <rect
-              x={-seatSize/2}
-              y={-seatSize/2}
+              x={-seatSize / 2 + 2}
+              y={-seatSize / 2 + 3}
               width={seatSize}
               height={seatSize}
-              rx={6}
-              ry={6}
-              fill={isDisgraced ? "#6B7280" : (player?.active ? "#DC2626" : "#4B5563")}
-              stroke={isDisgraced ? "#9CA3AF" : (isSpeaking ? "#EF4444" : (player?.active ? "#EF4444" : "#6B7280"))}
-              strokeWidth={isSpeaking ? 3 : 2}
-              opacity={isDisgraced ? 0.6 : 1}
+              rx={4}
+              ry={4}
+              fill="#000"
+              opacity={0.5}
             />
-            
+
+            {/* Seat body */}
+            <rect
+              x={-seatSize / 2}
+              y={-seatSize / 2}
+              width={seatSize}
+              height={seatSize}
+              rx={4}
+              ry={4}
+              fill={isActive ? "url(#seatActive)" : "url(#seatParchment)"}
+              stroke={
+                isDisgraced ? "#6b4a28" :
+                isSpeaking ? "#ffb347" :
+                isActive ? "#f4d88f" : "#8a6d3a"
+              }
+              strokeWidth={isSpeaking || isActive ? 2.5 : 1.5}
+              opacity={isDisgraced ? 0.45 : 1}
+            />
+
+            {/* Disgraced mark */}
             {isDisgraced && (
               <text
-                y={-seatSize/2 - 18}
+                y={-seatSize / 2 - 20}
                 textAnchor="middle"
-                fill="#EF4444"
-                fontSize={Math.max(14, size / 22)}
-                fontFamily="system-ui, -apple-system, sans-serif"
+                fill="#c7411a"
+                fontSize={Math.max(16, size / 22)}
               >
                 ⚡
               </text>
             )}
-            
+
+            {/* Seat number */}
             <text
-              y={4}
+              y={6}
               textAnchor="middle"
-              fill={isDisgraced ? "#9CA3AF" : "#F3F4F6"}
-              fontSize={Math.max(11, size / 28)}
-              fontFamily="system-ui, -apple-system, sans-serif"
-              fontWeight="bold"
-              opacity={isDisgraced ? 0.7 : 1}
+              fill={isActive ? "#1e140a" : (isDisgraced ? "#6b4a28" : "#c7a869")}
+              fontSize={Math.max(12, size / 26)}
+              fontFamily="'Cinzel', serif"
+              fontWeight="700"
+              opacity={isDisgraced ? 0.6 : 1}
             >
               {i + 1}
             </text>
-            
+
+            {/* Player name */}
             <text
-              y={-seatSize/2 - 8}
+              y={-seatSize / 2 - 8}
               textAnchor="middle"
-              fill={isDisgraced ? "#9CA3AF" : "#D1D5DB"}
-              fontSize={Math.max(9, size / 32)}
-              fontFamily="system-ui, -apple-system, sans-serif"
-              opacity={isDisgraced ? 0.7 : 1}
+              fill={isDisgraced ? "#6b4a28" : "#e8d9a8"}
+              fontSize={Math.max(10, size / 32)}
+              fontFamily="'Cinzel', 'IM Fell English', serif"
+              fontWeight="500"
+              opacity={isDisgraced ? 0.6 : 1}
+              style={{ textShadow: "0 1px 2px rgba(0,0,0,0.8)" }}
             >
-              {name.length > 10 ? name.substring(0, 10) + '...' : name}
+              {name.length > 11 ? name.substring(0, 11) + "…" : name}
             </text>
           </g>
         );
