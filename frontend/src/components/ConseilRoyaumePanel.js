@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Mic, MicOff, Clock } from 'lucide-react';
+import { Mic, MicOff } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 
@@ -14,7 +14,6 @@ const ConseilRoyaumePanel = ({
   speakingPlayers = [],
 }) => {
   const [isMuted, setIsMuted] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(60);
   const [micInitialized, setMicInitialized] = useState(false);
   const [initializing, setInitializing] = useState(false);
   const [voiceError, setVoiceError] = useState(null);
@@ -22,33 +21,19 @@ const ConseilRoyaumePanel = ({
   // Mic is "open" whenever initialized AND not muted by user.
   const isSpeaking = micInitialized && !isMuted;
 
-  const phase = gameState?.phase;
-  const startTime = gameState?.conseil_royaume_start_time;
+  const status = gameState?.status;
 
-  // Refs — audio pipeline lives outside React state to avoid re-renders per chunk
   const streamRef = useRef(null);
   const audioCtxRef = useRef(null);
   const workletNodeRef = useRef(null);
   const micSourceRef = useRef(null);
   const wsRef = useRef(null);
   const speakingRef = useRef(false);
-  const playbackRef = useRef(new Map()); // seat -> { nextTime }
+  const playbackRef = useRef(new Map());
 
   useEffect(() => {
     speakingRef.current = isSpeaking;
   }, [isSpeaking]);
-
-  // Timer driven by server-provided start time
-  useEffect(() => {
-    if (!startTime) return;
-    const tick = () => {
-      const elapsed = Date.now() / 1000 - startTime;
-      setTimeLeft(Math.max(0, Math.ceil(60 - elapsed)));
-    };
-    tick();
-    const id = setInterval(tick, 500);
-    return () => clearInterval(id);
-  }, [startTime]);
 
   const playChunk = useCallback((seat, sampleRate, int16) => {
     const ctx = audioCtxRef.current;
@@ -73,7 +58,6 @@ const ConseilRoyaumePanel = ({
     playbackRef.current.set(seat, state);
   }, []);
 
-  // Teardown helper — idempotent
   const teardown = useCallback(() => {
     setMicInitialized(false);
     setIsMuted(false);
@@ -106,16 +90,17 @@ const ConseilRoyaumePanel = ({
     playbackRef.current.clear();
   }, []);
 
-  // Tear down on phase exit or unmount (iOS-safe: no init in useEffect)
+  // Tear down when game ends / unmounts
   useEffect(() => {
-    if (phase !== 'CONSEIL_ROYAUME') {
+    if (status !== 'in_progress') {
       teardown();
     }
     return teardown;
-  }, [phase, teardown]);
+  }, [status, teardown]);
 
-  // Init audio pipeline — MUST be called from a user gesture (iOS requirement)
   const initAudio = async () => {
+    // iOS Safari: getUserMedia must be called synchronously inside the user
+    // gesture. We await it first before creating the AudioContext.
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: {
         echoCancellation: true,
@@ -129,7 +114,19 @@ const ConseilRoyaumePanel = ({
     if (!AudioCtx) throw new Error('AudioContext non supporté par ce navigateur');
     const ctx = new AudioCtx();
     audioCtxRef.current = ctx;
-    if (ctx.state === 'suspended') await ctx.resume();
+
+    // iOS unlock: resume + play a silent buffer so the destination is "warm"
+    if (ctx.state === 'suspended') {
+      try { await ctx.resume(); } catch {}
+    }
+    try {
+      const silentBuf = ctx.createBuffer(1, 1, 22050);
+      const silentSrc = ctx.createBufferSource();
+      silentSrc.buffer = silentBuf;
+      silentSrc.connect(ctx.destination);
+      silentSrc.start(0);
+    } catch {}
+
     if (!ctx.audioWorklet) {
       throw new Error('AudioWorklet non supporté (iOS < 14.5 ou navigateur ancien)');
     }
@@ -138,13 +135,12 @@ const ConseilRoyaumePanel = ({
     const micSource = ctx.createMediaStreamSource(stream);
     const workletNode = new AudioWorkletNode(ctx, 'capture-processor');
     micSource.connect(workletNode);
-    // NB: do NOT connect the worklet to ctx.destination — echo.
     micSourceRef.current = micSource;
     workletNodeRef.current = workletNode;
 
-    const ws = new WebSocket(
-      `${WS_BASE}/ws/audio/${roomCode}/${currentPlayerId}`,
-    );
+    const wsUrl = `${WS_BASE}/ws/audio/${roomCode}/${currentPlayerId}`;
+    console.log('[voice] opening ws:', wsUrl);
+    const ws = new WebSocket(wsUrl);
     ws.binaryType = 'arraybuffer';
     wsRef.current = ws;
 
@@ -175,9 +171,6 @@ const ConseilRoyaumePanel = ({
 
     ws.onerror = () => setVoiceError('Connexion audio interrompue');
 
-    const wsUrl = `${WS_BASE}/ws/audio/${roomCode}/${currentPlayerId}`;
-    console.log('[voice] opening ws:', wsUrl);
-    // Wait for ws open (short) — otherwise first clicks send into a not-yet-open socket
     await new Promise((resolve, reject) => {
       if (ws.readyState === WebSocket.OPEN) return resolve();
       let settled = false;
@@ -208,7 +201,6 @@ const ConseilRoyaumePanel = ({
   };
 
   const handleMicButton = async () => {
-    // First tap: init (this IS a user gesture — iOS-safe). Mic stays open afterwards.
     if (!micInitialized) {
       if (initializing) return;
       setInitializing(true);
@@ -216,7 +208,7 @@ const ConseilRoyaumePanel = ({
       try {
         await initAudio();
         setMicInitialized(true);
-        setIsMuted(false); // mic always open after init
+        setIsMuted(false);
         try {
           const result = onSpeakToggle?.();
           if (result && typeof result.catch === 'function') result.catch(() => {});
@@ -236,7 +228,6 @@ const ConseilRoyaumePanel = ({
       return;
     }
 
-    // Subsequent taps: mute / unmute (mic pipeline stays alive)
     setIsMuted((prev) => {
       const next = !prev;
       try {
@@ -247,42 +238,28 @@ const ConseilRoyaumePanel = ({
     });
   };
 
-  const formatTime = (seconds) =>
-    `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`;
-
   const buttonDisabled = initializing;
 
   return (
-    <Card className="bg-amber-900 border-amber-700 shadow-lg">
+    <Card className="darkoath-panel">
       <CardHeader className="pb-3">
-        <CardTitle className="text-xl flex items-center space-x-2 text-amber-100">
+        <CardTitle className="text-xl flex items-center space-x-2" style={{ color: '#e8d9a8', fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' }}>
           <span>🕯️</span>
-          <span>Conseil du Royaume</span>
+          <span>VOCAL</span>
           <span>🕯️</span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex items-center justify-center space-x-2 bg-amber-800 p-3 rounded-lg">
-          <Clock className="h-6 w-6 text-amber-200" />
-          <span className="text-2xl font-bold text-amber-100">
-            {formatTime(timeLeft)}
-          </span>
-          <span className="text-amber-200 text-sm">restantes</span>
-        </div>
-
-        <div className="text-center bg-amber-800 p-3 rounded-lg">
-          <p className="text-amber-100 font-medium mb-2">
-            Vous pouvez parler librement pendant cette phase
-          </p>
+        <div className="text-center p-3 rounded-lg" style={{ background: 'rgba(199, 168, 105, 0.1)', border: '1px solid rgba(199, 168, 105, 0.25)' }}>
           <p className="text-amber-200 text-sm">
             {micInitialized
-              ? '🔊 Vocal ouvert en continu — cliquez pour couper'
-              : 'Appuyez sur le micro pour activer le vocal'}
+              ? '🔊 Micro ouvert en continu — cliquez pour couper'
+              : 'Appuyez pour activer le vocal dès le début de la partie'}
           </p>
         </div>
 
         {voiceError && (
-          <div className="bg-red-900 border border-red-700 p-3 rounded-lg text-red-100 text-sm text-center">
+          <div className="bg-red-900/70 border border-red-700 p-3 rounded-lg text-red-100 text-xs text-center break-words">
             {voiceError}
           </div>
         )}
@@ -294,7 +271,7 @@ const ConseilRoyaumePanel = ({
             className={`h-16 w-16 rounded-full transition-all ${
               isSpeaking
                 ? 'bg-red-600 hover:bg-red-700 shadow-lg shadow-red-500/50'
-                : 'bg-green-600 hover:bg-green-700'
+                : 'bg-amber-700 hover:bg-amber-600'
             }`}
           >
             {isSpeaking ? (
@@ -318,9 +295,9 @@ const ConseilRoyaumePanel = ({
         </div>
 
         {speakingPlayers.length > 0 && (
-          <div className="bg-amber-800 p-3 rounded-lg">
-            <h4 className="text-amber-200 font-medium mb-2">
-              Actuellement en train de parler :
+          <div className="p-3 rounded-lg" style={{ background: 'rgba(199, 168, 105, 0.08)', border: '1px solid rgba(199, 168, 105, 0.2)' }}>
+            <h4 className="text-amber-300 font-medium mb-2 text-sm" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' }}>
+              EN TRAIN DE PARLER
             </h4>
             <div className="flex flex-wrap gap-2">
               {speakingPlayers.map((seat) => {
@@ -338,14 +315,6 @@ const ConseilRoyaumePanel = ({
             </div>
           </div>
         )}
-
-        <div className="bg-blue-900 p-3 rounded-lg border border-blue-700">
-          <p className="text-blue-100 text-sm">
-            <strong>Règle :</strong> Cette phase permet à tous les joueurs de
-            discuter librement pendant 60 secondes après la révélation d'un
-            décret. Le chat écrit reste disponible.
-          </p>
-        </div>
       </CardContent>
     </Card>
   );

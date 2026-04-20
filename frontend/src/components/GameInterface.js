@@ -572,7 +572,7 @@ const GameInterface = ({ roomCode }) => {
                 />
               )}
 
-              {gameState.phase === 'CONSEIL_ROYAUME' && (
+              {gameState.status === 'in_progress' && (
                 <ConseilRoyaumePanel
                   gameState={gameState}
                   roomCode={roomCode}
@@ -681,9 +681,10 @@ const GameInterface = ({ roomCode }) => {
                     />
                   )}
 
-                  {gameState.phase === 'CONSEIL_ROYAUME' && (
+                  {gameState.status === 'in_progress' && (
                     <ConseilRoyaumePanel
                       gameState={gameState}
+                      roomCode={roomCode}
                       currentPlayerId={currentPlayerId}
                       onSpeakToggle={handleSpeakToggle}
                       speakingPlayers={gameState.speaking_players || []}

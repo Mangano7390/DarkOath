@@ -845,12 +845,10 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str, player_id: st
 
 @app.websocket("/ws/audio/{room_code}/{player_id}")
 async def audio_websocket_endpoint(websocket: WebSocket, room_code: str, player_id: str):
-    """Relays PCM audio chunks between players during Conseil du Royaume.
+    """Relays PCM audio chunks between players for the entire game.
 
-    Each inbound frame is a raw PCM chunk without header. The server stamps the
-    sender's seat + sample rate and rebroadcasts to every other player in the room.
-    Frames are dropped silently when the room is not in CONSEIL_ROYAUME phase or
-    when the sender is dead — no error is returned to keep the stream warm.
+    Frames are relayed as long as the game is in progress and the sender is
+    alive. No phase or time-window restriction — voice chat is continuous.
     """
     game_state = manager.get_game_state(room_code)
     if not game_state:
@@ -867,31 +865,19 @@ async def audio_websocket_endpoint(websocket: WebSocket, room_code: str, player_
     try:
         while True:
             msg = await websocket.receive()
-            # Expect either a text JSON control frame (sample rate announcement)
-            # or binary PCM data.
             if "bytes" in msg and msg["bytes"] is not None:
                 data: bytes = msg["bytes"]
-                # Client prepends 2 bytes: big-endian uint16 sample rate.
                 if len(data) < 3:
                     continue
 
                 current_state = manager.get_game_state(room_code)
-                if not current_state:
+                if not current_state or current_state.status != "in_progress":
                     continue
                 current_player = next(
                     (p for p in current_state.players if p.id == player_id),
                     None,
                 )
                 if not current_player or not current_player.alive:
-                    continue
-                if current_state.turn.phase != Phase.CONSEIL_ROYAUME:
-                    continue
-                # Honor the 60s council window on the server side too
-                start = current_state.turn.conseil_royaume_start_time
-                if start is None:
-                    continue
-                import time as _time
-                if _time.time() - start > 60:
                     continue
 
                 sample_rate_bytes = data[:2]
@@ -900,7 +886,6 @@ async def audio_websocket_endpoint(websocket: WebSocket, room_code: str, player_
                 await audio_relay.relay(room_code, player_id, header + pcm)
             elif msg.get("type") == "websocket.disconnect":
                 break
-            # Text frames are ignored for now — reserved for future control messages.
     except WebSocketDisconnect:
         pass
     finally:
