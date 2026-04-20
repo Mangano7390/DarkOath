@@ -172,6 +172,36 @@ const RoleCard = ({ role, teammates = [], players = [] }) => {
   );
 };
 
+// Conseil du Royaume countdown (30s)
+const ConseilCountdown = ({ startTime }) => {
+  const [timeLeft, setTimeLeft] = useState(30);
+  useEffect(() => {
+    if (!startTime) return;
+    const tick = () => {
+      const elapsed = Date.now() / 1000 - startTime;
+      setTimeLeft(Math.max(0, Math.ceil(30 - elapsed)));
+    };
+    tick();
+    const id = setInterval(tick, 250);
+    return () => clearInterval(id);
+  }, [startTime]);
+
+  const urgent = timeLeft <= 10;
+  return (
+    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm" style={{
+      background: urgent ? 'rgba(127, 29, 29, 0.7)' : 'rgba(120, 53, 15, 0.6)',
+      border: `1px solid ${urgent ? '#dc2626' : '#c7a869'}`,
+      color: urgent ? '#fecaca' : '#e8d9a8',
+      boxShadow: urgent ? '0 0 12px rgba(220, 38, 38, 0.5)' : '0 0 8px rgba(199, 168, 105, 0.3)',
+      animation: urgent ? 'pulse 1s infinite' : 'none',
+    }}>
+      <Clock className="h-4 w-4" />
+      <span className="uppercase tracking-wider text-xs opacity-80" style={{ fontFamily: "'Cinzel', serif" }}>Conseil</span>
+      <span className="font-bold text-base tabular-nums">{timeLeft}s</span>
+    </div>
+  );
+};
+
 // Current government indicator
 const GovernmentBadge = ({ label, icon, seat, players, color }) => {
   const player = players.find(p => p.seat === seat);
@@ -480,6 +510,9 @@ const GameInterface = ({ roomCode }) => {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            {gameState.phase === 'CONSEIL_ROYAUME' && gameState.conseil_royaume_start_time && (
+              <ConseilCountdown startTime={gameState.conseil_royaume_start_time} />
+            )}
             {gameState.regent_seat && (
               <GovernmentBadge
                 label="Roi"

@@ -261,7 +261,7 @@ class WebSocketManager:
         for room_code, game_state in self.game_states.items():
             if (game_state.turn.phase == Phase.CONSEIL_ROYAUME and 
                 game_state.turn.conseil_royaume_start_time and
-                (current_time - game_state.turn.conseil_royaume_start_time) >= 60):
+                (current_time - game_state.turn.conseil_royaume_start_time) >= 30):
                 
                 # Time's up! Advance to next phase
                 await self.advance_after_conseil(game_state)
@@ -637,7 +637,7 @@ async def handle_game_action(room_code: str, player_id: str, action_type: str, p
                     # After a decree is revealed, trigger Conseil du Royaume phase
                     import time
                     game_state.turn.phase = Phase.CONSEIL_ROYAUME
-                    game_state.turn.conseil_royaume_timer = 60  # 60 seconds
+                    game_state.turn.conseil_royaume_timer = 30  # 30 seconds
                     game_state.turn.conseil_royaume_start_time = time.time()
                     game_state.turn.speaking_players = []
                 
@@ -700,7 +700,7 @@ async def get_game_state(room_code: str, player_id: str):
     if game_state.turn.phase == Phase.CONSEIL_ROYAUME and game_state.turn.conseil_royaume_start_time:
         import time
         current_time = time.time()
-        if (current_time - game_state.turn.conseil_royaume_start_time) >= 60:
+        if (current_time - game_state.turn.conseil_royaume_start_time) >= 30:
             # Time's up! Advance to next phase
             await manager.advance_after_conseil(game_state)
             game_state.version += 1
