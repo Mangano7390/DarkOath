@@ -14,6 +14,7 @@ import axios from 'axios';
 import io from 'socket.io-client';
 import GameInterface from './components/GameInterface';
 import SimpleDemo from './components/SimpleDemo';
+import DashAdmin from './components/DashAdmin';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -26,6 +27,14 @@ const LandingPage = () => {
   const [roomCode, setRoomCode] = useState('');
   const [musicEnabled, setMusicEnabled] = useState(true); // Auto-start music
   const [showRules, setShowRules] = useState(false);
+
+  // Track a site visit once per session
+  useEffect(() => {
+    if (sessionStorage.getItem('darkoath_visit_tracked') === '1') return;
+    axios.post(`${API}/track/visit`).then(() => {
+      sessionStorage.setItem('darkoath_visit_tracked', '1');
+    }).catch(() => {});
+  }, []);
 
   // Medieval music control - Auto-play by default (Morceau 3)
   useEffect(() => {
@@ -859,6 +868,7 @@ function App() {
         <Route path="/demo" element={<SimpleDemo />} />
         <Route path="/lobby/:roomCode" element={<LobbyWrapper />} />
         <Route path="/game/:roomCode" element={<GameWrapper />} />
+        <Route path="/dashadmin" element={<DashAdmin />} />
       </Routes>
     </BrowserRouter>
   );

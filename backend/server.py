@@ -13,6 +13,8 @@ import uuid
 from datetime import datetime, timezone
 from enum import Enum
 import random
+from fastapi import Header
+import admin_stats
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -777,9 +779,15 @@ async def start_game(room_code: str):
     success = manager.start_game(room_code)
     if not success:
         raise HTTPException(status_code=400, detail="Cannot start game")
-    
+
     game_state = manager.get_game_state(room_code)
-    
+
+    # Track games played
+    try:
+        admin_stats.increment("games_played")
+    except Exception as e:
+        logging.warning(f"Could not increment games_played stat: {e}")
+
     # Send roles to each player privately and game start to all
     for player in game_state.players:
         await manager.broadcast_to_room(room_code, {
@@ -789,8 +797,49 @@ async def start_game(room_code: str):
             "tracks": game_state.tracks.dict(),
             "version": game_state.version
         })
-    
+
     return {"success": True}
+
+
+# === Admin Dashboard ===
+
+class AdminLoginBody(BaseModel):
+    username: str
+    password: str
+
+
+def _require_admin(authorization: Optional[str]):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing token")
+    token = authorization.removeprefix("Bearer ").strip()
+    if not admin_stats.verify_token(token):
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+
+@api_router.post("/track/visit")
+async def track_visit():
+    """Public endpoint: called by the landing page to count a visit."""
+    stats = admin_stats.increment("visits")
+    return {"ok": True, "visits": stats["visits"]}
+
+
+@api_router.post("/admin/login")
+async def admin_login(body: AdminLoginBody):
+    if not admin_stats.check_credentials(body.username, body.password):
+        raise HTTPException(status_code=401, detail="Identifiants invalides")
+    return {"token": admin_stats.issue_token()}
+
+
+@api_router.get("/admin/stats")
+async def admin_get_stats(authorization: Optional[str] = Header(None)):
+    _require_admin(authorization)
+    return admin_stats.get_stats()
+
+
+@api_router.post("/admin/stats/reset")
+async def admin_reset_stats(authorization: Optional[str] = Header(None)):
+    _require_admin(authorization)
+    return admin_stats.reset_stats()
 
 # Duplicate chat endpoint removed - using the first implementation
 
