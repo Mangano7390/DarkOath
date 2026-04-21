@@ -314,15 +314,14 @@ class WebSocketManager:
         game_state.turn.conseil_royaume_start_time = None
         game_state.turn.speaking_players = []
 
-        # Check for executive powers based on conjure track
-        if game_state.tracks.conjure >= 2 and not game_state.powers.get("investigation_unlocked"):
+        # Track unlocked powers for future UI (currently no action handlers —
+        # the POWER phase would leave the game stuck, so we skip it and flow
+        # straight to the next phase. Re-enable when Investigation/Exécution
+        # UI + action handlers are wired.
+        if game_state.tracks.conjure >= 2:
             game_state.powers["investigation_unlocked"] = True
-            game_state.turn.phase = Phase.POWER
-            return
-        if game_state.tracks.conjure >= 4 and not game_state.powers.get("executed_once"):
+        if game_state.tracks.conjure >= 4:
             game_state.powers["execution_unlocked"] = True
-            game_state.turn.phase = Phase.POWER
-            return
 
         # Piste de Défiance — skip on the very first turn
         if game_state.turn.turn_number >= 2:
