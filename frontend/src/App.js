@@ -41,30 +41,53 @@ const LandingPage = () => {
     const audio = new Audio('https://customer-assets.emergentagent.com/job_1a735b74-0d1b-4cfc-aa0c-5d6b585ff99b/artifacts/l96z3xc1_Morceau%203.mp3');
     audio.loop = true;
     audio.volume = 0.3;
+    // iOS Safari: required so the audio plays inline instead of fullscreen
+    // and cooperates with autoplay/gesture rules.
+    audio.playsInline = true;
+    audio.setAttribute('playsinline', '');
+    audio.setAttribute('webkit-playsinline', '');
+    audio.preload = 'auto';
 
-    // Auto-start music when page loads
-    const startMusic = async () => {
-      try {
-        await audio.play();
-        setMusicEnabled(true);
-      } catch (error) {
-        // Browser blocks autoplay, user will need to click
-        console.log('Autoplay blocked, user interaction required');
-        setMusicEnabled(false);
+    let started = false;
+
+    const tryPlay = () => {
+      if (started) return;
+      const p = audio.play();
+      if (p && typeof p.then === 'function') {
+        p.then(() => { started = true; }).catch(() => {
+          // Autoplay blocked on iOS — will retry on first user gesture.
+        });
+      } else {
+        started = true;
       }
     };
 
-    startMusic();
+    // Attempt immediate play (works on desktop, typically blocked on iOS).
+    tryPlay();
 
-    // Handle manual music control
-    if (musicEnabled) {
-      audio.play().catch(console.error);
-    } else {
-      audio.pause();
+    // iOS: on the first user gesture anywhere, retry if not yet playing.
+    const onGesture = () => {
+      tryPlay();
+      if (started) {
+        document.removeEventListener('touchend', onGesture, true);
+        document.removeEventListener('click', onGesture, true);
+        document.removeEventListener('keydown', onGesture, true);
+      }
+    };
+    document.addEventListener('touchend', onGesture, true);
+    document.addEventListener('click', onGesture, true);
+    document.addEventListener('keydown', onGesture, true);
+
+    // Respect explicit user toggle
+    if (!musicEnabled) {
+      try { audio.pause(); } catch {}
     }
 
     return () => {
-      audio.pause();
+      try { audio.pause(); } catch {}
+      document.removeEventListener('touchend', onGesture, true);
+      document.removeEventListener('click', onGesture, true);
+      document.removeEventListener('keydown', onGesture, true);
     };
   }, [musicEnabled]);
 
@@ -211,7 +234,7 @@ const LandingPage = () => {
                     <h4 className="font-bold text-purple-300 mb-2 text-lg" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.1em' }}>👑 TYRAN</h4>
                     <p className="text-sm text-amber-100/90 mb-2 leading-relaxed"><strong>But&nbsp;:</strong> être élu Conseiller après que 3 Décrets de Trahison ont été adoptés (victoire immédiate avec les Traîtres).</p>
                     <p className="text-sm text-amber-100/75 leading-relaxed"><strong>Ce que vous savez&nbsp;:</strong>
-                      {' '}À <strong>5-6 joueurs</strong>, vous connaissez les Traîtres. À <strong>7+ joueurs</strong>, vous êtes seul — les Traîtres savent qui vous êtes, mais vous les ignorez. Agissez comme un Fidèle pour passer inaperçu jusqu'au bon moment.
+                      {' '}<strong>rien du tout</strong>. Vous ignorez l'identité de vos alliés comme de vos ennemis. Seuls les Traîtres savent qui vous êtes — c'est à eux de manœuvrer pour vous faire élire Conseiller. Agissez comme un Fidèle pour passer inaperçu jusqu'au bon moment.
                     </p>
                   </div>
                 </div>
@@ -391,10 +414,11 @@ const LandingPage = () => {
                   <div className="role-card role-card--traitre p-5">
                     <h4 className="font-bold text-red-300 mb-3" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' }}>POUR LES TRAÎTRES & LE TYRAN</h4>
                     <ul className="text-sm space-y-2 list-disc list-inside text-amber-100/85">
+                      <li><strong>Traîtres&nbsp;:</strong> vous connaissez l'identité du Tyran et des autres Traîtres. Protégez le Tyran sans vous trahir.</li>
                       <li>Jouez la normalité tant que votre camp ne domine pas la piste.</li>
                       <li>Accusez un Fidèle pour détourner les soupçons.</li>
                       <li>À 3 Trahison, faites élire le Tyran au poste de Conseiller.</li>
-                      <li>Le Tyran (7+ joueurs) doit se taire&nbsp;: il ignore qui sont ses alliés.</li>
+                      <li><strong>Tyran&nbsp;:</strong> vous ignorez qui sont vos alliés comme vos ennemis. Agissez comme un Fidèle, laissez les Traîtres vous porter au pouvoir.</li>
                     </ul>
                   </div>
                 </div>
@@ -681,12 +705,41 @@ const Lobby = ({ roomCode }) => {
     const audio = new Audio('https://customer-assets.emergentagent.com/job_1a735b74-0d1b-4cfc-aa0c-5d6b585ff99b/artifacts/10k0yrvs_Morceau%201.mp3');
     audio.loop = true;
     audio.volume = 0.3;
+    audio.playsInline = true;
+    audio.setAttribute('playsinline', '');
+    audio.setAttribute('webkit-playsinline', '');
+    audio.preload = 'auto';
 
-    // Auto-play lobby music
-    audio.play().catch(console.error);
+    let started = false;
+    const tryPlay = () => {
+      if (started) return;
+      const p = audio.play();
+      if (p && typeof p.then === 'function') {
+        p.then(() => { started = true; }).catch(() => {});
+      } else {
+        started = true;
+      }
+    };
+    tryPlay();
+
+    // iOS: retry on first user gesture if autoplay was blocked.
+    const onGesture = () => {
+      tryPlay();
+      if (started) {
+        document.removeEventListener('touchend', onGesture, true);
+        document.removeEventListener('click', onGesture, true);
+        document.removeEventListener('keydown', onGesture, true);
+      }
+    };
+    document.addEventListener('touchend', onGesture, true);
+    document.addEventListener('click', onGesture, true);
+    document.addEventListener('keydown', onGesture, true);
 
     return () => {
-      audio.pause();
+      try { audio.pause(); } catch {}
+      document.removeEventListener('touchend', onGesture, true);
+      document.removeEventListener('click', onGesture, true);
+      document.removeEventListener('keydown', onGesture, true);
     };
   }, []);
 

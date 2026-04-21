@@ -868,22 +868,20 @@ async def get_game_state(room_code: str, player_id: str):
         legislative_cards = game_state.turn.legislative_cards
     
     # Compute teammates (secret info visible to this player only)
+    #
+    # Règle Dark Oath :
+    # - Les Conjurés (traîtres) connaissent l'identité du Tyran ET des autres Conjurés.
+    # - Le Tyran (Usurpateur) ne connaît l'identité de PERSONNE (ni Conjurés, ni Fidèles).
+    # - Les Fidèles ne connaissent l'identité de personne.
     teammates = []
-    player_count = len(game_state.players)
     if player.role == Role.CONJURE:
-        # Conjurés see each other AND the Tyran
+        # Les Conjurés voient les autres Conjurés ET le Tyran.
         teammates = [
             {"seat": p.seat, "name": p.name, "role": p.role}
             for p in game_state.players
             if p.id != player.id and p.role in (Role.CONJURE, Role.USURPATEUR)
         ]
-    elif player.role == Role.USURPATEUR and player_count <= 6:
-        # In 5-6 player games, Tyran knows the Conjurés
-        teammates = [
-            {"seat": p.seat, "name": p.name, "role": p.role}
-            for p in game_state.players
-            if p.id != player.id and p.role == Role.CONJURE
-        ]
+    # Le Tyran et les Fidèles n'ont aucun allié révélé au début de la partie.
 
     return {
         "status": game_state.status,

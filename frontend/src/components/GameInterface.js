@@ -171,6 +171,24 @@ const RoleCard = ({ role, teammates = [], players = [] }) => {
           </div>
         </div>
       )}
+
+      {role === 'USURPATEUR' && teammates.length === 0 && (
+        <div className="pt-3 mt-2 border-t" style={{ borderColor: 'rgba(168, 85, 247, 0.25)' }}>
+          <div className="text-xs uppercase tracking-widest text-center mb-2" style={{ color: 'rgba(232, 217, 168, 0.75)', fontFamily: "'Cinzel', serif" }}>
+            🕯️ Dans l'ombre
+          </div>
+          <div className="text-xs text-center italic px-3 py-2 rounded" style={{
+            background: 'rgba(0, 0, 0, 0.4)',
+            border: '1px solid rgba(168, 85, 247, 0.35)',
+            color: 'rgba(232, 217, 168, 0.8)',
+            fontFamily: "'IM Fell English', serif",
+            lineHeight: 1.5,
+          }}>
+            Vous ignorez l'identité de vos alliés comme de vos ennemis.<br/>
+            Les Traîtres vous connaissent — à eux de vous faire élire Conseiller.
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -302,17 +320,60 @@ const GameInterface = ({ roomCode }) => {
     const audio = new Audio('https://customer-assets.emergentagent.com/job_1a735b74-0d1b-4cfc-aa0c-5d6b585ff99b/artifacts/249imtyo_Morceau%202.mp3');
     audio.loop = true;
     audio.volume = musicVolume;
+    // iOS Safari: required to play inline without going fullscreen, and
+    // to behave correctly when the page has media permissions.
+    audio.playsInline = true;
+    audio.setAttribute('playsinline', '');
+    audio.setAttribute('webkit-playsinline', '');
+    audio.preload = 'auto';
     musicRef.current = audio;
 
-    if (musicEnabled) {
-      audio.play().catch(console.error);
-    }
+    let started = false;
+    const tryPlay = () => {
+      if (started) return;
+      const el = musicRef.current;
+      if (!el) return;
+      if (!musicEnabledRef.current) return;
+      const p = el.play();
+      if (p && typeof p.then === 'function') {
+        p.then(() => { started = true; }).catch(() => {
+          // Autoplay blocked — will retry on next user gesture.
+        });
+      } else {
+        started = true;
+      }
+    };
+
+    // Attempt immediate play (works on desktop; usually blocked on iOS).
+    if (musicEnabled) tryPlay();
+
+    // iOS: retry on the FIRST user gesture anywhere in the app.
+    const onGesture = () => {
+      tryPlay();
+      if (started) {
+        document.removeEventListener('touchend', onGesture, true);
+        document.removeEventListener('click', onGesture, true);
+        document.removeEventListener('keydown', onGesture, true);
+      }
+    };
+    document.addEventListener('touchend', onGesture, true);
+    document.addEventListener('click', onGesture, true);
+    document.addEventListener('keydown', onGesture, true);
 
     return () => {
-      audio.pause();
+      try { audio.pause(); } catch {}
+      document.removeEventListener('touchend', onGesture, true);
+      document.removeEventListener('click', onGesture, true);
+      document.removeEventListener('keydown', onGesture, true);
       musicRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Mirror musicEnabled into a ref so the one-shot gesture handler sees the
+  // latest value without having to re-register every toggle.
+  const musicEnabledRef = useRef(musicEnabled);
+  useEffect(() => { musicEnabledRef.current = musicEnabled; }, [musicEnabled]);
 
   useEffect(() => {
     if (!musicRef.current) return;
@@ -321,11 +382,15 @@ const GameInterface = ({ roomCode }) => {
   }, [musicVolume]);
 
   useEffect(() => {
-    if (!musicRef.current) return;
+    const el = musicRef.current;
+    if (!el) return;
     if (musicEnabled) {
-      musicRef.current.play().catch(console.error);
+      // User explicitly enabled music — this click IS a user gesture, so
+      // play() should succeed on iOS even if autoplay was blocked earlier.
+      const p = el.play();
+      if (p && typeof p.catch === 'function') p.catch(console.error);
     } else {
-      musicRef.current.pause();
+      try { el.pause(); } catch {}
     }
     localStorage.setItem('darkoath_music_enabled', String(musicEnabled));
   }, [musicEnabled]);

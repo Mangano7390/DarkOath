@@ -335,8 +335,13 @@ const ConseilRoyaumePanel = ({
           <p className="text-amber-200 text-sm">
             {micInitialized
               ? '🔊 Micro ouvert en continu — cliquez pour couper'
-              : 'Appuyez pour activer le vocal dès le début de la partie'}
+              : '🎙️ Appuyez pour entendre et parler avec les autres joueurs'}
           </p>
+          {!micInitialized && (
+            <p className="text-amber-100/70 text-xs mt-2 italic">
+              📱 iPhone : désactivez le <strong>mode silencieux</strong> (petit bouton latéral) et montez le volume.
+            </p>
+          )}
         </div>
 
         {voiceError && (
