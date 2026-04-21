@@ -343,6 +343,22 @@ const LandingPage = () => {
                 </p>
               </section>
 
+              {/* Piste de Défiance */}
+              <section className="oath-card p-6 md:p-8">
+                <h3 className="darkoath-title mb-3" style={{ fontSize: '1.6rem' }}>
+                  🗡️ &nbsp;Piste de Défiance
+                </h3>
+                <p className="text-amber-100/90 leading-relaxed mb-3" style={{ fontFamily: "'IM Fell English', serif" }}>
+                  À la fin de chaque Conseil du Royaume (<strong>sauf au tour 1</strong>), une phase de <strong>défiance</strong> s'ouvre. Chaque joueur peut désigner <strong>un suspect</strong> ou <strong>passer</strong> (25 secondes).
+                </p>
+                <ul className="space-y-2 text-sm text-amber-100/85 list-disc list-inside" style={{ fontFamily: "'IM Fell English', serif" }}>
+                  <li>Les votes de défiance <strong>s'accumulent</strong> d'un tour à l'autre.</li>
+                  <li>Un joueur atteignant <strong>3 votes de défiance</strong> est <strong className="text-red-300">marqué</strong>.</li>
+                  <li>Un joueur marqué <strong>ne peut être ni Roi ni Conseiller</strong> au tour suivant (1 tour uniquement).</li>
+                  <li>Après l'effet, son compteur <strong>repart à zéro</strong>.</li>
+                </ul>
+              </section>
+
               {/* Chat vocal */}
               <section className="oath-card p-6 md:p-8">
                 <h3 className="darkoath-title mb-3" style={{ fontSize: '1.6rem' }}>

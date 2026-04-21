@@ -2,7 +2,7 @@ import React from 'react';
 import { Crown, Users, Hourglass } from 'lucide-react';
 import { Button } from './ui/button';
 
-const NominationPanel = ({ meSeat, regentSeat, players, prevGovernment, disgracedPlayerSeat, onNominate }) => {
+const NominationPanel = ({ meSeat, regentSeat, players, prevGovernment, disgracedPlayerSeat, markedPlayerSeat, onNominate }) => {
   const isRegent = meSeat === regentSeat;
   const regentName = players.find(p => p.seat === regentSeat)?.name;
 
@@ -31,6 +31,9 @@ const NominationPanel = ({ meSeat, regentSeat, players, prevGovernment, disgrace
     if (disgracedPlayerSeat && player.seat === disgracedPlayerSeat) {
       return false;
     }
+    if (markedPlayerSeat && player.seat === markedPlayerSeat) {
+      return false;
+    }
     return true;
   });
 
@@ -38,6 +41,7 @@ const NominationPanel = ({ meSeat, regentSeat, players, prevGovernment, disgrace
   if (prevGovernment?.regent) excludedSeats.push({ seat: prevGovernment.regent, reason: 'ancien Roi' });
   if (prevGovernment?.chambellan) excludedSeats.push({ seat: prevGovernment.chambellan, reason: 'ancien Conseiller' });
   if (disgracedPlayerSeat) excludedSeats.push({ seat: disgracedPlayerSeat, reason: 'désavoué' });
+  if (markedPlayerSeat) excludedSeats.push({ seat: markedPlayerSeat, reason: 'marqué (défiance)' });
 
   return (
     <div className="space-y-4">

@@ -12,6 +12,7 @@ import NominationPanel from './NominationPanel';
 import VotePanel from './VotePanel';
 import LegislativePanel from './LegislativePanel';
 import ConseilRoyaumePanel from './ConseilRoyaumePanel';
+import DefiancePanel from './DefiancePanel';
 import MedievalTable from './MedievalTable.js';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -59,6 +60,8 @@ const formatPhaseName = (phase) => {
       return 'Législatif Conseiller';
     case 'CONSEIL_ROYAUME':
       return 'Conseil du Royaume';
+    case 'DEFIANCE':
+      return 'Piste de Défiance';
     default:
       return phase.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
   }
@@ -272,6 +275,9 @@ const GameInterface = ({ roomCode }) => {
   const [error, setError] = useState(null);
   const [mobileTab, setMobileTab] = useState('table'); // 'table', 'tracks', 'chat'
   const [showPeoplesAnger, setShowPeoplesAnger] = useState(false);
+  const [defianceBanner, setDefianceBanner] = useState(null); // 'opening' | 'marked' | null
+  const prevPhaseRef = useRef(null);
+  const prevMarkedRef = useRef(null);
   
   // Chat state variables
   const [messages, setMessages] = useState([]);
@@ -332,10 +338,39 @@ const GameInterface = ({ roomCode }) => {
       const timer = setTimeout(() => {
         setShowPeoplesAnger(false);
       }, 5000);
-      
+
       return () => clearTimeout(timer);
     }
   }, [gameState?.peoples_anger_triggered]);
+
+  // Detect phase transitions for Piste de Défiance banners
+  useEffect(() => {
+    const phase = gameState?.phase;
+    const prevPhase = prevPhaseRef.current;
+    const marked = gameState?.marked_player_seat || null;
+    const prevMarked = prevMarkedRef.current;
+
+    // Entering DEFIANCE from CONSEIL_ROYAUME → "Le Conseil s'achève"
+    if (prevPhase === 'CONSEIL_ROYAUME' && phase === 'DEFIANCE') {
+      setDefianceBanner('opening');
+      const t = setTimeout(() => setDefianceBanner((b) => (b === 'opening' ? null : b)), 2500);
+      prevPhaseRef.current = phase;
+      prevMarkedRef.current = marked;
+      return () => clearTimeout(t);
+    }
+
+    // A new mark was just set (after DEFIANCE resolution)
+    if (prevPhase === 'DEFIANCE' && phase === 'NOMINATION' && marked && marked !== prevMarked) {
+      setDefianceBanner('marked');
+      const t = setTimeout(() => setDefianceBanner((b) => (b === 'marked' ? null : b)), 3500);
+      prevPhaseRef.current = phase;
+      prevMarkedRef.current = marked;
+      return () => clearTimeout(t);
+    }
+
+    prevPhaseRef.current = phase;
+    prevMarkedRef.current = marked;
+  }, [gameState?.phase, gameState?.marked_player_seat]);
   
   // Chat functions
   const sendMessage = async () => {
@@ -537,6 +572,53 @@ const GameInterface = ({ roomCode }) => {
   
   return (
     <div className="min-h-screen darkoath-game text-gray-100 relative" style={{ minHeight: '100dvh' }}>
+      {/* Piste de Défiance banners */}
+      {defianceBanner && (
+        <div className="fixed inset-0 pointer-events-none flex items-center justify-center z-40">
+          <div
+            className="px-6 py-4 rounded-lg text-center"
+            style={{
+              background: defianceBanner === 'marked' ? 'rgba(127, 29, 29, 0.92)' : 'rgba(20, 14, 8, 0.92)',
+              border: `2px solid ${defianceBanner === 'marked' ? '#dc2626' : '#c7a869'}`,
+              boxShadow: '0 0 30px rgba(0,0,0,0.8)',
+              maxWidth: '90vw',
+              animation: 'fadeIn 0.3s ease-out',
+            }}
+          >
+            {defianceBanner === 'opening' && (
+              <>
+                <p
+                  className="text-xl md:text-2xl"
+                  style={{ color: '#e8d9a8', fontFamily: "'Cinzel', serif", letterSpacing: '0.12em' }}
+                >
+                  🕯️ Le Conseil s'achève
+                </p>
+                <p className="text-sm text-amber-100/70 italic mt-1">Désignez un suspect — le peuple observe…</p>
+              </>
+            )}
+            {defianceBanner === 'marked' && (() => {
+              const markedPlayer = (gameState?.players || []).find(
+                (p) => p.seat === gameState?.marked_player_seat
+              );
+              return (
+                <>
+                  <p
+                    className="text-xl md:text-2xl"
+                    style={{ color: '#fecaca', fontFamily: "'Cinzel', serif", letterSpacing: '0.12em' }}
+                  >
+                    ⚠ Un joueur est marqué
+                  </p>
+                  <p className="text-sm text-red-200 mt-1">
+                    <strong>{markedPlayer?.name || `Siège ${gameState?.marked_player_seat}`}</strong>
+                    {' '}ne peut être ni Roi ni Conseiller ce tour-ci.
+                  </p>
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
       {/* Colère du Peuple Message */}
       {showPeoplesAnger && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
@@ -752,6 +834,7 @@ const GameInterface = ({ roomCode }) => {
                   players={gameState.players || []}
                   prevGovernment={gameState.prev_government}
                   disgracedPlayerSeat={gameState.disgraced_player_seat}
+                  markedPlayerSeat={gameState.marked_player_seat}
                   onNominate={async (seat) => {
                     console.log('Nominating seat:', seat);
                     try {
@@ -762,6 +845,23 @@ const GameInterface = ({ roomCode }) => {
                     } catch (error) {
                       console.error('Nomination failed:', error);
                       alert('Erreur lors de la nomination: ' + (error.response?.data?.detail || error.message));
+                    }
+                  }}
+                />
+              )}
+
+              {gameState.phase === 'DEFIANCE' && (
+                <DefiancePanel
+                  gameState={gameState}
+                  currentPlayerId={currentPlayerId}
+                  onVote={async (targetSeat) => {
+                    try {
+                      await axios.post(
+                        `${API}/rooms/${roomCode}/action?player_id=${currentPlayerId}&action_type=DEFIANCE_VOTE`,
+                        { targetSeat }
+                      );
+                    } catch (error) {
+                      alert('Erreur lors du vote de défiance: ' + (error.response?.data?.detail || error.message));
                     }
                   }}
                 />
@@ -861,6 +961,7 @@ const GameInterface = ({ roomCode }) => {
                       players={gameState.players || []}
                       prevGovernment={gameState.prev_government}
                       disgracedPlayerSeat={gameState.disgraced_player_seat}
+                      markedPlayerSeat={gameState.marked_player_seat}
                       onNominate={async (seat) => {
                         console.log('Nominating seat:', seat);
                         try {
@@ -871,6 +972,23 @@ const GameInterface = ({ roomCode }) => {
                         } catch (error) {
                           console.error('Nomination failed:', error);
                           alert('Erreur lors de la nomination: ' + (error.response?.data?.detail || error.message));
+                        }
+                      }}
+                    />
+                  )}
+
+                  {gameState.phase === 'DEFIANCE' && (
+                    <DefiancePanel
+                      gameState={gameState}
+                      currentPlayerId={currentPlayerId}
+                      onVote={async (targetSeat) => {
+                        try {
+                          await axios.post(
+                            `${API}/rooms/${roomCode}/action?player_id=${currentPlayerId}&action_type=DEFIANCE_VOTE`,
+                            { targetSeat }
+                          );
+                        } catch (error) {
+                          alert('Erreur lors du vote de défiance: ' + (error.response?.data?.detail || error.message));
                         }
                       }}
                     />

@@ -42,8 +42,13 @@ class Phase(str, Enum):
     LEGIS_REGENT = "LEGIS_REGENT"
     LEGIS_CHAMBELLAN = "LEGIS_CHAMBELLAN"
     CONSEIL_ROYAUME = "CONSEIL_ROYAUME"
+    DEFIANCE = "DEFIANCE"
     POWER = "POWER"
     ENDGAME = "ENDGAME"
+
+# Piste de Défiance config
+DEFIANCE_DURATION_SECONDS = 25
+DEFIANCE_MARK_THRESHOLD = 3
 
 class DecreeType(str, Enum):
     LOYAL = "LOYAL"
@@ -77,6 +82,12 @@ class TurnState(BaseModel):
     conseil_royaume_timer: Optional[int] = None  # Timer for Conseil du Royaume phase (30 seconds)
     conseil_royaume_start_time: Optional[float] = None  # Start time for the council phase
     speaking_players: List[int] = []  # List of players currently speaking
+    # Piste de Défiance
+    turn_number: int = 0  # Increments each new NOMINATION after a completed round
+    defiance_counts: Dict[int, int] = {}  # seat -> cumulative defiance votes received
+    defiance_votes: Dict[str, Optional[int]] = {}  # voter_id -> target seat or None (passed)
+    marked_player_seat: Optional[int] = None  # Player marked for current turn (cannot be Roi/Conseiller)
+    defiance_start_time: Optional[float] = None
 
 class GameState(BaseModel):
     room_code: str
@@ -189,6 +200,13 @@ class WebSocketManager:
         alive_seats = [p.seat for p in game_state.players if p.alive]
         game_state.turn.regent_seat = random.choice(alive_seats)
 
+        # Initialize Piste de Défiance (empty, no marks yet)
+        game_state.turn.turn_number = 1
+        game_state.turn.defiance_counts = {s: 0 for s in alive_seats}
+        game_state.turn.defiance_votes = {}
+        game_state.turn.marked_player_seat = None
+        game_state.turn.defiance_start_time = None
+
         game_state.status = "in_progress"
         game_state.turn.phase = Phase.NOMINATION
         game_state.version += 1
@@ -215,48 +233,120 @@ class WebSocketManager:
         
         return None
 
+    def _next_regent_seat(self, game_state: GameState, current_seat: int) -> int:
+        """Rotate to the next alive regent, skipping disgraced and marked players."""
+        alive_seats = sorted([p.seat for p in game_state.players if p.alive])
+        if current_seat not in alive_seats:
+            return alive_seats[0] if alive_seats else current_seat
+        forbidden = set()
+        if game_state.turn.disgraced_player_seat:
+            forbidden.add(game_state.turn.disgraced_player_seat)
+        if game_state.turn.marked_player_seat:
+            forbidden.add(game_state.turn.marked_player_seat)
+        idx = alive_seats.index(current_seat)
+        n = len(alive_seats)
+        for _ in range(n):
+            idx = (idx + 1) % n
+            candidate = alive_seats[idx]
+            if candidate not in forbidden:
+                return candidate
+        # All forbidden (edge case) — just return next
+        return alive_seats[(alive_seats.index(current_seat) + 1) % n]
+
+    def _advance_to_next_nomination(self, game_state: GameState):
+        """Rotate regent and enter NOMINATION for the next turn."""
+        current_seat = game_state.turn.regent_seat
+        next_regent_seat = self._next_regent_seat(game_state, current_seat)
+
+        game_state.turn.regent_seat = next_regent_seat
+        game_state.turn.phase = Phase.NOMINATION
+        game_state.turn.prev_government = {
+            "regent": current_seat,
+            "chambellan": game_state.turn.nominee_seat
+        }
+        game_state.turn.nominee_seat = None
+        game_state.turn.votes = {}
+        game_state.turn.turn_number += 1
+
+    def _enter_defiance_phase(self, game_state: GameState):
+        """Open the Piste de Défiance vote."""
+        import time
+        game_state.turn.phase = Phase.DEFIANCE
+        game_state.turn.defiance_votes = {}
+        game_state.turn.defiance_start_time = time.time()
+
+    def _resolve_defiance(self, game_state: GameState):
+        """Tally defiance votes, update counts, set marked player, advance to NOMINATION."""
+        # Clear previous turn's mark (its 1-turn effect has been served)
+        game_state.turn.marked_player_seat = None
+
+        # Tally non-null votes into cumulative counts
+        for target_seat in game_state.turn.defiance_votes.values():
+            if target_seat is None:
+                continue
+            game_state.turn.defiance_counts[target_seat] = (
+                game_state.turn.defiance_counts.get(target_seat, 0) + 1
+            )
+
+        # Find players at/over threshold; pick the highest count (ties: lowest seat)
+        over = [
+            (seat, count) for seat, count in game_state.turn.defiance_counts.items()
+            if count >= DEFIANCE_MARK_THRESHOLD
+        ]
+        if over:
+            over.sort(key=lambda x: (-x[1], x[0]))
+            marked_seat = over[0][0]
+            game_state.turn.marked_player_seat = marked_seat
+            # Reset that player's counter only
+            game_state.turn.defiance_counts[marked_seat] = 0
+
+        # Clear round-local votes and timer
+        game_state.turn.defiance_votes = {}
+        game_state.turn.defiance_start_time = None
+
+        # Advance to next turn's NOMINATION
+        self._advance_to_next_nomination(game_state)
+
     async def advance_after_conseil(self, game_state: GameState):
         """Advance game to next phase after Conseil du Royaume expires"""
         # Reset council phase data
         game_state.turn.conseil_royaume_timer = None
         game_state.turn.conseil_royaume_start_time = None
         game_state.turn.speaking_players = []
-        
+
         # Check for executive powers based on conjure track
         if game_state.tracks.conjure >= 2 and not game_state.powers.get("investigation_unlocked"):
             game_state.powers["investigation_unlocked"] = True
             game_state.turn.phase = Phase.POWER
-        elif game_state.tracks.conjure >= 4 and not game_state.powers.get("executed_once"):
-            game_state.powers["execution_unlocked"] = True  
+            return
+        if game_state.tracks.conjure >= 4 and not game_state.powers.get("executed_once"):
+            game_state.powers["execution_unlocked"] = True
             game_state.turn.phase = Phase.POWER
-        else:
-            # Move to next regent and new nomination phase
-            current_seat = game_state.turn.regent_seat
-            alive_seats = [p.seat for p in game_state.players if p.alive]
-            alive_seats.sort()
-            current_index = alive_seats.index(current_seat)
-            
-            # Find next regent (skip disgraced player)
-            next_index = (current_index + 1) % len(alive_seats)
-            next_regent_seat = alive_seats[next_index]
-            
-            # If the next regent would be disgraced, skip to the one after
-            if game_state.turn.disgraced_player_seat == next_regent_seat:
-                next_index = (next_index + 1) % len(alive_seats)
-                next_regent_seat = alive_seats[next_index]
-            
-            game_state.turn.regent_seat = next_regent_seat
-            game_state.turn.phase = Phase.NOMINATION
-            
-            # Set previous government
-            game_state.turn.prev_government = {
-                "regent": current_seat,
-                "chambellan": game_state.turn.nominee_seat
-            }
-            
-            # Clear votes and nominee for next round
-            game_state.turn.nominee_seat = None
-            game_state.turn.votes = {}
+            return
+
+        # Piste de Défiance — skip on the very first turn
+        if game_state.turn.turn_number >= 2:
+            self._enter_defiance_phase(game_state)
+            return
+
+        # Turn 1 → straight to next nomination
+        self._advance_to_next_nomination(game_state)
+
+    async def check_defiance_timeout(self):
+        """Auto-resolve expired DEFIANCE phases."""
+        import time
+        current_time = time.time()
+        for room_code, game_state in list(self.game_states.items()):
+            if (game_state.turn.phase == Phase.DEFIANCE and
+                    game_state.turn.defiance_start_time and
+                    (current_time - game_state.turn.defiance_start_time) >= DEFIANCE_DURATION_SECONDS):
+                self._resolve_defiance(game_state)
+                game_state.version += 1
+                await self.broadcast_to_room(room_code, {
+                    "type": "game_update",
+                    "data": "defiance_timeout",
+                    "version": game_state.version
+                })
 
     async def check_conseil_royaume_timeout(self):
         """Check all games for expired Conseil du Royaume phases"""
@@ -440,7 +530,11 @@ async def handle_game_action(room_code: str, player_id: str, action_type: str, p
             # Check if nominee is disgraced (cannot be nominated after "Colère du Peuple")
             if game_state.turn.disgraced_player_seat == nominee_seat:
                 raise HTTPException(status_code=400, detail="Cannot nominate disgraced player")
-            
+
+            # Check if nominee is marked by Piste de Défiance
+            if game_state.turn.marked_player_seat == nominee_seat:
+                raise HTTPException(status_code=400, detail="Cannot nominate marked player")
+
             # Can't nominate self
             if nominee_seat == game_state.turn.regent_seat:
                 raise HTTPException(status_code=400, detail="Cannot nominate self")
@@ -536,24 +630,13 @@ async def handle_game_action(room_code: str, player_id: str, action_type: str, p
                         # Reset crisis
                         game_state.tracks.crisis = 0
                     
-                    # Move to next regent (skip disgraced player if applicable)
+                    # Move to next regent (skip disgraced and marked players)
                     current_seat = game_state.turn.regent_seat
-                    alive_seats = [p.seat for p in game_state.players if p.alive]
-                    alive_seats.sort()
-                    current_index = alive_seats.index(current_seat)
-                    
-                    # Find next regent (skip disgraced player)
-                    next_index = (current_index + 1) % len(alive_seats)
-                    next_regent_seat = alive_seats[next_index]
-                    
-                    # If the next regent would be disgraced, skip to the one after
-                    if game_state.turn.disgraced_player_seat == next_regent_seat:
-                        next_index = (next_index + 1) % len(alive_seats)
-                        next_regent_seat = alive_seats[next_index]
-                    
+                    next_regent_seat = manager._next_regent_seat(game_state, current_seat)
+
                     game_state.turn.regent_seat = next_regent_seat
                     game_state.turn.phase = Phase.NOMINATION
-                    
+
                     # Clear nominee and votes for rejected government
                     game_state.turn.nominee_seat = None
                     game_state.turn.votes = {}
@@ -667,6 +750,42 @@ async def handle_game_action(room_code: str, player_id: str, action_type: str, p
             else:
                 raise HTTPException(status_code=400, detail="Wrong phase for card discard")
         
+        elif action_type == "DEFIANCE_VOTE":
+            # Cast a suspicion vote during the DEFIANCE phase (or pass)
+            if game_state.turn.phase != Phase.DEFIANCE:
+                raise HTTPException(status_code=400, detail="Wrong phase for defiance vote")
+            if not player.alive:
+                raise HTTPException(status_code=400, detail="Dead players cannot vote")
+
+            raw_target = payload.get("targetSeat")
+            target_seat: Optional[int] = None
+            if raw_target is not None:
+                try:
+                    target_seat = int(raw_target)
+                except (TypeError, ValueError):
+                    raise HTTPException(status_code=400, detail="Invalid target seat")
+                target_player = next((p for p in game_state.players if p.seat == target_seat), None)
+                if not target_player or not target_player.alive:
+                    raise HTTPException(status_code=400, detail="Invalid target")
+                if target_seat == player.seat:
+                    raise HTTPException(status_code=400, detail="Cannot target yourself")
+
+            # Record vote (None = passed). Overwrites if player re-votes before resolution.
+            game_state.turn.defiance_votes[player_id] = target_seat
+
+            # If every alive player has voted, resolve immediately
+            alive_ids = {p.id for p in game_state.players if p.alive}
+            if alive_ids.issubset(set(game_state.turn.defiance_votes.keys())):
+                manager._resolve_defiance(game_state)
+
+            game_state.version += 1
+            await manager.broadcast_to_room(room_code, {
+                "type": "game_update",
+                "data": "defiance_vote",
+                "phase": game_state.turn.phase,
+                "version": game_state.version
+            })
+
         elif action_type == "SPEAK_TOGGLE":
             # Voice is available for the whole game. Only require that the
             # game is in progress and the player is alive.
@@ -714,11 +833,24 @@ async def get_game_state(room_code: str, player_id: str):
             # Time's up! Advance to next phase
             await manager.advance_after_conseil(game_state)
             game_state.version += 1
-            
+
             # Broadcast the update
             await manager.broadcast_to_room(room_code, {
-                "type": "game_update", 
+                "type": "game_update",
                 "data": "conseil_timeout",
+                "version": game_state.version
+            })
+
+    # Check if DEFIANCE phase has expired and auto-resolve
+    elif game_state.turn.phase == Phase.DEFIANCE and game_state.turn.defiance_start_time:
+        import time
+        current_time = time.time()
+        if (current_time - game_state.turn.defiance_start_time) >= DEFIANCE_DURATION_SECONDS:
+            manager._resolve_defiance(game_state)
+            game_state.version += 1
+            await manager.broadcast_to_room(room_code, {
+                "type": "game_update",
+                "data": "defiance_timeout",
                 "version": game_state.version
             })
     
@@ -772,7 +904,17 @@ async def get_game_state(room_code: str, player_id: str):
         "peoples_anger_triggered": game_state.turn.peoples_anger_triggered,
         "conseil_royaume_timer": game_state.turn.conseil_royaume_timer,
         "conseil_royaume_start_time": game_state.turn.conseil_royaume_start_time,
-        "speaking_players": game_state.turn.speaking_players
+        "speaking_players": game_state.turn.speaking_players,
+        # Piste de Défiance
+        "turn_number": game_state.turn.turn_number,
+        "defiance_counts": game_state.turn.defiance_counts,
+        "defiance_voted_ids": list(game_state.turn.defiance_votes.keys()),
+        "defiance_my_target": game_state.turn.defiance_votes.get(player_id) if player_id in game_state.turn.defiance_votes else None,
+        "defiance_has_voted": player_id in game_state.turn.defiance_votes,
+        "marked_player_seat": game_state.turn.marked_player_seat,
+        "defiance_start_time": game_state.turn.defiance_start_time,
+        "defiance_duration": DEFIANCE_DURATION_SECONDS,
+        "defiance_threshold": DEFIANCE_MARK_THRESHOLD,
     }
 @api_router.post("/rooms/{room_code}/start")
 async def start_game(room_code: str):
