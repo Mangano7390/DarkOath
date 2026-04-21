@@ -262,6 +262,7 @@ const LandingPage = () => {
                     { num: '4', title: 'Législation — le Conseiller', text: "Le Conseiller défausse 1 décret en secret et révèle le dernier. Ce décret est appliqué et avance la piste correspondante (Fidèles ou Trahison)." },
                     { num: '5', title: 'Pouvoir du Roi (si déclenché)', text: "Dès le 2ᵉ puis le 4ᵉ Décret de Trahison posé sur la piste des Traîtres, le Roi débloque un pouvoir (voir section Pouvoirs)." },
                     { num: '6', title: 'Conseil du Royaume', text: "Après chaque décret révélé, 30 secondes de discussion en vocal ouvert. Chacun peut s'exprimer, accuser, se justifier." },
+                    { num: '7', title: 'Piste de Défiance (dès le tour 2)', text: "25 secondes pour désigner un suspect ou passer. Les votes s'accumulent ; 3 votes cumulés = joueur marqué, exclu de toute fonction au tour suivant." },
                   ].map((step) => (
                     <div key={step.num} className="flex gap-4 items-start p-4 rounded-lg" style={{
                       background: 'linear-gradient(180deg, rgba(30, 20, 12, 0.6), rgba(18, 12, 8, 0.7))',
