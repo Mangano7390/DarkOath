@@ -88,6 +88,10 @@ class TurnState(BaseModel):
     defiance_votes: Dict[str, Optional[int]] = {}  # voter_id -> target seat or None (passed)
     marked_player_seat: Optional[int] = None  # Player marked for current turn (cannot be Roi/Conseiller)
     defiance_start_time: Optional[float] = None
+    # Pouvoir du Roi (POWER phase)
+    active_power: Optional[str] = None  # "INVESTIGATE" | "EXECUTE" while in POWER phase
+    power_result: Optional[Dict] = None  # Investigation result, visible to King only: {target_seat, target_name, camp}
+    last_execution_seat: Optional[int] = None  # Seat just executed (for death banner broadcast)
 
 class GameState(BaseModel):
     room_code: str
@@ -95,7 +99,13 @@ class GameState(BaseModel):
     players: List[Player] = []
     tracks: GameTracks = GameTracks()
     turn: TurnState = TurnState()
-    powers: Dict[str, bool] = {"investigation_unlocked": False, "execution_unlocked": False, "executed_once": False}
+    powers: Dict[str, bool] = {
+        "investigation_unlocked": False,
+        "investigation_used": False,
+        "execution_unlocked": False,
+        "execution_used": False,
+        "executed_once": False,  # legacy flag, kept for compatibility
+    }
     winner: Optional[str] = None
     version: int = 0
     deck: List[DecreeType] = []
@@ -267,6 +277,10 @@ class WebSocketManager:
         game_state.turn.nominee_seat = None
         game_state.turn.votes = {}
         game_state.turn.turn_number += 1
+        # Clear transient power state so the next turn starts clean
+        game_state.turn.active_power = None
+        game_state.turn.power_result = None
+        game_state.turn.last_execution_seat = None
 
     def _enter_defiance_phase(self, game_state: GameState):
         """Open the Piste de Défiance vote."""
@@ -314,22 +328,35 @@ class WebSocketManager:
         game_state.turn.conseil_royaume_start_time = None
         game_state.turn.speaking_players = []
 
-        # Track unlocked powers for future UI (currently no action handlers —
-        # the POWER phase would leave the game stuck, so we skip it and flow
-        # straight to the next phase. Re-enable when Investigation/Exécution
-        # UI + action handlers are wired.
-        if game_state.tracks.conjure >= 2:
+        # Pouvoirs du Roi : déclenchés au 2ᵉ et 4ᵉ Décret de Trahison, une seule fois chacun.
+        if game_state.tracks.conjure >= 2 and not game_state.powers.get("investigation_used"):
             game_state.powers["investigation_unlocked"] = True
-        if game_state.tracks.conjure >= 4:
+            game_state.turn.phase = Phase.POWER
+            game_state.turn.active_power = "INVESTIGATE"
+            game_state.turn.power_result = None
+            return
+        if game_state.tracks.conjure >= 4 and not game_state.powers.get("execution_used"):
             game_state.powers["execution_unlocked"] = True
-
-        # Piste de Défiance — skip on the very first turn
-        if game_state.turn.turn_number >= 2:
-            self._enter_defiance_phase(game_state)
+            game_state.turn.phase = Phase.POWER
+            game_state.turn.active_power = "EXECUTE"
+            game_state.turn.power_result = None
             return
 
-        # Turn 1 → straight to next nomination
-        self._advance_to_next_nomination(game_state)
+        # Pas de pouvoir → Piste de Défiance (dès le tour 2) ou Nomination directe
+        self._flow_to_next_turn_phase(game_state)
+
+    def _flow_to_next_turn_phase(self, game_state: GameState):
+        """After decree resolution + Conseil + (optional) Power, enter Défiance or Nomination."""
+        if game_state.turn.turn_number >= 2:
+            self._enter_defiance_phase(game_state)
+        else:
+            self._advance_to_next_nomination(game_state)
+
+    def _advance_after_power(self, game_state: GameState):
+        """Exit POWER phase cleanly and flow to next turn phase."""
+        game_state.turn.active_power = None
+        game_state.turn.power_result = None
+        self._flow_to_next_turn_phase(game_state)
 
     async def check_defiance_timeout(self):
         """Auto-resolve expired DEFIANCE phases."""
@@ -785,6 +812,103 @@ async def handle_game_action(room_code: str, player_id: str, action_type: str, p
                 "version": game_state.version
             })
 
+        elif action_type == "INVESTIGATE":
+            # Pouvoir Investigation — seul le Roi agit pendant POWER / active_power == INVESTIGATE.
+            if game_state.turn.phase != Phase.POWER or game_state.turn.active_power != "INVESTIGATE":
+                raise HTTPException(status_code=400, detail="Wrong phase for investigation")
+            if player.seat != game_state.turn.regent_seat:
+                raise HTTPException(status_code=400, detail="Only the King can investigate")
+            if game_state.turn.power_result is not None:
+                raise HTTPException(status_code=400, detail="Investigation already performed this turn")
+
+            raw_target = payload.get("targetSeat")
+            try:
+                target_seat = int(raw_target)
+            except (TypeError, ValueError):
+                raise HTTPException(status_code=400, detail="Invalid target seat")
+            target = next((p for p in game_state.players if p.seat == target_seat), None)
+            if not target or not target.alive:
+                raise HTTPException(status_code=400, detail="Invalid target")
+            if target_seat == player.seat:
+                raise HTTPException(status_code=400, detail="Cannot investigate yourself")
+
+            # Camp révélé : Fidèle vs Traître (Tyran se camoufle dans "Traître").
+            camp = "Fidèle" if target.role == Role.LOYAL else "Traître"
+            game_state.turn.power_result = {
+                "target_seat": target_seat,
+                "target_name": target.name,
+                "camp": camp,
+            }
+            game_state.powers["investigation_used"] = True
+            game_state.version += 1
+
+            await manager.broadcast_to_room(room_code, {
+                "type": "game_update",
+                "data": "investigation_done",
+                "version": game_state.version,
+            })
+
+        elif action_type == "EXECUTE":
+            # Pouvoir Exécution — seul le Roi agit pendant POWER / active_power == EXECUTE.
+            if game_state.turn.phase != Phase.POWER or game_state.turn.active_power != "EXECUTE":
+                raise HTTPException(status_code=400, detail="Wrong phase for execution")
+            if player.seat != game_state.turn.regent_seat:
+                raise HTTPException(status_code=400, detail="Only the King can execute")
+
+            raw_target = payload.get("targetSeat")
+            try:
+                target_seat = int(raw_target)
+            except (TypeError, ValueError):
+                raise HTTPException(status_code=400, detail="Invalid target seat")
+            target = next((p for p in game_state.players if p.seat == target_seat), None)
+            if not target or not target.alive:
+                raise HTTPException(status_code=400, detail="Invalid target")
+            if target_seat == player.seat:
+                raise HTTPException(status_code=400, detail="Cannot execute yourself")
+
+            # Kill target
+            target.alive = False
+            game_state.powers["execution_used"] = True
+            game_state.powers["executed_once"] = True
+            game_state.turn.last_execution_seat = target_seat
+
+            # Victoire Fidèles si le Tyran est exécuté
+            if target.role == Role.USURPATEUR:
+                game_state.winner = "FIDELES"
+                game_state.turn.phase = Phase.ENDGAME
+                game_state.turn.active_power = None
+                game_state.turn.power_result = None
+            else:
+                # Si le mort était Roi du prochain tour, _flow → _next_regent_seat sautera
+                # automatiquement les morts. Continue le flow normal.
+                manager._advance_after_power(game_state)
+
+            game_state.version += 1
+            await manager.broadcast_to_room(room_code, {
+                "type": "game_update",
+                "data": "execution_done",
+                "executed_seat": target_seat,
+                "winner": game_state.winner,
+                "version": game_state.version,
+            })
+
+        elif action_type == "ACK_POWER":
+            # Le Roi ferme le résultat d'investigation et on enchaîne la phase suivante.
+            if game_state.turn.phase != Phase.POWER:
+                raise HTTPException(status_code=400, detail="Wrong phase")
+            if player.seat != game_state.turn.regent_seat:
+                raise HTTPException(status_code=400, detail="Only the King can acknowledge")
+            if game_state.turn.active_power != "INVESTIGATE" or game_state.turn.power_result is None:
+                raise HTTPException(status_code=400, detail="No power result to acknowledge")
+
+            manager._advance_after_power(game_state)
+            game_state.version += 1
+            await manager.broadcast_to_room(room_code, {
+                "type": "game_update",
+                "data": "power_acknowledged",
+                "version": game_state.version,
+            })
+
         elif action_type == "SPEAK_TOGGLE":
             # Voice is available for the whole game. Only require that the
             # game is in progress and the player is alive.
@@ -912,6 +1036,16 @@ async def get_game_state(room_code: str, player_id: str):
         "defiance_start_time": game_state.turn.defiance_start_time,
         "defiance_duration": DEFIANCE_DURATION_SECONDS,
         "defiance_threshold": DEFIANCE_MARK_THRESHOLD,
+        # Pouvoir du Roi — active_power visible à tous, power_result uniquement au Roi
+        "active_power": game_state.turn.active_power,
+        "power_result": (
+            game_state.turn.power_result
+            if game_state.turn.active_power == "INVESTIGATE"
+               and player.seat == game_state.turn.regent_seat
+            else None
+        ),
+        "last_execution_seat": game_state.turn.last_execution_seat,
+        "powers": game_state.powers,
     }
 @api_router.post("/rooms/{room_code}/start")
 async def start_game(room_code: str):

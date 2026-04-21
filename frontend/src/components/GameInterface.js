@@ -13,6 +13,7 @@ import VotePanel from './VotePanel';
 import LegislativePanel from './LegislativePanel';
 import ConseilRoyaumePanel from './ConseilRoyaumePanel';
 import DefiancePanel from './DefiancePanel';
+import PowerPanel from './PowerPanel';
 import MedievalTable from './MedievalTable.js';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -62,6 +63,8 @@ const formatPhaseName = (phase) => {
       return 'Conseil du Royaume';
     case 'DEFIANCE':
       return 'Piste de Défiance';
+    case 'POWER':
+      return 'Pouvoir du Roi';
     default:
       return phase.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
   }
@@ -294,8 +297,10 @@ const GameInterface = ({ roomCode }) => {
   const [mobileTab, setMobileTab] = useState('table'); // 'table', 'tracks', 'chat'
   const [showPeoplesAnger, setShowPeoplesAnger] = useState(false);
   const [defianceBanner, setDefianceBanner] = useState(null); // 'opening' | 'marked' | null
+  const [executionBanner, setExecutionBanner] = useState(null); // { seat, name } | null
   const prevPhaseRef = useRef(null);
   const prevMarkedRef = useRef(null);
+  const prevExecutionRef = useRef(null);
   
   // Chat state variables
   const [messages, setMessages] = useState([]);
@@ -435,7 +440,24 @@ const GameInterface = ({ roomCode }) => {
     prevPhaseRef.current = phase;
     prevMarkedRef.current = marked;
   }, [gameState?.phase, gameState?.marked_player_seat]);
-  
+
+  // Detect execution: show a banner to everyone when a new player is executed
+  useEffect(() => {
+    const seat = gameState?.last_execution_seat || null;
+    const prev = prevExecutionRef.current;
+    if (seat && seat !== prev) {
+      const victim = gameState?.players?.find((p) => p.seat === seat);
+      setExecutionBanner({ seat, name: victim?.name || `Siège ${seat}` });
+      const t = setTimeout(() => setExecutionBanner(null), 4500);
+      prevExecutionRef.current = seat;
+      return () => clearTimeout(t);
+    }
+    if (!seat) {
+      prevExecutionRef.current = null;
+    }
+  }, [gameState?.last_execution_seat, gameState?.players]);
+
+
   // Chat functions
   const sendMessage = async () => {
     if (!newMessage.trim() || isSending) return;
@@ -679,6 +701,35 @@ const GameInterface = ({ roomCode }) => {
                 </>
               );
             })()}
+          </div>
+        </div>
+      )}
+
+      {/* Execution banner — seen by everyone */}
+      {executionBanner && (
+        <div className="fixed inset-0 pointer-events-none flex items-center justify-center z-40">
+          <div
+            className="px-6 py-5 rounded-lg text-center"
+            style={{
+              background: 'rgba(20, 0, 0, 0.94)',
+              border: '2px solid #dc2626',
+              boxShadow: '0 0 40px rgba(220, 38, 38, 0.55)',
+              maxWidth: '90vw',
+              animation: 'fadeIn 0.3s ease-out',
+            }}
+          >
+            <p
+              className="text-2xl md:text-3xl"
+              style={{ color: '#fecaca', fontFamily: "'Cinzel', serif", letterSpacing: '0.15em' }}
+            >
+              💀 Exécution
+            </p>
+            <p className="text-base text-red-200 mt-2">
+              <strong>{executionBanner.name}</strong> <span className="text-red-300/70">· siège {executionBanner.seat}</span>
+            </p>
+            <p className="text-xs text-red-300/60 italic mt-2" style={{ fontFamily: "'IM Fell English', serif" }}>
+              Le Roi a tranché. Que son âme erre à jamais.
+            </p>
           </div>
         </div>
       )}
@@ -931,6 +982,23 @@ const GameInterface = ({ roomCode }) => {
                 />
               )}
 
+              {gameState.phase === 'POWER' && (
+                <PowerPanel
+                  gameState={gameState}
+                  currentPlayerId={currentPlayerId}
+                  onAction={async (actionType, payload) => {
+                    try {
+                      await axios.post(
+                        `${API}/rooms/${roomCode}/action?player_id=${currentPlayerId}&action_type=${actionType}`,
+                        payload || {}
+                      );
+                    } catch (error) {
+                      alert('Erreur pouvoir du Roi : ' + (error.response?.data?.detail || error.message));
+                    }
+                  }}
+                />
+              )}
+
               {gameState.phase === 'VOTE' && (
                 <VotePanel
                   players={gameState.players || []}
@@ -1053,6 +1121,23 @@ const GameInterface = ({ roomCode }) => {
                           );
                         } catch (error) {
                           alert('Erreur lors du vote de défiance: ' + (error.response?.data?.detail || error.message));
+                        }
+                      }}
+                    />
+                  )}
+
+                  {gameState.phase === 'POWER' && (
+                    <PowerPanel
+                      gameState={gameState}
+                      currentPlayerId={currentPlayerId}
+                      onAction={async (actionType, payload) => {
+                        try {
+                          await axios.post(
+                            `${API}/rooms/${roomCode}/action?player_id=${currentPlayerId}&action_type=${actionType}`,
+                            payload || {}
+                          );
+                        } catch (error) {
+                          alert('Erreur pouvoir du Roi : ' + (error.response?.data?.detail || error.message));
                         }
                       }}
                     />
