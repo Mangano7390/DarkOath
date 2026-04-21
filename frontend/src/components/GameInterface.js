@@ -367,7 +367,6 @@ const GameInterface = ({ roomCode }) => {
       document.removeEventListener('keydown', onGesture, true);
       musicRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Mirror musicEnabled into a ref so the one-shot gesture handler sees the
