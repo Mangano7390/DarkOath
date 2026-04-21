@@ -283,8 +283,8 @@ const LandingPage = () => {
                     { num: '2', title: 'Vote', text: "Tous les joueurs vivants votent OUI ou NON à la majorité simple. Si OUI, le gouvernement est formé. Si NON ou égalité, on passe au joueur suivant et la Piste de Crise avance d'une case." },
                     { num: '3', title: 'Législation — le Roi', text: "Le Roi pioche 3 décrets, en défausse 1 secrètement, et transmet les 2 restants au Conseiller." },
                     { num: '4', title: 'Législation — le Conseiller', text: "Le Conseiller défausse 1 décret en secret et révèle le dernier. Ce décret est appliqué et avance la piste correspondante (Fidèles ou Trahison)." },
-                    { num: '5', title: 'Pouvoir du Roi (si déclenché)', text: "Dès le 2ᵉ puis le 4ᵉ Décret de Trahison posé sur la piste des Traîtres, le Roi débloque un pouvoir (voir section Pouvoirs)." },
-                    { num: '6', title: 'Conseil du Royaume', text: "Après chaque décret révélé, 30 secondes de discussion en vocal ouvert. Chacun peut s'exprimer, accuser, se justifier." },
+                    { num: '5', title: 'Conseil du Royaume', text: "Après chaque décret révélé, 30 secondes de discussion en vocal ouvert. Chacun peut s'exprimer, accuser, se justifier." },
+                    { num: '6', title: 'Pouvoir du Roi (si déclenché)', text: "Au 2ᵉ puis au 4ᵉ Décret de Trahison posé sur la piste des Traîtres, et à la fin du Conseil, le Roi exerce un pouvoir (Investigation puis Exécution — voir section Pouvoirs)." },
                     { num: '7', title: 'Piste de Défiance (dès le tour 2)', text: "25 secondes pour désigner un suspect ou passer. Les votes s'accumulent ; 3 votes cumulés = joueur marqué, exclu de toute fonction au tour suivant." },
                   ].map((step) => (
                     <div key={step.num} className="flex gap-4 items-start p-4 rounded-lg" style={{
