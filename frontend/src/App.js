@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useParams } from 'react-router-dom';
 import { Crown, Sword, Shield, Users, Globe, Music, Volume2, VolumeX, BookOpen } from 'lucide-react';
 import { Button } from './components/ui/button';
@@ -19,14 +19,79 @@ import DashAdmin from './components/DashAdmin';
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
+// Shared localStorage keys so music volume is consistent across Home,
+// Lobby and the in-game music control.
+const MUSIC_VOLUME_KEY = 'darkoath_music_volume';
+const MUSIC_ENABLED_KEY = 'darkoath_music_enabled';
+
+const readVolume = (fallback = 0.3) => {
+  const saved = localStorage.getItem(MUSIC_VOLUME_KEY);
+  if (saved === null) return fallback;
+  const v = parseFloat(saved);
+  return Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : fallback;
+};
+const readEnabled = (fallback = true) => {
+  const saved = localStorage.getItem(MUSIC_ENABLED_KEY);
+  if (saved === null) return fallback;
+  return saved === 'true';
+};
+
+// Compact music widget: toggle + expandable volume slider.
+// Mirrors the style used inside GameInterface so the look stays consistent.
+const MusicControl = ({ enabled, volume, onToggle, onVolume }) => {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div
+      className="flex items-center gap-2 px-2 py-1.5 rounded-full"
+      style={{
+        background: 'rgba(20, 14, 8, 0.7)',
+        border: '1px solid rgba(199, 168, 105, 0.4)',
+        backdropFilter: 'blur(4px)',
+      }}
+    >
+      <button
+        onClick={onToggle}
+        className="flex items-center justify-center rounded-full transition-colors"
+        style={{ width: 28, height: 28, color: enabled ? '#e8d9a8' : '#8a6d3a' }}
+        title={enabled ? 'Couper la musique' : 'Activer la musique'}
+        aria-label={enabled ? 'Couper la musique' : 'Activer la musique'}
+      >
+        {enabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+      </button>
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        className="text-[10px] uppercase tracking-widest opacity-70 hover:opacity-100"
+        style={{ color: '#e8d9a8', fontFamily: "'Cinzel', serif" }}
+        aria-label="Régler le volume"
+      >
+        Musique
+      </button>
+      {expanded && (
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.05"
+          value={volume}
+          onChange={(e) => onVolume(parseFloat(e.target.value))}
+          className="w-20 accent-amber-500"
+          aria-label="Volume de la musique"
+        />
+      )}
+    </div>
+  );
+};
+
 // Landing Page Component with Dark Medieval Design
 const LandingPage = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [playerName, setPlayerName] = useState('');
   const [roomCode, setRoomCode] = useState('');
-  const [musicEnabled, setMusicEnabled] = useState(true); // Auto-start music
+  const [musicEnabled, setMusicEnabled] = useState(() => readEnabled(true));
+  const [musicVolume, setMusicVolume] = useState(() => readVolume(0.3));
   const [showRules, setShowRules] = useState(false);
+  const audioRef = useRef(null);
 
   // Track a site visit once per session
   useEffect(() => {
@@ -36,22 +101,26 @@ const LandingPage = () => {
     }).catch(() => {});
   }, []);
 
-  // Medieval music control - Auto-play by default (Morceau 3)
+  // Medieval music control - Auto-play by default (Morceau 3).
+  // Mount-once: the audio element survives toggles; volume/enable effects
+  // below drive its state without tearing it down.
   useEffect(() => {
     const audio = new Audio('https://customer-assets.emergentagent.com/job_1a735b74-0d1b-4cfc-aa0c-5d6b585ff99b/artifacts/l96z3xc1_Morceau%203.mp3');
     audio.loop = true;
-    audio.volume = 0.3;
+    audio.volume = readVolume(0.3);
     // iOS Safari: required so the audio plays inline instead of fullscreen
     // and cooperates with autoplay/gesture rules.
     audio.playsInline = true;
     audio.setAttribute('playsinline', '');
     audio.setAttribute('webkit-playsinline', '');
     audio.preload = 'auto';
+    audioRef.current = audio;
 
     let started = false;
 
     const tryPlay = () => {
       if (started) return;
+      if (!readEnabled(true)) return;
       const p = audio.play();
       if (p && typeof p.then === 'function') {
         p.then(() => { started = true; }).catch(() => {
@@ -78,17 +147,32 @@ const LandingPage = () => {
     document.addEventListener('click', onGesture, true);
     document.addEventListener('keydown', onGesture, true);
 
-    // Respect explicit user toggle
-    if (!musicEnabled) {
-      try { audio.pause(); } catch {}
-    }
-
     return () => {
       try { audio.pause(); } catch {}
       document.removeEventListener('touchend', onGesture, true);
       document.removeEventListener('click', onGesture, true);
       document.removeEventListener('keydown', onGesture, true);
+      audioRef.current = null;
     };
+  }, []);
+
+  // Live-update volume + persist preference
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.volume = musicVolume;
+    localStorage.setItem(MUSIC_VOLUME_KEY, String(musicVolume));
+  }, [musicVolume]);
+
+  // Live-update enabled state + persist preference
+  useEffect(() => {
+    const el = audioRef.current;
+    localStorage.setItem(MUSIC_ENABLED_KEY, String(musicEnabled));
+    if (!el) return;
+    if (musicEnabled) {
+      const p = el.play();
+      if (p && typeof p.catch === 'function') p.catch(() => {});
+    } else {
+      try { el.pause(); } catch {}
+    }
   }, [musicEnabled]);
 
   const createRoom = async () => {
@@ -477,16 +561,14 @@ const LandingPage = () => {
         />
       ))}
 
-      {/* Music Control */}
+      {/* Music Control (toggle + volume slider) */}
       <div className="absolute top-4 right-4 z-20">
-        <Button
-          onClick={() => setMusicEnabled(!musicEnabled)}
-          variant="outline"
-          size="sm"
-          className="border-amber-700/60 text-amber-300 hover:bg-amber-900/30 bg-black/40 backdrop-blur-sm"
-        >
-          {musicEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-        </Button>
+        <MusicControl
+          enabled={musicEnabled}
+          volume={musicVolume}
+          onToggle={() => setMusicEnabled((v) => !v)}
+          onVolume={setMusicVolume}
+        />
       </div>
 
       {/* Language Toggle */}
@@ -700,19 +782,25 @@ const Lobby = ({ roomCode }) => {
     };
   }, [roomCode, currentPlayerId, navigate, currentPlayerName]);
 
-  // Lobby music - Morceau 1
+  // Lobby music - Morceau 1, with shared volume/enable controls.
+  const lobbyAudioRef = useRef(null);
+  const [musicEnabled, setMusicEnabled] = useState(() => readEnabled(true));
+  const [musicVolume, setMusicVolume] = useState(() => readVolume(0.3));
+
   useEffect(() => {
     const audio = new Audio('https://customer-assets.emergentagent.com/job_1a735b74-0d1b-4cfc-aa0c-5d6b585ff99b/artifacts/10k0yrvs_Morceau%201.mp3');
     audio.loop = true;
-    audio.volume = 0.3;
+    audio.volume = readVolume(0.3);
     audio.playsInline = true;
     audio.setAttribute('playsinline', '');
     audio.setAttribute('webkit-playsinline', '');
     audio.preload = 'auto';
+    lobbyAudioRef.current = audio;
 
     let started = false;
     const tryPlay = () => {
       if (started) return;
+      if (!readEnabled(true)) return;
       const p = audio.play();
       if (p && typeof p.then === 'function') {
         p.then(() => { started = true; }).catch(() => {});
@@ -740,8 +828,28 @@ const Lobby = ({ roomCode }) => {
       document.removeEventListener('touchend', onGesture, true);
       document.removeEventListener('click', onGesture, true);
       document.removeEventListener('keydown', onGesture, true);
+      lobbyAudioRef.current = null;
     };
   }, []);
+
+  // Volume live-update + persistence
+  useEffect(() => {
+    if (lobbyAudioRef.current) lobbyAudioRef.current.volume = musicVolume;
+    localStorage.setItem(MUSIC_VOLUME_KEY, String(musicVolume));
+  }, [musicVolume]);
+
+  // Enabled live-update + persistence
+  useEffect(() => {
+    const el = lobbyAudioRef.current;
+    localStorage.setItem(MUSIC_ENABLED_KEY, String(musicEnabled));
+    if (!el) return;
+    if (musicEnabled) {
+      const p = el.play();
+      if (p && typeof p.catch === 'function') p.catch(() => {});
+    } else {
+      try { el.pause(); } catch {}
+    }
+  }, [musicEnabled]);
 
   const startGame = async () => {
     console.log('startGame called for room:', roomCode);
@@ -794,6 +902,16 @@ const Lobby = ({ roomCode }) => {
           }}
         />
       ))}
+
+      {/* Music Control (toggle + volume slider) */}
+      <div className="absolute top-4 right-4 z-20">
+        <MusicControl
+          enabled={musicEnabled}
+          volume={musicVolume}
+          onToggle={() => setMusicEnabled((v) => !v)}
+          onVolume={setMusicVolume}
+        />
+      </div>
 
       <div className="relative z-10 min-h-screen flex flex-col items-center justify-start p-4 py-12">
         <div className="w-full max-w-3xl">

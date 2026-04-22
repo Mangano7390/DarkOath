@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Mic, MicOff, Clock } from 'lucide-react';
+import { Mic, MicOff, Clock, Volume2, VolumeX } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+
+const MUTED_SEATS_KEY = 'darkoath_muted_seats';
 
 const ConseilTimer = ({ startTime }) => {
   const [timeLeft, setTimeLeft] = useState(30);
@@ -60,10 +62,23 @@ const ConseilRoyaumePanel = ({
   const [initializing, setInitializing] = useState(false);
   const [voiceError, setVoiceError] = useState(null);
 
+  // Per-player mute: set of seat numbers the *local* user has muted.
+  // Persisted in localStorage so a mute sticks across Conseil rounds & reloads.
+  const [mutedSeats, setMutedSeats] = useState(() => {
+    try {
+      const raw = localStorage.getItem(MUTED_SEATS_KEY);
+      if (!raw) return new Set();
+      const arr = JSON.parse(raw);
+      return new Set(Array.isArray(arr) ? arr.map(Number).filter(Number.isFinite) : []);
+    } catch {
+      return new Set();
+    }
+  });
+
   // Mic is "open" whenever initialized AND not muted by user.
   const isSpeaking = micInitialized && !isMuted;
 
-  const status = gameState?.status;
+  const phase = gameState?.phase;
 
   const streamRef = useRef(null);
   const audioCtxRef = useRef(null);
@@ -74,14 +89,33 @@ const ConseilRoyaumePanel = ({
   const playbackRef = useRef(new Map());
   const playbackDestRef = useRef(null); // MediaStreamAudioDestinationNode for iOS routing
   const playbackElRef = useRef(null);   // <audio> sink — routes output to loudspeaker on iOS
+  const mutedSeatsRef = useRef(mutedSeats); // ref mirror for playChunk
 
   useEffect(() => {
     speakingRef.current = isSpeaking;
   }, [isSpeaking]);
 
+  useEffect(() => {
+    mutedSeatsRef.current = mutedSeats;
+    try {
+      localStorage.setItem(MUTED_SEATS_KEY, JSON.stringify(Array.from(mutedSeats)));
+    } catch {}
+  }, [mutedSeats]);
+
+  const toggleSeatMute = useCallback((seat) => {
+    setMutedSeats((prev) => {
+      const next = new Set(prev);
+      if (next.has(seat)) next.delete(seat);
+      else next.add(seat);
+      return next;
+    });
+  }, []);
+
   const playChunk = useCallback((seat, sampleRate, int16) => {
     const ctx = audioCtxRef.current;
     if (!ctx) return;
+    // Silently drop chunks from seats the local user has muted.
+    if (mutedSeatsRef.current.has(seat)) return;
 
     const float32 = new Float32Array(int16.length);
     for (let i = 0; i < int16.length; i++) {
@@ -144,13 +178,14 @@ const ConseilRoyaumePanel = ({
     playbackRef.current.clear();
   }, []);
 
-  // Tear down when game ends / unmounts
+  // Tear down when we leave the Conseil phase or unmount.
+  // Voice is only alive during CONSEIL_ROYAUME — any other phase kills audio.
   useEffect(() => {
-    if (status !== 'in_progress') {
+    if (phase !== 'CONSEIL_ROYAUME') {
       teardown();
     }
     return teardown;
-  }, [status, teardown]);
+  }, [phase, teardown]);
 
   const initAudio = async () => {
     // iOS Safari: getUserMedia must be called synchronously inside the user
@@ -401,6 +436,86 @@ const ConseilRoyaumePanel = ({
             </div>
           </div>
         )}
+
+        {/* Per-player mute list — local mute only, hides another player's
+            voice from *your* ears without affecting others. */}
+        {(() => {
+          const me = gameState?.players?.find((p) => p.id === currentPlayerId);
+          const others = (gameState?.players || []).filter(
+            (p) => p.alive && p.seat !== me?.seat
+          );
+          if (others.length === 0) return null;
+          return (
+            <div
+              className="p-3 rounded-lg"
+              style={{
+                background: 'rgba(20, 14, 8, 0.55)',
+                border: '1px solid rgba(199, 168, 105, 0.25)',
+              }}
+            >
+              <h4
+                className="text-amber-300 font-medium mb-2 text-sm flex items-center gap-2"
+                style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' }}
+              >
+                <VolumeX className="h-4 w-4" />
+                SILENCE INDIVIDUEL
+              </h4>
+              <p className="text-amber-100/60 text-[11px] italic mb-2">
+                Coupez la voix d'un joueur dans vos écouteurs (ne l'affecte pas pour les autres).
+              </p>
+              <div className="space-y-1.5">
+                {others.map((p) => {
+                  const muted = mutedSeats.has(p.seat);
+                  const talking = speakingPlayers.includes(p.seat);
+                  return (
+                    <button
+                      key={p.seat}
+                      onClick={() => toggleSeatMute(p.seat)}
+                      className="w-full flex items-center gap-3 p-2 rounded transition-all"
+                      style={{
+                        background: muted
+                          ? 'rgba(127, 29, 29, 0.45)'
+                          : 'rgba(40, 28, 18, 0.6)',
+                        border: `1px solid ${
+                          muted ? 'rgba(220, 38, 38, 0.55)' : 'rgba(199, 168, 105, 0.25)'
+                        }`,
+                        color: muted ? '#fca5a5' : '#e8d9a8',
+                      }}
+                      title={muted ? 'Réactiver ce joueur' : 'Couper ce joueur'}
+                      aria-label={muted ? `Réactiver ${p.name}` : `Couper ${p.name}`}
+                    >
+                      <div
+                        className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                        style={{
+                          background: 'rgba(199, 168, 105, 0.2)',
+                          border: '1px solid rgba(199, 168, 105, 0.4)',
+                          color: '#e8d9a8',
+                          fontFamily: "'Cinzel', serif",
+                        }}
+                      >
+                        {p.seat}
+                      </div>
+                      <span
+                        className="flex-1 text-left truncate text-sm"
+                        style={{ fontFamily: "'Cinzel', serif" }}
+                      >
+                        {p.name}
+                      </span>
+                      {talking && !muted && (
+                        <span className="text-[10px] text-red-300 animate-pulse">🔴</span>
+                      )}
+                      {muted ? (
+                        <VolumeX className="h-4 w-4 text-red-300 flex-shrink-0" />
+                      ) : (
+                        <Volume2 className="h-4 w-4 text-amber-300/80 flex-shrink-0" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
       </CardContent>
     </Card>
   );

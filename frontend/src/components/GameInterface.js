@@ -1022,7 +1022,7 @@ const GameInterface = ({ roomCode }) => {
                 />
               )}
 
-              {gameState.status === 'in_progress' && (
+              {gameState.phase === 'CONSEIL_ROYAUME' && (
                 <ConseilRoyaumePanel
                   gameState={gameState}
                   roomCode={roomCode}
@@ -1166,7 +1166,7 @@ const GameInterface = ({ roomCode }) => {
                     />
                   )}
 
-                  {gameState.status === 'in_progress' && (
+                  {gameState.phase === 'CONSEIL_ROYAUME' && (
                     <ConseilRoyaumePanel
                       gameState={gameState}
                       roomCode={roomCode}
