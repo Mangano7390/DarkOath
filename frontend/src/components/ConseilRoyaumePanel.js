@@ -5,13 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 
 const MUTED_SEATS_KEY = 'darkoath_muted_seats';
 
+const CONSEIL_DURATION = 60; // seconds, mirrors backend
 const ConseilTimer = ({ startTime }) => {
-  const [timeLeft, setTimeLeft] = useState(30);
+  const [timeLeft, setTimeLeft] = useState(CONSEIL_DURATION);
   useEffect(() => {
     if (!startTime) return;
     const tick = () => {
       const elapsed = Date.now() / 1000 - startTime;
-      setTimeLeft(Math.max(0, Math.ceil(30 - elapsed)));
+      setTimeLeft(Math.max(0, Math.ceil(CONSEIL_DURATION - elapsed)));
     };
     tick();
     const id = setInterval(tick, 250);
@@ -394,11 +395,14 @@ const ConseilRoyaumePanel = ({
                 ? 'bg-red-600 hover:bg-red-700 shadow-lg shadow-red-500/50'
                 : 'bg-amber-700 hover:bg-amber-600'
             }`}
+            title={isSpeaking ? 'Couper le micro' : 'Activer le micro'}
+            aria-label={isSpeaking ? 'Couper le micro' : 'Activer le micro'}
           >
+            {/* When speaking: Mic = active/live. When muted: MicOff = crossed out. */}
             {isSpeaking ? (
-              <MicOff className="h-8 w-8 text-white" />
-            ) : (
               <Mic className="h-8 w-8 text-white" />
+            ) : (
+              <MicOff className="h-8 w-8 text-white" />
             )}
           </Button>
         </div>

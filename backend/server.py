@@ -107,6 +107,7 @@ class GameState(BaseModel):
         "executed_once": False,  # legacy flag, kept for compatibility
     }
     winner: Optional[str] = None
+    winner_reason: Optional[str] = None  # Human-readable cause ("tyran_executed", "5_loyal", "6_conjure", ...)
     version: int = 0
     deck: List[DecreeType] = []
     discard: List[DecreeType] = []
@@ -225,22 +226,25 @@ class WebSocketManager:
     def check_win_conditions(self, game_state: GameState) -> Optional[str]:
         # Loyaux win: 5 loyal decrees or Usurpateur executed
         if game_state.tracks.loyal >= 5:
+            game_state.winner_reason = "5_loyal"
             return "LOYAUX"
-        
+
         # Check if Usurpateur was executed
         usurpateur_alive = any(p.role == Role.USURPATEUR and p.alive for p in game_state.players)
         if not usurpateur_alive:
+            game_state.winner_reason = "tyran_executed"
             return "LOYAUX"
-        
+
         # Conjures win: 6 conjure decrees
         if game_state.tracks.conjure >= 6:
+            game_state.winner_reason = "6_conjure"
             return "CONJURES"
-        
+
         # Conjures win: Usurpateur elected Chambellan after 3 conjure decrees
         if game_state.tracks.conjure >= 3:
             # This will be checked during nomination phase
             pass
-        
+
         return None
 
     def _next_regent_seat(self, game_state: GameState, current_seat: int) -> int:
@@ -380,9 +384,9 @@ class WebSocketManager:
         current_time = time.time()
         
         for room_code, game_state in self.game_states.items():
-            if (game_state.turn.phase == Phase.CONSEIL_ROYAUME and 
+            if (game_state.turn.phase == Phase.CONSEIL_ROYAUME and
                 game_state.turn.conseil_royaume_start_time and
-                (current_time - game_state.turn.conseil_royaume_start_time) >= 30):
+                (current_time - game_state.turn.conseil_royaume_start_time) >= 60):
                 
                 # Time's up! Advance to next phase
                 await self.advance_after_conseil(game_state)
@@ -756,7 +760,7 @@ async def handle_game_action(room_code: str, player_id: str, action_type: str, p
                     # After a decree is revealed, trigger Conseil du Royaume phase
                     import time
                     game_state.turn.phase = Phase.CONSEIL_ROYAUME
-                    game_state.turn.conseil_royaume_timer = 30  # 30 seconds
+                    game_state.turn.conseil_royaume_timer = 60  # 60 seconds (1 min)
                     game_state.turn.conseil_royaume_start_time = time.time()
                     game_state.turn.speaking_players = []
                 
@@ -777,9 +781,14 @@ async def handle_game_action(room_code: str, player_id: str, action_type: str, p
                 raise HTTPException(status_code=400, detail="Wrong phase for card discard")
         
         elif action_type == "DEFIANCE_VOTE":
-            # Cast a suspicion vote during the DEFIANCE phase (or pass)
+            # Cast a suspicion vote during the DEFIANCE phase (or pass).
+            # Graceful race-handling: if the DEFIANCE phase has already auto-resolved
+            # (timeout elapsed, or every other player just voted) between the user
+            # opening the panel and clicking, we treat the vote as a no-op instead of
+            # raising. This avoids the "Wrong phase for defiance vote" error that
+            # popped up when a player clicked "Passer" just after resolution.
             if game_state.turn.phase != Phase.DEFIANCE:
-                raise HTTPException(status_code=400, detail="Wrong phase for defiance vote")
+                return {"success": True, "stale": True, "version": game_state.version}
             if not player.alive:
                 raise HTTPException(status_code=400, detail="Dead players cannot vote")
 
@@ -875,6 +884,7 @@ async def handle_game_action(room_code: str, player_id: str, action_type: str, p
             # Victoire Fidèles si le Tyran est exécuté
             if target.role == Role.USURPATEUR:
                 game_state.winner = "FIDELES"
+                game_state.winner_reason = "tyran_executed"
                 game_state.turn.phase = Phase.ENDGAME
                 game_state.turn.active_power = None
                 game_state.turn.power_result = None
@@ -952,7 +962,7 @@ async def get_game_state(room_code: str, player_id: str):
     if game_state.turn.phase == Phase.CONSEIL_ROYAUME and game_state.turn.conseil_royaume_start_time:
         import time
         current_time = time.time()
-        if (current_time - game_state.turn.conseil_royaume_start_time) >= 30:
+        if (current_time - game_state.turn.conseil_royaume_start_time) >= 60:
             # Time's up! Advance to next phase
             await manager.advance_after_conseil(game_state)
             game_state.version += 1
@@ -1019,6 +1029,7 @@ async def get_game_state(room_code: str, player_id: str):
         "teammates": teammates,
         "players": [{"id": p.id, "name": p.name, "seat": p.seat, "alive": p.alive, "connected": p.connected} for p in game_state.players],
         "winner": game_state.winner,
+        "winner_reason": game_state.winner_reason,
         "version": game_state.version,
         "legislative_cards": legislative_cards,
         "disgraced_player_seat": game_state.turn.disgraced_player_seat,

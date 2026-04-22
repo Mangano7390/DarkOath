@@ -196,14 +196,190 @@ const RoleCard = ({ role, teammates = [], players = [] }) => {
   );
 };
 
-// Conseil du Royaume countdown (30s)
+// End-of-game banner: big camp reveal with reason + role list.
+const EndgameBanner = ({ gameState, currentPlayerId }) => {
+  const winner = gameState?.winner;
+  const reason = gameState?.winner_reason;
+  const tracks = gameState?.tracks || {};
+  const players = gameState?.players || [];
+
+  // Normalise winner strings ("LOYAUX" / "FIDELES" are both Fidèles camp)
+  const fidelesWon = winner === 'LOYAUX' || winner === 'FIDELES';
+  const conjuresWon = winner === 'CONJURES';
+
+  const reasonText = (() => {
+    switch (reason) {
+      case '5_loyal':
+        return 'Cinq Décrets Loyaux ont été promulgués. La Couronne tient bon.';
+      case 'tyran_executed':
+        return 'Le Tyran a été démasqué et exécuté. Son règne prend fin.';
+      case '6_conjure':
+        return 'Six Décrets de Trahison ont corrompu le royaume. Les ombres ont triomphé.';
+      case 'tyran_elected':
+        return 'Le Tyran a été élu Conseiller après trois Trahisons. Le trône est tombé.';
+      default:
+        return fidelesWon
+          ? 'Les Fidèles ont déjoué la conspiration.'
+          : conjuresWon
+            ? 'La conspiration a renversé la Couronne.'
+            : 'La partie est terminée.';
+    }
+  })();
+
+  const camp = fidelesWon
+    ? { label: 'LES FIDÈLES', color: '#3b82f6', glow: 'rgba(59, 130, 246, 0.55)', Icon: Shield, sub: 'La Couronne est sauvée' }
+    : conjuresWon
+      ? { label: 'LES TRAÎTRES', color: '#dc2626', glow: 'rgba(220, 38, 38, 0.55)', Icon: Sword, sub: 'Les ombres ont gagné' }
+      : { label: 'FIN DE PARTIE', color: '#c7a869', glow: 'rgba(199, 168, 105, 0.4)', Icon: Crown, sub: '' };
+
+  const CampIcon = camp.Icon;
+
+  // Roles reveal so players see who was who
+  const rolesReveal = players.map((p) => {
+    let label = '';
+    if (p.role === 'LOYAL') label = 'Fidèle';
+    else if (p.role === 'CONJURE') label = 'Conjuré';
+    else if (p.role === 'USURPATEUR') label = 'Tyran';
+    else label = '—';
+    return { ...p, _label: label };
+  });
+
+  return (
+    <div className="space-y-4">
+      <div
+        className="p-6 rounded-lg text-center"
+        style={{
+          background: `linear-gradient(180deg, rgba(20, 14, 8, 0.85), rgba(10, 6, 4, 0.95))`,
+          border: `2px solid ${camp.color}`,
+          boxShadow: `0 0 28px ${camp.glow}`,
+        }}
+      >
+        <div className="text-[11px] uppercase tracking-widest mb-3" style={{ color: 'rgba(232, 217, 168, 0.7)', fontFamily: "'Cinzel', serif", letterSpacing: '0.2em' }}>
+          ✦ Fin de la Partie ✦
+        </div>
+
+        <CampIcon
+          className="h-16 w-16 mx-auto mb-3"
+          style={{ color: camp.color, filter: `drop-shadow(0 0 12px ${camp.glow})` }}
+        />
+
+        <div
+          className="font-bold mb-1"
+          style={{
+            color: camp.color,
+            fontFamily: "'Cinzel', serif",
+            fontSize: 'clamp(1.8rem, 5vw, 2.75rem)',
+            letterSpacing: '0.15em',
+            textShadow: `0 0 14px ${camp.glow}`,
+          }}
+        >
+          {camp.label}
+        </div>
+        <div
+          className="uppercase tracking-widest text-sm mb-4"
+          style={{ color: '#e8d9a8', fontFamily: "'Cinzel', serif", letterSpacing: '0.2em' }}
+        >
+          ont gagné
+        </div>
+
+        <p
+          className="text-base md:text-lg mb-2 italic"
+          style={{ color: 'rgba(232, 217, 168, 0.9)', fontFamily: "'IM Fell English', serif" }}
+        >
+          {reasonText}
+        </p>
+        {camp.sub && (
+          <p className="text-sm" style={{ color: 'rgba(232, 217, 168, 0.6)' }}>{camp.sub}</p>
+        )}
+
+        {/* Score tracks */}
+        <div className="flex items-center justify-center gap-6 mt-5 text-xs">
+          <div className="flex items-center gap-2" style={{ color: '#93c5fd' }}>
+            <Shield className="h-4 w-4" />
+            <span>{tracks.loyal ?? 0} / 5</span>
+          </div>
+          <div className="flex items-center gap-2" style={{ color: '#fca5a5' }}>
+            <Sword className="h-4 w-4" />
+            <span>{tracks.conjure ?? 0} / 6</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Roles reveal */}
+      <div
+        className="p-3 rounded-lg"
+        style={{
+          background: 'rgba(20, 14, 8, 0.6)',
+          border: '1px solid rgba(199, 168, 105, 0.3)',
+        }}
+      >
+        <div className="text-[10px] uppercase tracking-widest mb-2 flex items-center gap-2" style={{ color: 'rgba(232, 217, 168, 0.7)', fontFamily: "'Cinzel', serif" }}>
+          <Eye className="h-3.5 w-3.5" /> Révélation des identités
+        </div>
+        <div className="space-y-1.5">
+          {rolesReveal.map((p) => {
+            const isFidele = p.role === 'LOYAL';
+            const isTyran = p.role === 'USURPATEUR';
+            const rowColor = isFidele ? '#93c5fd' : isTyran ? '#fef08a' : '#fca5a5';
+            const rowBg = isFidele
+              ? 'rgba(30, 58, 138, 0.18)'
+              : isTyran
+                ? 'rgba(120, 53, 15, 0.35)'
+                : 'rgba(127, 29, 29, 0.22)';
+            const rowBorder = isFidele
+              ? 'rgba(59, 130, 246, 0.4)'
+              : isTyran
+                ? 'rgba(234, 179, 8, 0.55)'
+                : 'rgba(220, 38, 38, 0.4)';
+            return (
+              <div
+                key={p.seat}
+                className="flex items-center gap-2 p-2 rounded text-sm"
+                style={{
+                  background: rowBg,
+                  border: `1px solid ${rowBorder}`,
+                  color: rowColor,
+                  fontFamily: "'Cinzel', serif",
+                }}
+              >
+                <div
+                  className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                  style={{
+                    background: 'rgba(199, 168, 105, 0.2)',
+                    border: '1px solid rgba(199, 168, 105, 0.4)',
+                    color: '#e8d9a8',
+                  }}
+                >
+                  {p.seat}
+                </div>
+                <span className="flex-1 truncate text-amber-100">
+                  {p.name}
+                  {p.id === currentPlayerId && <span className="opacity-60"> (vous)</span>}
+                </span>
+                <span className="text-xs uppercase tracking-widest font-semibold">
+                  {p._label}
+                </span>
+                {!p.alive && (
+                  <Skull className="h-3.5 w-3.5 opacity-70 flex-shrink-0" />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Conseil du Royaume countdown (60s — mirror of backend CONSEIL_DURATION)
+const CONSEIL_COUNTDOWN_DURATION = 60;
 const ConseilCountdown = ({ startTime }) => {
-  const [timeLeft, setTimeLeft] = useState(30);
+  const [timeLeft, setTimeLeft] = useState(CONSEIL_COUNTDOWN_DURATION);
   useEffect(() => {
     if (!startTime) return;
     const tick = () => {
       const elapsed = Date.now() / 1000 - startTime;
-      setTimeLeft(Math.max(0, Math.ceil(30 - elapsed)));
+      setTimeLeft(Math.max(0, Math.ceil(CONSEIL_COUNTDOWN_DURATION - elapsed)));
     };
     tick();
     const id = setInterval(tick, 250);
@@ -1055,7 +1231,11 @@ const GameInterface = ({ roomCode }) => {
                 />
               )}
 
-              {!['NOMINATION', 'VOTE', 'LEGIS_REGENT', 'LEGIS_CHAMBELLAN', 'CONSEIL_ROYAUME'].includes(gameState.phase) && (
+              {gameState.phase === 'ENDGAME' && (
+                <EndgameBanner gameState={gameState} currentPlayerId={currentPlayerId} />
+              )}
+
+              {!['NOMINATION', 'VOTE', 'LEGIS_REGENT', 'LEGIS_CHAMBELLAN', 'CONSEIL_ROYAUME', 'ENDGAME', 'POWER', 'DEFIANCE'].includes(gameState.phase) && (
                 <div className="text-center p-4">
                   <Clock className="h-8 w-8 text-gray-400 mx-auto mb-2" />
                   <p className="text-gray-300 text-sm">
@@ -1199,7 +1379,11 @@ const GameInterface = ({ roomCode }) => {
                     />
                   )}
 
-                  {!['NOMINATION', 'VOTE', 'LEGIS_REGENT', 'LEGIS_CHAMBELLAN', 'CONSEIL_ROYAUME'].includes(gameState.phase) && (
+                  {gameState.phase === 'ENDGAME' && (
+                    <EndgameBanner gameState={gameState} currentPlayerId={currentPlayerId} />
+                  )}
+
+                  {!['NOMINATION', 'VOTE', 'LEGIS_REGENT', 'LEGIS_CHAMBELLAN', 'CONSEIL_ROYAUME', 'ENDGAME', 'POWER', 'DEFIANCE'].includes(gameState.phase) && (
                     <div className="text-center p-4">
                       <Clock className="h-8 w-8 text-gray-400 mx-auto mb-2" />
                       <p className="text-gray-300 text-sm">
@@ -1209,7 +1393,7 @@ const GameInterface = ({ roomCode }) => {
                   )}
                 </CardContent>
               </Card>
-              
+
               {/* Compact Table */}
               <div className="w-full max-w-xs">
                 <MedievalTable
