@@ -575,6 +575,56 @@ const GameInterface = ({ roomCode }) => {
     localStorage.setItem('darkoath_music_enabled', String(musicEnabled));
   }, [musicEnabled]);
   
+  // Endgame sting — plays once when the game transitions into ENDGAME,
+  // regardless of which camp wins. Respects the music enabled preference
+  // but keeps its own volume so the moment stays audible.
+  const endgameAudioRef = useRef(null);
+  const endgamePlayedRef = useRef(false);
+  useEffect(() => {
+    const phase = gameState?.phase;
+    if (phase !== 'ENDGAME') {
+      // Reset flag if we somehow leave ENDGAME (e.g. new game restart),
+      // so a subsequent endgame can fire again.
+      endgamePlayedRef.current = false;
+      return;
+    }
+    if (endgamePlayedRef.current) return;
+    endgamePlayedRef.current = true;
+
+    const saved = localStorage.getItem('darkoath_music_enabled');
+    const enabled = saved === null ? true : saved === 'true';
+    if (!enabled) return;
+
+    try {
+      const sting = new Audio('/endgame.wav');
+      sting.volume = 0.8;
+      sting.playsInline = true;
+      sting.setAttribute('playsinline', '');
+      sting.setAttribute('webkit-playsinline', '');
+      endgameAudioRef.current = sting;
+      const p = sting.play();
+      if (p && typeof p.catch === 'function') {
+        p.catch(() => {
+          // Autoplay blocked — will likely not happen here since the user
+          // has already interacted with the game by this point.
+        });
+      }
+    } catch {
+      // ignore
+    }
+  }, [gameState?.phase]);
+
+  // Stop the endgame sting if the component unmounts.
+  useEffect(() => {
+    return () => {
+      const el = endgameAudioRef.current;
+      if (el) {
+        try { el.pause(); } catch {}
+        endgameAudioRef.current = null;
+      }
+    };
+  }, []);
+
   // Detect "Colère du Peuple" trigger
   useEffect(() => {
     if (gameState?.peoples_anger_triggered) {
