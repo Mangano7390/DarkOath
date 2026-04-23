@@ -13,6 +13,7 @@ import NominationPanel from './NominationPanel';
 import VotePanel from './VotePanel';
 import LegislativePanel from './LegislativePanel';
 import MedievalTable from './MedievalTable.js';
+import { getAuthToken } from '../App';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -38,7 +39,7 @@ const MedievalGameRoom = ({ roomCode }) => {
       
       try {
         console.log('Loading game state for room:', roomCode);
-        const response = await axios.get(`${API}/rooms/${roomCode}/game_state?player_id=${currentPlayerId}`);
+        const response = await axios.get(`${API}/rooms/${roomCode}/game_state`);
         console.log('Game state loaded:', response.data);
         
         setGameState(response.data);
@@ -94,7 +95,8 @@ const MedievalGameRoom = ({ roomCode }) => {
     if (currentPlayerId && roomCode) {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const wsHost = BACKEND_URL.replace('http://', '').replace('https://', '');
-      const wsUrl = `${protocol}//${wsHost}/ws/${roomCode}/${currentPlayerId}`;
+      const authToken = getAuthToken();
+      const wsUrl = `${protocol}//${wsHost}/ws/${roomCode}/${currentPlayerId}?token=${encodeURIComponent(authToken)}`;
       
       try {
         const ws = new WebSocket(wsUrl);
@@ -144,11 +146,8 @@ const MedievalGameRoom = ({ roomCode }) => {
 
     setIsSending(true);
     try {
-      const response = await axios.post(`${API}/rooms/${roomCode}/chat`, null, {
-        params: {
-          player_id: currentPlayerId,
-          message: newMessage
-        }
+      const response = await axios.post(`${API}/rooms/${roomCode}/chat`, {
+        message: newMessage,
       });
       
       if (response.data.success) {

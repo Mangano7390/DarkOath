@@ -23,6 +23,36 @@ const API = `${BACKEND_URL}/api`;
 // Lobby and the in-game music control.
 const MUSIC_VOLUME_KEY = 'darkoath_music_volume';
 const MUSIC_ENABLED_KEY = 'darkoath_music_enabled';
+// Signed JWT issued by the backend on /auth/anonymous. Attached as
+// Authorization: Bearer <token> on every API call and as ?token= on
+// every WebSocket URL. Previously the raw userId travelled in query
+// strings, which leaked in nginx access logs and allowed any player who
+// saw a URL to impersonate another player (vote for them, read their
+// secret role, execute, etc.). The token fixes that class of bugs.
+const AUTH_TOKEN_KEY = 'darkoath_auth_token';
+
+// Axios interceptor: attach the Bearer token to every request aimed at
+// the backend. Installed once at module load; components keep calling
+// axios as before without knowing about the token.
+axios.interceptors.request.use((config) => {
+  try {
+    if (typeof config.url === 'string' && config.url.startsWith(BACKEND_URL)) {
+      const token = localStorage.getItem(AUTH_TOKEN_KEY);
+      if (token) {
+        config.headers = config.headers || {};
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+  } catch (_) {
+    // localStorage disabled — proceed without auth, the request will just 401.
+  }
+  return config;
+});
+
+// Helper used by WebSocket URLs (browsers cannot set headers on WS).
+export const getAuthToken = () => {
+  try { return localStorage.getItem(AUTH_TOKEN_KEY) || ''; } catch { return ''; }
+};
 
 const readVolume = (fallback = 0.3) => {
   const saved = localStorage.getItem(MUSIC_VOLUME_KEY);
@@ -175,55 +205,47 @@ const LandingPage = () => {
     }
   }, [musicEnabled]);
 
+  // Authenticate + persist token. Called at the top of createRoom/joinRoom so
+  // the axios interceptor can attach the Bearer token to every subsequent
+  // request. Display name now travels in the JSON body instead of the query
+  // string so it doesn't leak into access logs.
+  const authenticate = async (name) => {
+    const res = await axios.post(`${API}/auth/anonymous`, { name });
+    const { userId, token, name: canonicalName } = res.data;
+    localStorage.setItem('userId', userId);
+    localStorage.setItem('playerName', canonicalName || name);
+    localStorage.setItem(AUTH_TOKEN_KEY, token);
+    return { userId, token };
+  };
+
   const createRoom = async () => {
-    console.log('createRoom called with playerName:', playerName);
-    if (!playerName.trim()) {
-      console.log('No player name provided');
-      return;
-    }
-    
+    if (!playerName.trim()) return;
+
     try {
-      console.log('Creating anonymous user...');
-      // Create anonymous user
-      const userResponse = await axios.post(`${API}/auth/anonymous?name=${encodeURIComponent(playerName)}`);
-      console.log('User response:', userResponse.data);
-      const { userId } = userResponse.data;
-      
-      console.log('Creating room...');
-      // Create room
+      await authenticate(playerName.trim());
+      // Room creation now requires the Bearer token (interceptor handles it).
       const roomResponse = await axios.post(`${API}/rooms`);
-      console.log('Room response:', roomResponse.data);
       const { code } = roomResponse.data;
-      
-      // Store user data in localStorage
-      localStorage.setItem('userId', userId);
-      localStorage.setItem('playerName', playerName);
-      
-      console.log('Navigating to lobby:', `/lobby/${code}`);
       navigate(`/lobby/${code}`);
     } catch (error) {
       console.error('Error creating room:', error);
+      const detail = error?.response?.data?.detail;
+      if (detail) alert(detail);
     }
   };
 
   const joinRoom = async () => {
     if (!playerName.trim() || !roomCode.trim()) return;
-    
+
     try {
-      // Create anonymous user
-      const userResponse = await axios.post(`${API}/auth/anonymous?name=${encodeURIComponent(playerName)}`);
-      const { userId } = userResponse.data;
-      
-      // Check if room exists
+      await authenticate(playerName.trim());
+      // Sanity-check the room exists before navigating to the lobby.
       await axios.get(`${API}/rooms/${roomCode.toUpperCase()}`);
-      
-      // Store user data in localStorage
-      localStorage.setItem('userId', userId);
-      localStorage.setItem('playerName', playerName);
-      
       navigate(`/lobby/${roomCode.toUpperCase()}`);
     } catch (error) {
       console.error('Error joining room:', error);
+      const detail = error?.response?.data?.detail;
+      if (detail) alert(detail);
     }
   };
 
@@ -737,13 +759,9 @@ const Lobby = ({ roomCode }) => {
 
     const joinRoom = async () => {
       try {
-        console.log('Joining room with player:', currentPlayerName, currentPlayerId);
-        const response = await axios.post(`${API}/rooms/${roomCode}/join`, null, {
-          params: {
-            player_id: currentPlayerId,
-            player_name: currentPlayerName
-          }
-        });
+        // Identity is derived from the Bearer token (interceptor). No more
+        // player_id / player_name in query params — those leaked in logs.
+        const response = await axios.post(`${API}/rooms/${roomCode}/join`);
         console.log('Join room response:', response.data);
       } catch (error) {
         console.error('Error joining room:', error);

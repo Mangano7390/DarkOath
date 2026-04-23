@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Mic, MicOff, Clock, Volume2, VolumeX } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { getAuthToken } from '../App';
 
 const MUTED_SEATS_KEY = 'darkoath_muted_seats';
 
@@ -251,7 +252,8 @@ const ConseilRoyaumePanel = ({
     micSourceRef.current = micSource;
     workletNodeRef.current = workletNode;
 
-    const wsUrl = `${WS_BASE}/ws/audio/${roomCode}/${currentPlayerId}`;
+    const authToken = getAuthToken();
+    const wsUrl = `${WS_BASE}/ws/audio/${roomCode}/${currentPlayerId}?token=${encodeURIComponent(authToken)}`;
     console.log('[voice] opening ws:', wsUrl);
     const ws = new WebSocket(wsUrl);
     ws.binaryType = 'arraybuffer';

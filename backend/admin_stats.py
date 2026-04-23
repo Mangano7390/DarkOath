@@ -1,7 +1,10 @@
 """
 Simple admin stats storage (JSON file).
 - Tracks site visits and games played.
-- Hardcoded credentials (change before prod).
+- Credentials MUST be provided via environment variables. No defaults — a
+  missing var makes the module import fail, which is exactly what we want:
+  a misconfigured prod box refuses to boot instead of silently running with
+  publicly-known credentials.
 - Returns a simple HMAC token after login (stateless, no DB).
 """
 from pathlib import Path
@@ -13,10 +16,24 @@ import os
 import threading
 import time
 
-# === Config (change these) ===
-ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
-ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "DarkOath2026!")
-ADMIN_SECRET = os.environ.get("ADMIN_SECRET", "change-me-to-a-long-random-string")
+
+def _required(var: str) -> str:
+    val = os.environ.get(var)
+    if not val:
+        raise RuntimeError(
+            f"{var} is not set. Admin dashboard refuses to run without "
+            "explicit credentials. Export it in your systemd unit / .env "
+            "before starting the backend."
+        )
+    return val
+
+
+# === Config — no defaults on purpose ===
+ADMIN_USERNAME = _required("ADMIN_USERNAME")
+ADMIN_PASSWORD = _required("ADMIN_PASSWORD")
+ADMIN_SECRET = _required("ADMIN_SECRET")
+if len(ADMIN_SECRET) < 32:
+    raise RuntimeError("ADMIN_SECRET must be at least 32 characters long.")
 TOKEN_TTL_SECONDS = 60 * 60 * 8  # 8 hours
 
 STATS_PATH = Path(__file__).parent / "stats.json"

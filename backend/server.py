@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import FastAPI, APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -13,11 +13,34 @@ import uuid
 from datetime import datetime, timezone
 from enum import Enum
 import random
+import time
 from fastapi import Header
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 import admin_stats
+from auth import (
+    PlayerIdentity,
+    issue_player_token,
+    decode_player_token,
+    require_player,
+)
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
+
+# === Rate limiting ===
+# Single shared limiter, keyed on the client IP. Per-route limits are declared
+# via decorators below. The handler converts RateLimitExceeded into a clean
+# 429 JSON response.
+limiter = Limiter(key_func=get_remote_address, default_limits=[])
+
+# === Content bounds ===
+MAX_PLAYER_NAME_LEN = 24
+MAX_CHAT_MESSAGE_LEN = 500
+# Prune rooms that have been idle for longer than this. Keeps the in-memory
+# state from growing without bound when players abandon rooms.
+ROOM_IDLE_TTL_SECONDS = 60 * 60 * 3  # 3h
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
@@ -117,6 +140,29 @@ class WebSocketManager:
     def __init__(self):
         self.active_connections: Dict[str, List[WebSocket]] = {}
         self.game_states: Dict[str, GameState] = {}
+        # Last-activity timestamp per room, used to prune idle rooms from RAM.
+        self.last_activity: Dict[str, float] = {}
+
+    def touch_room(self, room_code: str) -> None:
+        """Mark a room as active. Called on every authenticated action."""
+        self.last_activity[room_code] = time.time()
+
+    def prune_idle_rooms(self) -> int:
+        """Drop rooms with no activity for longer than ROOM_IDLE_TTL_SECONDS.
+
+        Keeps the in-memory state from growing without bound when players
+        abandon rooms and never trigger a clean tear-down.
+        """
+        now = time.time()
+        stale = [
+            code for code, ts in self.last_activity.items()
+            if now - ts > ROOM_IDLE_TTL_SECONDS
+        ]
+        for code in stale:
+            self.game_states.pop(code, None)
+            self.active_connections.pop(code, None)
+            self.last_activity.pop(code, None)
+        return len(stale)
 
     async def connect(self, websocket: WebSocket, room_code: str):
         await websocket.accept()
@@ -148,6 +194,7 @@ class WebSocketManager:
         )
         game_state.turn.deck_count = len(game_state.deck)
         self.game_states[room_code] = game_state
+        self.last_activity[room_code] = time.time()
         return game_state
 
     def get_game_state(self, room_code: str) -> Optional[GameState]:
@@ -446,32 +493,72 @@ audio_relay = AudioRelay()
 async def root():
     return {"message": "Secretus Regnum API"}
 
+
+def _sanitize_name(raw: str) -> str:
+    """Strip control chars and length-bound a display name."""
+    if not isinstance(raw, str):
+        return ""
+    # Strip control characters (keep printable + common whitespace)
+    cleaned = "".join(ch for ch in raw if ch == " " or (ch.isprintable() and not ch.isspace())).strip()
+    return cleaned[:MAX_PLAYER_NAME_LEN]
+
+
+class AnonymousAuthBody(BaseModel):
+    name: str
+
+
 @api_router.post("/auth/anonymous")
-async def create_anonymous_user(name: str):
-    user_id = str(uuid.uuid4())
-    return {"userId": user_id, "token": user_id, "name": name}
+@limiter.limit("20/minute")
+async def create_anonymous_user(request: Request, body: AnonymousAuthBody):
+    """Issue a signed JWT for an anonymous player.
+
+    The token carries the generated user id and the display name. It is
+    required on every subsequent action endpoint via the Authorization
+    header, and on WebSocket connections via a ?token= query parameter.
+    """
+    name = _sanitize_name(body.name)
+    if not name:
+        raise HTTPException(status_code=400, detail="Nom invalide")
+    user_id, name, token = issue_player_token(name)
+    return {"userId": user_id, "name": name, "token": token}
+
 
 @api_router.post("/rooms")
-async def create_room():
+@limiter.limit("10/minute")
+async def create_room(request: Request, identity: PlayerIdentity = Depends(require_player)):
+    """Create a new room. Requires authentication to prevent anonymous room-spam."""
     room_code = ''.join(random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZ', k=6))
-    game_state = manager.create_room(room_code)
+    manager.create_room(room_code)
     return {"code": room_code}
+
 
 @api_router.get("/rooms/{room_code}")
 async def get_room(room_code: str):
     game_state = manager.get_game_state(room_code)
     if not game_state:
         raise HTTPException(status_code=404, detail="Room not found")
-    
+
     return {
         "code": room_code,
         "status": game_state.status,
         "players": [{"id": p.id, "name": p.name, "seat": p.seat, "connected": p.connected} for p in game_state.players]
     }
 
+
 @api_router.post("/rooms/{room_code}/join")
-async def join_room(room_code: str, player_id: str, player_name: str):
-    success, reason = manager.add_player(room_code, player_id, player_name)
+@limiter.limit("30/minute")
+async def join_room(
+    request: Request,
+    room_code: str,
+    identity: PlayerIdentity = Depends(require_player),
+):
+    """Join a room. The player id and display name come from the JWT; the
+    client cannot spoof someone else's seat by swapping a query param."""
+    manager.touch_room(room_code)
+    player_name = _sanitize_name(identity.name)
+    if not player_name:
+        raise HTTPException(status_code=400, detail="Nom invalide")
+    success, reason = manager.add_player(room_code, identity.user_id, player_name)
     if not success:
         detail = {
             "room_not_found": "Room not found",
@@ -479,60 +566,97 @@ async def join_room(room_code: str, player_id: str, player_name: str):
             "name_taken": "Ce pseudo est déjà pris dans cette partie",
         }.get(reason, "Cannot join room")
         raise HTTPException(status_code=400, detail=detail)
-    
+
     game_state = manager.get_game_state(room_code)
     await manager.broadcast_to_room(room_code, {
         "type": "player_joined",
         "players": [{"id": p.id, "name": p.name, "seat": p.seat, "connected": p.connected} for p in game_state.players]
     })
-    
     return {"success": True}
+
+
+class ChatBody(BaseModel):
+    message: str
+
 
 # Chat endpoint
 @api_router.post("/rooms/{room_code}/chat")
-async def send_chat_message(room_code: str, player_id: str, message: str):
+@limiter.limit("30/minute")
+async def send_chat_message(
+    request: Request,
+    room_code: str,
+    body: ChatBody,
+    identity: PlayerIdentity = Depends(require_player),
+):
     """Send a chat message to all players in the room"""
+    manager.touch_room(room_code)
     game_state = manager.get_game_state(room_code)
     if not game_state:
         raise HTTPException(status_code=404, detail="Room not found")
-    
-    # Find the player
-    player = next((p for p in game_state.players if p.id == player_id), None)
+
+    # Enforce room membership from the authenticated identity. Previously any
+    # client could POST /chat with an arbitrary player_id in the query string.
+    player = next((p for p in game_state.players if p.id == identity.user_id), None)
     if not player:
-        raise HTTPException(status_code=404, detail="Player not found")
-    
-    # Create chat message
+        raise HTTPException(status_code=403, detail="Not a member of this room")
+
+    # Bound message size to prevent memory exhaustion on the in-RAM buffer.
+    message = (body.message or "").strip()
+    if not message:
+        raise HTTPException(status_code=400, detail="Empty message")
+    if len(message) > MAX_CHAT_MESSAGE_LEN:
+        message = message[:MAX_CHAT_MESSAGE_LEN]
+
     chat_message = {
         "id": len(game_state.turn.chat_messages) + 1,
-        "player_id": player_id,
+        "player_id": identity.user_id,
         "player_name": player.name,
         "message": message,
         "timestamp": datetime.now().isoformat(),
         "type": "player"
     }
-    
-    # Store message in game state
+
     game_state.turn.chat_messages.append(chat_message)
-    
-    # Broadcast to all players in the room
+    # Keep the chat buffer bounded in RAM (oldest messages roll off).
+    if len(game_state.turn.chat_messages) > 500:
+        game_state.turn.chat_messages = game_state.turn.chat_messages[-500:]
+
     await manager.broadcast_to_room(room_code, {
         "type": "chat_message",
         **chat_message
     })
-    
+
     return {"success": True, "message": chat_message}
 
+
+class ActionBody(BaseModel):
+    action_type: str
+    payload: Dict[str, Any] = {}
+
+
 @api_router.post("/rooms/{room_code}/action")
-async def handle_game_action(room_code: str, player_id: str, action_type: str, payload: dict = {}):
-    """Handle game actions like nomination, voting, legislative actions"""
+async def handle_game_action(
+    room_code: str,
+    body: ActionBody,
+    identity: PlayerIdentity = Depends(require_player),
+):
+    """Handle game actions like nomination, voting, legislative actions.
+
+    The acting player is derived from the JWT — previously any client could
+    act on behalf of anyone by passing an arbitrary player_id in the URL.
+    """
+    manager.touch_room(room_code)
     game_state = manager.get_game_state(room_code)
     if not game_state:
         raise HTTPException(status_code=404, detail="Room not found")
-    
-    # Find the acting player
+
+    player_id = identity.user_id
+    action_type = body.action_type
+    payload = body.payload or {}
+
     player = next((p for p in game_state.players if p.id == player_id), None)
     if not player:
-        raise HTTPException(status_code=404, detail="Player not found")
+        raise HTTPException(status_code=403, detail="Not a member of this room")
     
     try:
         if action_type == "NOMINATE":
@@ -950,12 +1074,21 @@ async def handle_game_action(room_code: str, player_id: str, action_type: str, p
         raise HTTPException(status_code=500, detail=f"Action failed: {str(e)}")
 
 @api_router.get("/rooms/{room_code}/game_state")
-async def get_game_state(room_code: str, player_id: str):
-    """Get current game state for a player"""
-    
+async def get_game_state(
+    room_code: str,
+    identity: PlayerIdentity = Depends(require_player),
+):
+    """Get current game state for a player.
+
+    CRITICAL: the caller is identified by JWT, never by a client-supplied
+    player_id. Before this fix, a client could pass ?player_id=X in the
+    URL and read X's secret role (your_role / teammates / power_result).
+    """
+    manager.touch_room(room_code)
     if room_code not in manager.game_states:
         raise HTTPException(status_code=404, detail="Room not found")
-    
+
+    player_id = identity.user_id
     game_state = manager.game_states[room_code]
     
     # Check if Conseil du Royaume has expired and auto-advance if needed
@@ -989,8 +1122,8 @@ async def get_game_state(room_code: str, player_id: str):
     
     player = next((p for p in game_state.players if p.id == player_id), None)
     if not player:
-        raise HTTPException(status_code=404, detail="Player not found")
-    
+        raise HTTPException(status_code=403, detail="Not a member of this room")
+
     # Determine if player can see legislative cards
     legislative_cards = []
     if game_state.turn.phase == Phase.LEGIS_REGENT and player.seat == game_state.turn.regent_seat:
@@ -1059,7 +1192,18 @@ async def get_game_state(room_code: str, player_id: str):
         "powers": game_state.powers,
     }
 @api_router.post("/rooms/{room_code}/start")
-async def start_game(room_code: str):
+async def start_game(
+    room_code: str,
+    identity: PlayerIdentity = Depends(require_player),
+):
+    manager.touch_room(room_code)
+    game_state = manager.get_game_state(room_code)
+    if not game_state:
+        raise HTTPException(status_code=404, detail="Room not found")
+    # Only an actual room member can start. Previously /start was unauthenticated
+    # and a random attacker could force-start any room by knowing the 6-letter code.
+    if not any(p.id == identity.user_id for p in game_state.players):
+        raise HTTPException(status_code=403, detail="Not a member of this room")
     success = manager.start_game(room_code)
     if not success:
         raise HTTPException(status_code=400, detail="Cannot start game")
@@ -1101,14 +1245,16 @@ def _require_admin(authorization: Optional[str]):
 
 
 @api_router.post("/track/visit")
-async def track_visit():
+@limiter.limit("30/minute")
+async def track_visit(request: Request):
     """Public endpoint: called by the landing page to count a visit."""
     stats = admin_stats.increment("visits")
     return {"ok": True, "visits": stats["visits"]}
 
 
 @api_router.post("/admin/login")
-async def admin_login(body: AdminLoginBody):
+@limiter.limit("5/minute")
+async def admin_login(request: Request, body: AdminLoginBody):
     if not admin_stats.check_credentials(body.username, body.password):
         raise HTTPException(status_code=401, detail="Identifiants invalides")
     return {"token": admin_stats.issue_token()}
@@ -1129,23 +1275,38 @@ async def admin_reset_stats(authorization: Optional[str] = Header(None)):
 
 # Get chat history endpoint
 @api_router.get("/rooms/{room_code}/chat")
-async def get_chat_history(room_code: str, player_id: str):
-    """Get chat history for a room"""
+async def get_chat_history(
+    room_code: str,
+    identity: PlayerIdentity = Depends(require_player),
+):
+    """Get chat history for a room — members only."""
+    manager.touch_room(room_code)
     game_state = manager.get_game_state(room_code)
     if not game_state:
         raise HTTPException(status_code=404, detail="Room not found")
-    
-    # Find the player
-    player = next((p for p in game_state.players if p.id == player_id), None)
+
+    player = next((p for p in game_state.players if p.id == identity.user_id), None)
     if not player:
-        raise HTTPException(status_code=404, detail="Player not found")
-    
-    # Return chat history
+        raise HTTPException(status_code=403, detail="Not a member of this room")
+
     return {"messages": game_state.turn.chat_messages}
 
 # WebSocket endpoint
+#
+# The player_id in the URL is accepted for routing compatibility, but the
+# caller's identity is taken from the signed ?token= query parameter. The
+# URL player_id is ignored — a client that passes someone else's id gets
+# authenticated as whoever their token says they are.
 @app.websocket("/ws/{room_code}/{player_id}")
 async def websocket_endpoint(websocket: WebSocket, room_code: str, player_id: str):
+    token = websocket.query_params.get("token")
+    identity = decode_player_token(token or "")
+    if not identity:
+        await websocket.accept()
+        await websocket.close(code=4401)
+        return
+    player_id = identity.user_id  # ignore URL-supplied id
+
     await manager.connect(websocket, room_code)
     try:
         # Send current game state to newly connected player
@@ -1166,27 +1327,29 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str, player_id: st
                         "players": [{"id": p.id, "name": p.name, "seat": p.seat, "alive": p.alive} for p in game_state.players]
                     }
                 }))
-        
+
         while True:
             data = await websocket.receive_text()
-            message = json.loads(data)
-            
+            try:
+                message = json.loads(data)
+            except Exception:
+                continue
+
+            if not isinstance(message, dict):
+                continue
+
             # Handle different message types
-            if message["type"] == "nominate":
-                # Handle nomination logic
+            msg_type = message.get("type")
+            if msg_type == "nominate":
+                pass  # handled via REST /action
+            elif msg_type == "vote":
+                pass  # handled via REST /action
+            elif msg_type == "chat":
+                # Chat goes through the authenticated REST endpoint. Drop
+                # anything received here so it can't be used to spoof as
+                # another player over the WS.
                 pass
-            elif message["type"] == "vote":
-                # Handle voting logic
-                pass
-            elif message["type"] == "chat":
-                # Broadcast chat message
-                await manager.broadcast_to_room(room_code, {
-                    "type": "chat_message",
-                    "player_id": player_id,
-                    "message": message["content"],
-                    "timestamp": datetime.now(timezone.utc).isoformat()
-                })
-                
+
     except WebSocketDisconnect:
         manager.disconnect(websocket, room_code)
         # Mark player as disconnected
@@ -1202,9 +1365,18 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str, player_id: st
 async def audio_websocket_endpoint(websocket: WebSocket, room_code: str, player_id: str):
     """Relays PCM audio chunks between players for the entire game.
 
-    Frames are relayed as long as the game is in progress and the sender is
-    alive. No phase or time-window restriction — voice chat is continuous.
+    Authentication is via the signed ?token= query parameter. Anyone who
+    knew a bare user id previously could open this WS and eavesdrop on the
+    entire voice channel — that is fixed here.
     """
+    token = websocket.query_params.get("token")
+    identity = decode_player_token(token or "")
+    if not identity:
+        await websocket.accept()
+        await websocket.close(code=4401)
+        return
+    player_id = identity.user_id  # authoritative id
+
     game_state = manager.get_game_state(room_code)
     if not game_state:
         await websocket.accept()
@@ -1213,7 +1385,7 @@ async def audio_websocket_endpoint(websocket: WebSocket, room_code: str, player_
     player = next((p for p in game_state.players if p.id == player_id), None)
     if not player:
         await websocket.accept()
-        await websocket.close(code=4404)
+        await websocket.close(code=4403)
         return
 
     await audio_relay.connect(room_code, player_id, websocket)
@@ -1250,14 +1422,32 @@ async def audio_websocket_endpoint(websocket: WebSocket, room_code: str, player_
 # Include router
 app.include_router(api_router)
 
-# CORS
+# CORS — strict allowlist. No wildcard, no default. If CORS_ORIGINS is not
+# set, the server refuses to boot: silently accepting `*` with credentials
+# would re-open the vulnerability this patch is meant to close.
+_cors_origins_env = os.environ.get("CORS_ORIGINS")
+if not _cors_origins_env:
+    raise RuntimeError(
+        "CORS_ORIGINS is not set. Export a comma-separated list of allowed "
+        "origins (e.g. 'https://darkoath.net') before starting the backend."
+    )
+_cors_allowed = [o.strip() for o in _cors_origins_env.split(",") if o.strip()]
+if not _cors_allowed or "*" in _cors_allowed:
+    raise RuntimeError(
+        "CORS_ORIGINS must be a concrete list of https://… origins, not '*'."
+    )
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=_cors_allowed,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["Authorization", "Content-Type"],
 )
+
+# Rate limiter wiring — exposes the limiter to route decorators and
+# registers a clean 429 handler.
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Configure logging
 logging.basicConfig(
@@ -1266,6 +1456,36 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+_prune_task: Optional[asyncio.Task] = None
+
+
+async def _prune_loop():
+    """Background task: periodically drop idle rooms from RAM."""
+    while True:
+        try:
+            await asyncio.sleep(600)  # every 10 min
+            pruned = manager.prune_idle_rooms()
+            if pruned:
+                logger.info("Pruned %d idle room(s)", pruned)
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            logger.warning("prune_loop error: %s", e)
+
+
+@app.on_event("startup")
+async def _start_prune_task():
+    global _prune_task
+    _prune_task = asyncio.create_task(_prune_loop())
+
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
+    global _prune_task
+    if _prune_task is not None:
+        _prune_task.cancel()
+        try:
+            await _prune_task
+        except (asyncio.CancelledError, Exception):
+            pass
     client.close()

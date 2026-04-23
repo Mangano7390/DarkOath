@@ -690,13 +690,11 @@ const GameInterface = ({ roomCode }) => {
 
     setIsSending(true);
     try {
-      const response = await axios.post(`${API}/rooms/${roomCode}/chat`, null, {
-        params: {
-          player_id: currentPlayerId,
-          message: newMessage
-        }
+      // Message now goes in the JSON body, not in the query string.
+      const response = await axios.post(`${API}/rooms/${roomCode}/chat`, {
+        message: newMessage,
       });
-      
+
       if (response.data.success) {
         // Add message to local state immediately
         const newMsg = {
@@ -728,8 +726,10 @@ const GameInterface = ({ roomCode }) => {
   // Handle speak toggle for Conseil du Royaume
   const handleSpeakToggle = async () => {
     try {
-      await axios.post(`${API}/rooms/${roomCode}/action?player_id=${currentPlayerId}&action_type=SPEAK_TOGGLE`, {});
-      console.log('Speak toggle successful');
+      await axios.post(`${API}/rooms/${roomCode}/action`, {
+        action_type: 'SPEAK_TOGGLE',
+        payload: {},
+      });
     } catch (error) {
       console.error('Speak toggle failed:', error);
       alert('Erreur lors du toggle vocal: ' + (error.response?.data?.detail || error.message));
@@ -743,7 +743,7 @@ const GameInterface = ({ roomCode }) => {
       
       try {
         console.log('Loading game state for room:', roomCode);
-        const response = await axios.get(`${API}/rooms/${roomCode}/game_state?player_id=${currentPlayerId}`);
+        const response = await axios.get(`${API}/rooms/${roomCode}/game_state`);
         console.log('Game state loaded:', response.data);
         
         setGameState(response.data);
@@ -786,7 +786,7 @@ const GameInterface = ({ roomCode }) => {
     const loadChatHistory = async () => {
       try {
         if (currentPlayerId && roomCode) {
-          const response = await axios.get(`${API}/rooms/${roomCode}/chat?player_id=${currentPlayerId}`);
+          const response = await axios.get(`${API}/rooms/${roomCode}/chat`);
           if (response.data.messages && response.data.messages.length > 0) {
             setMessages(response.data.messages);
           } else {
@@ -821,7 +821,7 @@ const GameInterface = ({ roomCode }) => {
     const pollInterval = setInterval(async () => {
       try {
         if (currentPlayerId && roomCode) {
-          const response = await axios.get(`${API}/rooms/${roomCode}/chat?player_id=${currentPlayerId}`);
+          const response = await axios.get(`${API}/rooms/${roomCode}/chat`);
           if (response.data.messages) {
             setMessages(prevMessages => {
               const newMessages = response.data.messages;
@@ -1179,8 +1179,9 @@ const GameInterface = ({ roomCode }) => {
                   onNominate={async (seat) => {
                     console.log('Nominating seat:', seat);
                     try {
-                      await axios.post(`${API}/rooms/${roomCode}/action?player_id=${currentPlayerId}&action_type=NOMINATE`, {
-                        nomineeSeat: seat
+                      await axios.post(`${API}/rooms/${roomCode}/action`, {
+                        action_type: 'NOMINATE',
+                        payload: { nomineeSeat: seat },
                       });
                       console.log('Nomination successful');
                     } catch (error) {
@@ -1197,10 +1198,10 @@ const GameInterface = ({ roomCode }) => {
                   currentPlayerId={currentPlayerId}
                   onVote={async (targetSeat) => {
                     try {
-                      await axios.post(
-                        `${API}/rooms/${roomCode}/action?player_id=${currentPlayerId}&action_type=DEFIANCE_VOTE`,
-                        { targetSeat }
-                      );
+                      await axios.post(`${API}/rooms/${roomCode}/action`, {
+                        action_type: 'DEFIANCE_VOTE',
+                        payload: { targetSeat },
+                      });
                     } catch (error) {
                       alert('Erreur lors du vote de défiance: ' + (error.response?.data?.detail || error.message));
                     }
@@ -1214,10 +1215,10 @@ const GameInterface = ({ roomCode }) => {
                   currentPlayerId={currentPlayerId}
                   onAction={async (actionType, payload) => {
                     try {
-                      await axios.post(
-                        `${API}/rooms/${roomCode}/action?player_id=${currentPlayerId}&action_type=${actionType}`,
-                        payload || {}
-                      );
+                      await axios.post(`${API}/rooms/${roomCode}/action`, {
+                        action_type: actionType,
+                        payload: payload || {},
+                      });
                     } catch (error) {
                       alert('Erreur pouvoir du Roi : ' + (error.response?.data?.detail || error.message));
                     }
@@ -1236,8 +1237,9 @@ const GameInterface = ({ roomCode }) => {
                   onVote={async (vote) => {
                     console.log('Voting:', vote);
                     try {
-                      await axios.post(`${API}/rooms/${roomCode}/action?player_id=${currentPlayerId}&action_type=VOTE`, {
-                        vote: vote
+                      await axios.post(`${API}/rooms/${roomCode}/action`, {
+                        action_type: 'VOTE',
+                        payload: { vote },
                       });
                       console.log('Vote successful');
                     } catch (error) {
@@ -1269,8 +1271,9 @@ const GameInterface = ({ roomCode }) => {
                   onDiscard={async (cardId) => {
                     console.log('Discarding card:', cardId);
                     try {
-                      await axios.post(`${API}/rooms/${roomCode}/action?player_id=${currentPlayerId}&action_type=DISCARD`, {
-                        cardId: cardId
+                      await axios.post(`${API}/rooms/${roomCode}/action`, {
+                        action_type: 'DISCARD',
+                        payload: { cardId },
                       });
                       console.log('Discard successful');
                     } catch (error) {
@@ -1327,8 +1330,9 @@ const GameInterface = ({ roomCode }) => {
                       onNominate={async (seat) => {
                         console.log('Nominating seat:', seat);
                         try {
-                          await axios.post(`${API}/rooms/${roomCode}/action?player_id=${currentPlayerId}&action_type=NOMINATE`, {
-                            nomineeSeat: seat
+                          await axios.post(`${API}/rooms/${roomCode}/action`, {
+                            action_type: 'NOMINATE',
+                            payload: { nomineeSeat: seat },
                           });
                           console.log('Nomination successful');
                         } catch (error) {
@@ -1345,10 +1349,10 @@ const GameInterface = ({ roomCode }) => {
                       currentPlayerId={currentPlayerId}
                       onVote={async (targetSeat) => {
                         try {
-                          await axios.post(
-                            `${API}/rooms/${roomCode}/action?player_id=${currentPlayerId}&action_type=DEFIANCE_VOTE`,
-                            { targetSeat }
-                          );
+                          await axios.post(`${API}/rooms/${roomCode}/action`, {
+                            action_type: 'DEFIANCE_VOTE',
+                            payload: { targetSeat },
+                          });
                         } catch (error) {
                           alert('Erreur lors du vote de défiance: ' + (error.response?.data?.detail || error.message));
                         }
@@ -1362,10 +1366,10 @@ const GameInterface = ({ roomCode }) => {
                       currentPlayerId={currentPlayerId}
                       onAction={async (actionType, payload) => {
                         try {
-                          await axios.post(
-                            `${API}/rooms/${roomCode}/action?player_id=${currentPlayerId}&action_type=${actionType}`,
-                            payload || {}
-                          );
+                          await axios.post(`${API}/rooms/${roomCode}/action`, {
+                            action_type: actionType,
+                            payload: payload || {},
+                          });
                         } catch (error) {
                           alert('Erreur pouvoir du Roi : ' + (error.response?.data?.detail || error.message));
                         }
@@ -1384,8 +1388,9 @@ const GameInterface = ({ roomCode }) => {
                       onVote={async (vote) => {
                         console.log('Voting:', vote);
                         try {
-                          await axios.post(`${API}/rooms/${roomCode}/action?player_id=${currentPlayerId}&action_type=VOTE`, {
-                            vote: vote
+                          await axios.post(`${API}/rooms/${roomCode}/action`, {
+                            action_type: 'VOTE',
+                            payload: { vote },
                           });
                           console.log('Vote successful');
                         } catch (error) {
@@ -1417,8 +1422,9 @@ const GameInterface = ({ roomCode }) => {
                       onDiscard={async (cardId) => {
                         console.log('Discarding card:', cardId);
                         try {
-                          await axios.post(`${API}/rooms/${roomCode}/action?player_id=${currentPlayerId}&action_type=DISCARD`, {
-                            cardId: cardId
+                          await axios.post(`${API}/rooms/${roomCode}/action`, {
+                            action_type: 'DISCARD',
+                            payload: { cardId },
                           });
                           console.log('Discard successful');
                         } catch (error) {
