@@ -806,7 +806,7 @@ const Lobby = ({ roomCode }) => {
   const [musicVolume, setMusicVolume] = useState(() => readVolume(0.3));
 
   useEffect(() => {
-    const audio = new Audio('/music/morceau1.mp3');
+    const audio = new Audio('/music/morceau4.wav');
     audio.loop = true;
     audio.volume = readVolume(0.3);
     audio.playsInline = true;
