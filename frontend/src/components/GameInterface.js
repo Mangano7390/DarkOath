@@ -498,7 +498,7 @@ const GameInterface = ({ roomCode }) => {
   });
 
   useEffect(() => {
-    const audio = new Audio('https://customer-assets.emergentagent.com/job_1a735b74-0d1b-4cfc-aa0c-5d6b585ff99b/artifacts/249imtyo_Morceau%202.mp3');
+    const audio = new Audio('/music/morceau2.mp3');
     audio.loop = true;
     audio.volume = musicVolume;
     // iOS Safari: required to play inline without going fullscreen, and

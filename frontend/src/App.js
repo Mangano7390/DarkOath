@@ -135,7 +135,7 @@ const LandingPage = () => {
   // Mount-once: the audio element survives toggles; volume/enable effects
   // below drive its state without tearing it down.
   useEffect(() => {
-    const audio = new Audio('https://customer-assets.emergentagent.com/job_1a735b74-0d1b-4cfc-aa0c-5d6b585ff99b/artifacts/l96z3xc1_Morceau%203.mp3');
+    const audio = new Audio('/music/morceau3.mp3');
     audio.loop = true;
     audio.volume = readVolume(0.3);
     // iOS Safari: required so the audio plays inline instead of fullscreen
@@ -806,7 +806,7 @@ const Lobby = ({ roomCode }) => {
   const [musicVolume, setMusicVolume] = useState(() => readVolume(0.3));
 
   useEffect(() => {
-    const audio = new Audio('https://customer-assets.emergentagent.com/job_1a735b74-0d1b-4cfc-aa0c-5d6b585ff99b/artifacts/10k0yrvs_Morceau%201.mp3');
+    const audio = new Audio('/music/morceau1.mp3');
     audio.loop = true;
     audio.volume = readVolume(0.3);
     audio.playsInline = true;
