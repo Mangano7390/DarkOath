@@ -34,14 +34,25 @@ const AUTH_TOKEN_KEY = 'darkoath_auth_token';
 // Axios interceptor: attach the Bearer token to every request aimed at
 // the backend. Installed once at module load; components keep calling
 // axios as before without knowing about the token.
+//
+// Important: do NOT overwrite an Authorization header that the caller
+// has already set explicitly (e.g. the admin dashboard uses its own
+// admin token, which is a different identity from the player JWT).
 axios.interceptors.request.use((config) => {
   try {
-    if (typeof config.url === 'string' && config.url.startsWith(BACKEND_URL)) {
-      const token = localStorage.getItem(AUTH_TOKEN_KEY);
-      if (token) {
-        config.headers = config.headers || {};
-        config.headers.Authorization = `Bearer ${token}`;
-      }
+    if (typeof config.url !== 'string' || !config.url.startsWith(BACKEND_URL)) {
+      return config;
+    }
+    config.headers = config.headers || {};
+    // Respect a manually-set Authorization header (admin token, etc.).
+    const existing =
+      config.headers.Authorization ||
+      config.headers.authorization ||
+      (typeof config.headers.get === 'function' && config.headers.get('Authorization'));
+    if (existing) return config;
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
   } catch (_) {
     // localStorage disabled — proceed without auth, the request will just 401.
