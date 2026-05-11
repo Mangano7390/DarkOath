@@ -1,0 +1,537 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector, pg_trgm, unaccent]
+}
+
+// ─────────── AUTH & ORG ───────────
+enum Role {
+  ADMIN
+  COMMERCIAL
+  TECHNICIAN
+  LOGISTICS
+}
+
+enum Locale {
+  FR
+  NL
+  EN
+}
+
+model User {
+  id             String         @id @default(cuid())
+  email          String         @unique
+  name           String
+  hashedPassword String?
+  role           Role           @default(COMMERCIAL)
+  locale         Locale         @default(FR)
+  active         Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  quotes         Quote[]
+  tickets        Ticket[]       @relation("AssignedTickets")
+  conversations  Conversation[]
+  auditLogs      AuditLog[]
+  corrections    AICorrection[]
+  inboxItems     InboxItem[]    @relation("AssignedInbox")
+  accounts       Account[]
+  sessions       Session[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+  @@unique([identifier, token])
+}
+
+// ─────────── CATALOG ───────────
+model Category {
+  id       String     @id @default(cuid())
+  name     String
+  slug     String     @unique
+  parentId String?
+  parent   Category?  @relation("Tree", fields: [parentId], references: [id])
+  children Category[] @relation("Tree")
+  products Product[]
+}
+
+model Brand {
+  id       String    @id @default(cuid())
+  name     String    @unique
+  products Product[]
+}
+
+model Product {
+  id            String               @id @default(cuid())
+  sku           String               @unique
+  ean           String?
+  name          String
+  shortDesc     String?
+  longDesc      String?               @db.Text
+  brandId       String?
+  brand         Brand?               @relation(fields: [brandId], references: [id])
+  categoryId    String?
+  category      Category?            @relation(fields: [categoryId], references: [id])
+  priceHT       Decimal              @db.Decimal(12, 2)
+  costHT        Decimal?             @db.Decimal(12, 2)
+  vatRate       Decimal              @default(21.00) @db.Decimal(4, 2)
+  stockQty      Int                  @default(0)
+  reorderPoint  Int                  @default(0)
+  unit          String               @default("pcs")
+  weightKg      Decimal?             @db.Decimal(8, 3)
+  volumeM3      Decimal?             @db.Decimal(8, 4)
+  attrs         Json?
+  active        Boolean              @default(true)
+  translations  ProductTranslation[]
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  quoteLines    QuoteLine[]
+  ticketParts   TicketPart[]
+  alternativesA ProductAlternative[] @relation("AltA")
+  alternativesB ProductAlternative[] @relation("AltB")
+  salesLines    SalesOrderLine[]
+
+  @@index([active])
+  @@index([categoryId])
+}
+
+model ProductTranslation {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  locale    Locale
+  name      String
+  shortDesc String?
+  longDesc  String?  @db.Text
+  seoTitle  String?
+  seoDesc   String?
+  keywords  String[]
+  @@unique([productId, locale])
+}
+
+model ProductAlternative {
+  aId    String
+  bId    String
+  reason String?
+  a      Product @relation("AltA", fields: [aId], references: [id], onDelete: Cascade)
+  b      Product @relation("AltB", fields: [bId], references: [id], onDelete: Cascade)
+  @@id([aId, bId])
+}
+
+// ─────────── CUSTOMERS ───────────
+enum CustomerSegment {
+  RESTAURANT
+  HOTEL
+  CAFE
+  CATERER
+  COLLECTIVITY
+  OTHER
+}
+
+model Customer {
+  id          String          @id @default(cuid())
+  code        String          @unique
+  companyName String
+  vatNumber   String?
+  segment     CustomerSegment @default(RESTAURANT)
+  contactName String?
+  email       String?
+  phone       String?
+  addrLine1   String?
+  addrLine2   String?
+  zip         String?
+  city        String?
+  country     String          @default("BE")
+  locale      Locale          @default(FR)
+  notes       String?         @db.Text
+  createdAt   DateTime        @default(now())
+  quotes      Quote[]
+  tickets     Ticket[]
+  inboxItems  InboxItem[]
+  deliveries  Delivery[]
+  salesOrders SalesOrder[]
+}
+
+// ─────────── QUOTES (Module 1) ───────────
+enum QuoteStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+model Quote {
+  id             String        @id @default(cuid())
+  number         String        @unique
+  customerId     String
+  customer       Customer      @relation(fields: [customerId], references: [id])
+  authorId       String
+  author         User          @relation(fields: [authorId], references: [id])
+  status         QuoteStatus   @default(DRAFT)
+  prompt         String?       @db.Text
+  notes          String?       @db.Text
+  totalHT        Decimal       @default(0) @db.Decimal(12, 2)
+  totalTTC       Decimal       @default(0) @db.Decimal(12, 2)
+  marginPct      Decimal?      @db.Decimal(5, 2)
+  validUntil     DateTime?
+  sentAt         DateTime?
+  acceptedAt     DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  lines          QuoteLine[]
+  conversationId String?
+  conversation   Conversation? @relation(fields: [conversationId], references: [id])
+  @@index([status])
+  @@index([customerId])
+}
+
+model QuoteLine {
+  id          String   @id @default(cuid())
+  quoteId     String
+  quote       Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  productId   String?
+  product     Product? @relation(fields: [productId], references: [id])
+  customLabel String?
+  description String?  @db.Text
+  qty         Decimal  @db.Decimal(10, 2)
+  unitPriceHT Decimal  @db.Decimal(12, 2)
+  discountPct Decimal  @default(0) @db.Decimal(5, 2)
+  vatRate     Decimal  @db.Decimal(4, 2)
+  position    Int      @default(0)
+  aiSuggested Boolean  @default(false)
+}
+
+// ─────────── TICKETS / SAV (Module 2) ───────────
+enum TicketStatus {
+  OPEN
+  DIAGNOSING
+  AWAITING_PARTS
+  SCHEDULED
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+model Ticket {
+  id             String         @id @default(cuid())
+  number         String         @unique
+  customerId     String
+  customer       Customer       @relation(fields: [customerId], references: [id])
+  assignedToId   String?
+  assignedTo     User?          @relation("AssignedTickets", fields: [assignedToId], references: [id])
+  status         TicketStatus   @default(OPEN)
+  priority       TicketPriority @default(NORMAL)
+  brandLabel     String?
+  modelLabel     String?
+  serial         String?
+  symptom        String         @db.Text
+  diagnosis      String?        @db.Text
+  resolution     String?        @db.Text
+  scheduledAt    DateTime?
+  resolvedAt     DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  parts          TicketPart[]
+  conversationId String?
+  conversation   Conversation?  @relation(fields: [conversationId], references: [id])
+}
+
+model TicketPart {
+  id        String  @id @default(cuid())
+  ticketId  String
+  ticket    Ticket  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  qty       Int     @default(1)
+  confirmed Boolean @default(false)
+}
+
+// ─────────── KNOWLEDGE BASE (RAG manuels) ───────────
+model KnowledgeDoc {
+  id         String           @id @default(cuid())
+  title      String
+  brand      String?
+  modelLabel String?
+  s3Key      String
+  mimeType   String
+  pages      Int?
+  uploadedBy String?
+  createdAt  DateTime         @default(now())
+  chunks     KnowledgeChunk[]
+}
+
+model KnowledgeChunk {
+  id      String       @id @default(cuid())
+  docId   String
+  doc     KnowledgeDoc @relation(fields: [docId], references: [id], onDelete: Cascade)
+  page    Int?
+  content String       @db.Text
+  tokens  Int
+  @@index([docId])
+}
+
+// ─────────── INBOX (Module 3) ───────────
+enum InboxChannel {
+  EMAIL
+  WEB_FORM
+  PHONE_NOTE
+}
+
+enum InboxCategory {
+  QUOTE_REQUEST
+  SAV
+  AVAILABILITY
+  PRODUCT_INFO
+  OTHER
+}
+
+enum InboxStatus {
+  NEW
+  DRAFTED
+  SENT
+  CLOSED
+}
+
+model InboxItem {
+  id             String            @id @default(cuid())
+  channel        InboxChannel
+  externalId     String?           @unique
+  fromEmail      String?
+  fromName       String?
+  subject        String?
+  bodyText       String            @db.Text
+  bodyHtml       String?           @db.Text
+  receivedAt     DateTime          @default(now())
+  category       InboxCategory?
+  status         InboxStatus       @default(NEW)
+  draftReply     String?           @db.Text
+  customerId     String?
+  customer       Customer?         @relation(fields: [customerId], references: [id])
+  assignedToId   String?
+  assignedTo     User?             @relation("AssignedInbox", fields: [assignedToId], references: [id])
+  attachments    InboxAttachment[]
+  sentAt         DateTime?
+  conversationId String?
+  conversation   Conversation?     @relation(fields: [conversationId], references: [id])
+}
+
+model InboxAttachment {
+  id     String    @id @default(cuid())
+  itemId String
+  item   InboxItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  s3Key  String
+  name   String
+  size   Int
+  mime   String
+}
+
+// ─────────── DELIVERIES & ROUTES (Module 6) ───────────
+model Vehicle {
+  id         String      @id @default(cuid())
+  plate      String      @unique
+  label      String
+  capacityKg Decimal?    @db.Decimal(8, 2)
+  capacityM3 Decimal?    @db.Decimal(8, 3)
+  active     Boolean     @default(true)
+  routes     RoutePlan[]
+}
+
+model Delivery {
+  id          String     @id @default(cuid())
+  customerId  String
+  customer    Customer   @relation(fields: [customerId], references: [id])
+  addrLine1   String
+  zip         String
+  city        String
+  lat         Float?
+  lng         Float?
+  windowStart DateTime?
+  windowEnd   DateTime?
+  weightKg    Decimal?   @db.Decimal(8, 2)
+  volumeM3    Decimal?   @db.Decimal(8, 3)
+  notes       String?
+  date        DateTime   @db.Date
+  routeStopId String?
+  routeStop   RouteStop? @relation(fields: [routeStopId], references: [id])
+}
+
+model RoutePlan {
+  id          String      @id @default(cuid())
+  date        DateTime    @db.Date
+  vehicleId   String
+  vehicle     Vehicle     @relation(fields: [vehicleId], references: [id])
+  driverName  String?
+  totalKm     Decimal?    @db.Decimal(8, 2)
+  totalMin    Int?
+  optimizedAt DateTime?
+  stops       RouteStop[]
+  @@unique([date, vehicleId])
+}
+
+model RouteStop {
+  id         String     @id @default(cuid())
+  routeId    String
+  route      RoutePlan  @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  position   Int
+  etaStart   DateTime?
+  etaEnd     DateTime?
+  deliveries Delivery[]
+}
+
+// ─────────── SALES (BI module 5 & stock module 7) ───────────
+model SalesOrder {
+  id         String           @id @default(cuid())
+  number     String           @unique
+  customerId String
+  customer   Customer         @relation(fields: [customerId], references: [id])
+  date       DateTime
+  totalHT    Decimal          @db.Decimal(12, 2)
+  region     String?
+  lines      SalesOrderLine[]
+  @@index([date])
+  @@index([customerId])
+}
+
+model SalesOrderLine {
+  id          String     @id @default(cuid())
+  orderId     String
+  order       SalesOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product    @relation(fields: [productId], references: [id])
+  qty         Decimal    @db.Decimal(10, 2)
+  unitPriceHT Decimal    @db.Decimal(12, 2)
+}
+
+// ─────────── STOCK ALERTS (Module 7) ───────────
+enum StockAlertKind {
+  RESTOCK
+  DEAD_STOCK
+  SEASONAL
+}
+
+model StockAlert {
+  id              String         @id @default(cuid())
+  kind            StockAlertKind
+  productIds      String[]
+  rationale       String         @db.Text
+  suggestedAction String?        @db.Text
+  acknowledged    Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+}
+
+// ─────────── AI CORE ───────────
+enum ConversationKind {
+  QUOTE
+  SAV
+  TRIAGE
+  INSIGHTS
+  PRODUCT_SHEET
+  ROUTING
+  STOCK
+}
+
+model Conversation {
+  id        String           @id @default(cuid())
+  kind      ConversationKind
+  userId    String?
+  user      User?            @relation(fields: [userId], references: [id])
+  title     String?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  messages  Message[]
+  quotes    Quote[]
+  tickets   Ticket[]
+  inbox     InboxItem[]
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  TOOL
+  SYSTEM
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           MessageRole
+  content        Json
+  tokensIn       Int?
+  tokensOut      Int?
+  model          String?
+  latencyMs      Int?
+  createdAt      DateTime     @default(now())
+  @@index([conversationId, createdAt])
+}
+
+model AICorrection {
+  id              String           @id @default(cuid())
+  userId          String
+  user            User             @relation(fields: [userId], references: [id])
+  module          ConversationKind
+  messageId       String?
+  originalOutput  Json
+  correctedOutput Json
+  comment         String?          @db.Text
+  createdAt       DateTime         @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  entity    String?
+  entityId  String?
+  meta      Json?
+  ip        String?
+  createdAt DateTime @default(now())
+  @@index([action, createdAt])
+  @@index([entity, entityId])
+}
+
+model ModuleSetting {
+  id               String           @id @default(cuid())
+  module           ConversationKind @unique
+  enabled          Boolean          @default(true)
+  requiresApproval Boolean          @default(false)
+  config           Json?
+}
