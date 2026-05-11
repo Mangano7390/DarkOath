@@ -28,6 +28,26 @@ async function main() {
       role: Role.COMMERCIAL,
     },
   });
+  await prisma.user.upsert({
+    where: { email: "tech@horeca.local" },
+    update: {},
+    create: {
+      email: "tech@horeca.local",
+      name: "Technicien Démo",
+      hashedPassword: password,
+      role: Role.TECHNICIAN,
+    },
+  });
+  await prisma.user.upsert({
+    where: { email: "logistics@horeca.local" },
+    update: {},
+    create: {
+      email: "logistics@horeca.local",
+      name: "Logistique Démo",
+      hashedPassword: password,
+      role: Role.LOGISTICS,
+    },
+  });
 
   // ─── Categories ──────────────────────────
   const categories = [
@@ -214,6 +234,44 @@ async function main() {
   // ─── Quote number sequence ───────────────
   await prisma.$executeRawUnsafe(`CREATE SEQUENCE IF NOT EXISTS quote_seq START 1000`);
   await prisma.$executeRawUnsafe(`CREATE SEQUENCE IF NOT EXISTS ticket_seq START 1000`);
+
+  // ─── Demo inbox items ────────────────────
+  const inboxSamples = [
+    {
+      externalId: "demo-msg-001",
+      channel: "EMAIL" as const,
+      fromName: "Marco Rossi",
+      fromEmail: "marco@bellissima.be",
+      subject: "Demande devis pour pizzeria 80 couverts",
+      bodyText:
+        "Bonjour,\n\nNous ouvrons une nouvelle pizzeria de 80 couverts à Bruxelles et nous cherchons à équiper la cuisine. Il nous faudrait un four à pizza professionnel (gaz de préférence), une chambre froide positive, une plonge avec égouttoir, et deux tables de préparation inox.\n\nPouvez-vous me faire parvenir un devis ? Idéalement avant la fin du mois.\n\nMerci d'avance,\nMarco Rossi",
+    },
+    {
+      externalId: "demo-msg-002",
+      channel: "EMAIL" as const,
+      fromName: "Sophie Laurent",
+      fromEmail: "achats@etoiles.be",
+      subject: "URGENT - lave-vaisselle ne fonctionne plus",
+      bodyText:
+        "Bonjour,\n\nNotre lave-vaisselle Winterhalter installé l'année dernière refuse de démarrer ce matin. Voyant rouge clignotant, le cycle ne se lance pas. Service au déjeuner dans 2h, c'est très problématique.\n\nMerci d'envoyer un technicien dès que possible.\n\nSophie",
+    },
+    {
+      externalId: "demo-msg-003",
+      channel: "WEB_FORM" as const,
+      fromName: "Jan De Vries",
+      fromEmail: "jan@hetcafe.be",
+      subject: "Beschikbaarheid biertap 3 wegen",
+      bodyText:
+        "Beste,\n\nIk wil graag weten of jullie de biertap met 3 wegen op voorraad hebben, en wat de levertijd is naar Gent.\n\nMet vriendelijke groeten,\nJan",
+    },
+  ];
+  for (const s of inboxSamples) {
+    await prisma.inboxItem.upsert({
+      where: { externalId: s.externalId },
+      update: {},
+      create: s,
+    });
+  }
 
   console.log("Seed terminé. Login: admin@horeca.local / demo1234");
 }

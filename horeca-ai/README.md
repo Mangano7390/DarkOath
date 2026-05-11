@@ -3,8 +3,9 @@
 Application SaaS interne pour une entreprise de distribution HoReCa.
 Centralise 7 assistants IA (Claude) pour automatiser les tâches commerciales, techniques et logistiques.
 
-> Premier module livré : **Devis IA**. Les 6 autres modules ont une page de placeholder ;
-> ils sont câblés dans le dashboard et la sidebar, et leurs modèles Prisma sont déjà prêts.
+> Modules livrés : **Module 1 — Devis IA** et **Module 3 — Inbox/Triage**.
+> Les 5 autres modules ont une page de placeholder ; ils sont câblés dans le dashboard
+> et la sidebar, et leurs modèles Prisma sont déjà prêts.
 
 ## Stack
 
@@ -50,6 +51,8 @@ Ouvrir http://localhost:3000.
 ### Comptes de démo
 - `admin@horeca.local` / `demo1234` (ADMIN)
 - `commercial@horeca.local` / `demo1234` (COMMERCIAL)
+- `tech@horeca.local` / `demo1234` (TECHNICIAN)
+- `logistics@horeca.local` / `demo1234` (LOGISTICS)
 
 ## Variables d'environnement
 
@@ -155,6 +158,46 @@ Voir `src/lib/ai/agents/quoteAgent.ts`. Points clés :
 
 Chaque mutation IA (création devis, prompt envoyé, génération PDF, envoi email) est tracée dans
 `AuditLog` avec `userId`, `action`, `entity`, `entityId`, `meta`. Utile pour la conformité et le debug.
+
+## Module 3 — Inbox / Triage
+
+### Flux
+
+```
+[Page /inbox]
+  ├─ Liste des emails (NEW / DRAFTED / SENT / CLOSED)
+  └─ /inbox/new → simule un email entrant (POST /api/inbox)
+                  → redirige /inbox/<id>?autorun=1
+[Page /inbox/<id>]
+  ├─ InboxWorkspace (Client Component)
+  ├─ POST /api/inbox/<id>/triage → SSE stream
+  │    └─ runAgent boucle Claude ↔ tools jusqu'à stop
+  │         tools: search_customers, search_products,
+  │                set_classification (mutate), write_draft_reply (mutate),
+  │                escalate_to (mutate)
+  ├─ Édition libre du brouillon
+  └─ POST /api/inbox/<id>/send → SMTP (HITL obligatoire : confirm() côté client)
+```
+
+### Prompt système (extrait)
+
+Voir `src/lib/ai/agents/triageAgent.ts`. Trois étapes obligatoires :
+1. Classifier (catégorie + priorité + rattachement client) via `set_classification`.
+2. Rédiger le brouillon dans la **langue du message entrant** (FR/NL/EN détectée par l'agent),
+   ton commercial, 4-8 lignes max, aucune promesse de prix/délai.
+3. Escalader vers le bon rôle (SAV→TECHNICIAN, devis→COMMERCIAL, livraison→LOGISTICS, autre→ADMIN).
+
+### HITL (Human-In-The-Loop)
+
+- Aucun email n'est envoyé sans confirmation explicite côté client (`window.confirm`).
+- Statut suit : `NEW` → `DRAFTED` (après triage) → `SENT` (après envoi) → `CLOSED` (manuel).
+- `ModuleSetting.requiresApproval = true` par défaut pour le module TRIAGE.
+
+### Webhook email (à brancher)
+
+Pour ingérer des emails réels, créer une route `POST /api/webhooks/email` qui mappe
+les payloads de votre fournisseur (Mailgun, Postmark, SES) sur le même schéma que
+`POST /api/inbox`. Les pièces jointes vont dans `InboxAttachment` + S3.
 
 ### Boucle de feedback (à activer pour les modules suivants)
 

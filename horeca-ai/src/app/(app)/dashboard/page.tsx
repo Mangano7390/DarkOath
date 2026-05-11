@@ -36,7 +36,7 @@ const modules = [
     title: "Boîte de réception",
     description: "Classification et brouillon de réponse automatique",
     icon: Inbox,
-    status: "soon" as const,
+    status: "live" as const,
   },
   {
     href: "/catalog",
