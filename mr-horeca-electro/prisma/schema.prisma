@@ -1,0 +1,189 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Channel {
+  HORECA   // Catalogue B2B (matériel pro)
+  ELECTRO  // Catalogue grand public (électroménager, multimédia)
+  BOTH     // Visible des deux côtés
+}
+
+enum OrderStatus {
+  PENDING       // Créée, paiement en attente
+  PAID          // Paiement confirmé via webhook Mollie
+  PREPARING     // Préparation en cours
+  SHIPPED       // Expédiée
+  DELIVERED     // Livrée
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  BANCONTACT
+  CARD
+  IDEAL
+  BANK_TRANSFER
+  CASH_ON_DELIVERY
+}
+
+model Category {
+  id          String     @id @default(cuid())
+  slug        String     @unique
+  name        String
+  channel     Channel    @default(BOTH)
+  parentId    String?
+  parent      Category?  @relation("Tree", fields: [parentId], references: [id])
+  children    Category[] @relation("Tree")
+  order       Int        @default(0)
+  description String?    @db.Text
+  products    Product[]
+
+  @@index([channel])
+}
+
+model Brand {
+  id       String    @id @default(cuid())
+  slug     String    @unique
+  name     String
+  logoUrl  String?
+  products Product[]
+}
+
+model Product {
+  id            String        @id @default(cuid())
+  slug          String        @unique
+  sku           String        @unique
+  ean           String?
+  name          String
+  shortDesc     String?
+  longDesc      String?       @db.Text
+  // Prix HTVA appliqué côté site (notre marge inclue par rapport au tarif fournisseur)
+  priceHT       Decimal       @db.Decimal(12, 2)
+  // Prix fournisseur (collin-lucy ou autre) — utile pour calculer la marge
+  costHT        Decimal?      @db.Decimal(12, 2)
+  vatRate       Decimal       @default(21.00) @db.Decimal(4, 2)
+  channel       Channel       @default(BOTH)
+  stockQty      Int           @default(0)
+  // Source d'approvisionnement (ex: "COLLIN_LUCY") — pour les imports
+  supplier      String?
+  supplierSku   String?
+  // Référence externe pour réimport CSV
+  externalId    String?       @unique
+  unit          String        @default("pcs")
+  weightKg      Decimal?      @db.Decimal(8, 3)
+  attrs         Json?
+  images        ProductImage[]
+  brandId       String?
+  brand         Brand?        @relation(fields: [brandId], references: [id])
+  categoryId    String?
+  category      Category?     @relation(fields: [categoryId], references: [id])
+  featured      Boolean       @default(false)
+  active        Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  orderItems    OrderItem[]
+
+  @@index([channel, active])
+  @@index([categoryId])
+  @@index([featured])
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  alt       String?
+  position  Int     @default(0)
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  firstName String?
+  lastName  String?
+  phone     String?
+  // B2B (HoReCa) : VAT number, company name
+  companyName String?
+  vatNumber   String?
+  createdAt DateTime @default(now())
+  addresses Address[]
+  orders    Order[]
+}
+
+model Address {
+  id         String    @id @default(cuid())
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+  fullName   String
+  line1      String
+  line2      String?
+  zip        String
+  city       String
+  country    String    @default("BE")
+  phone      String?
+  isBilling  Boolean   @default(false)
+  isShipping Boolean   @default(true)
+}
+
+model Order {
+  id              String        @id @default(cuid())
+  number          String        @unique
+  customerId      String?
+  customer        Customer?     @relation(fields: [customerId], references: [id])
+  status          OrderStatus   @default(PENDING)
+  // Snapshot des coordonnées du commandeur (guest checkout possible)
+  guestEmail      String?
+  guestFirstName  String?
+  guestLastName   String?
+  guestPhone      String?
+  guestCompany    String?
+  guestVat        String?
+  shipAddress     Json
+  billAddress     Json?
+  subtotalHT      Decimal       @db.Decimal(12, 2)
+  shippingHT      Decimal       @default(0) @db.Decimal(12, 2)
+  totalVAT        Decimal       @db.Decimal(12, 2)
+  totalTTC        Decimal       @db.Decimal(12, 2)
+  notes           String?       @db.Text
+  paymentMethod   PaymentMethod?
+  molliePaymentId String?       @unique
+  paidAt          DateTime?
+  shippedAt       DateTime?
+  trackingNumber  String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  items           OrderItem[]
+  @@index([status])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id          String  @id @default(cuid())
+  orderId     String
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String?
+  product     Product? @relation(fields: [productId], references: [id])
+  sku         String
+  name        String
+  qty         Int
+  unitPriceHT Decimal @db.Decimal(12, 2)
+  vatRate     Decimal @db.Decimal(4, 2)
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  subject   String?
+  message   String   @db.Text
+  channel   Channel? // d'où vient la demande (HoReCa ou Electro)
+  handled   Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
