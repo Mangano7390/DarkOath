@@ -15,7 +15,7 @@ import DefiancePanel from './DefiancePanel';
 import PowerPanel from './PowerPanel';
 import MedievalTable from './MedievalTable.js';
 import { RevealOverlay, Chronicle, TurnHint, MiniTracks, ConseilReady, SpectatorNotice, useIsDesktop, playCue } from './GameExtras';
-import { errorMessage, rememberRoom, forgetRoom, syncServerClock, serverNow } from '../lib/game';
+import { errorMessage, rememberRoom, forgetRoom, syncServerClock, serverNow, powerMarks, powerLegend } from '../lib/game';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -74,15 +74,15 @@ const formatPhaseName = (phase) => {
 };
 
 // Track Component — dark atmospheric style with clear progress
-const TrackComponent = ({ title, current, max, variant }) => {
+const TrackComponent = ({ title, current, max, variant, powerBoard }) => {
   const variants = {
     fidele:  { accent: '#3b82f6', glow: 'rgba(59, 130, 246, 0.4)', icon: '🛡️', tag: 'Fidèles',  goal: 'Victoire' },
     traitre: { accent: '#dc2626', glow: 'rgba(220, 38, 38, 0.4)',  icon: '⚔️', tag: 'Trahison', goal: 'Victoire' },
     crise:   { accent: '#f59e0b', glow: 'rgba(245, 158, 11, 0.4)', icon: '⚡', tag: 'Crise',    goal: 'Adoption auto' },
   };
   const v = variants[variant];
-  // Unlocks shown on empty slots: Investigation (2nd Trahison), Exécution (4th), Tyran danger zone (3+)
-  const slotMarks = variant === 'traitre' ? { 2: '🔍', 3: '👑', 4: '🪓', 6: '☠️' } : variant === 'fidele' ? { 5: '🏆' } : variant === 'crise' ? { 3: '⚡' } : {};
+  // Powers shown on empty slots (they depend on the number of players)
+  const slotMarks = variant === 'traitre' ? powerMarks(powerBoard) : variant === 'fidele' ? { 5: '🏆' } : variant === 'crise' ? { 3: '⚡' } : {};
 
   return (
     <div className="darkoath-panel rounded-lg p-4">
@@ -115,7 +115,7 @@ const TrackComponent = ({ title, current, max, variant }) => {
         })}
       </div>
       <div className="text-xs text-center" style={{ color: 'rgba(232, 217, 168, 0.6)', fontFamily: "'IM Fell English', serif", fontStyle: 'italic' }}>
-        {variant === 'traitre' ? '🔍 Enquête · 👑 dès 3 : Tyran élu = défaite · 🪓 Exécution' : `→ ${v.goal}`}
+        {variant === 'traitre' ? `${powerLegend(powerBoard)} · dès 3 : Tyran élu Conseiller = victoire des Traîtres · 5 : veto` : `→ ${v.goal}`}
       </div>
     </div>
   );
@@ -873,7 +873,7 @@ const GameInterface = ({ roomCode }) => {
   const tracks = (
     <div className="space-y-3">
       <TrackComponent title="Fidèles" current={gameState.tracks?.loyal || 0} max={5} variant="fidele" />
-      <TrackComponent title="Trahison" current={gameState.tracks?.conjure || 0} max={6} variant="traitre" />
+      <TrackComponent title="Trahison" current={gameState.tracks?.conjure || 0} max={6} variant="traitre" powerBoard={gameState.power_board} />
       <TrackComponent title="Colère du Peuple" current={gameState.tracks?.crisis || 0} max={3} variant="crise" />
       <div className="text-xs text-center" style={{ color: 'rgba(232,217,168,0.6)' }}>
         📜 Pioche : {gameState.deck_count ?? '—'} · Défausse : {gameState.discard_count ?? '—'}
@@ -985,6 +985,11 @@ const GameInterface = ({ roomCode }) => {
           cards={gameState.legislative_cards || []}
           pending={pending}
           onDiscard={(cardId) => act('DISCARD', { cardId })}
+          vetoUnlocked={!!gameState.veto_unlocked}
+          vetoRequested={!!gameState.veto_requested}
+          vetoRefused={!!gameState.veto_refused}
+          onVeto={() => act('VETO')}
+          onVetoResponse={(accept) => act('VETO_RESPONSE', { accept })}
         />
       )}
 
@@ -1072,7 +1077,7 @@ const GameInterface = ({ roomCode }) => {
           />
         </div>
       </div>
-      {!isDesktop && <MiniTracks tracks={gameState.tracks} deckCount={gameState.deck_count} />}
+      {!isDesktop && <MiniTracks tracks={gameState.tracks} deckCount={gameState.deck_count} powerBoard={gameState.power_board} />}
       <TurnHint gameState={gameState} me={me} />
       {offline && (
         <div className="px-3 py-1 text-center text-xs bg-red-950/90 text-red-200" role="alert">

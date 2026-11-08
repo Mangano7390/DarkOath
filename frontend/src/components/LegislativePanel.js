@@ -4,10 +4,16 @@ import { Button } from './ui/button';
 
 const titleFont = { fontFamily: "'Cinzel', serif", letterSpacing: '0.05em' };
 
-const LegislativePanel = ({ phase, mySeat, regentSeat, chambellanSeat, players, cards, onDiscard, pending = false }) => {
+const LegislativePanel = ({
+  phase, mySeat, regentSeat, chambellanSeat, players, cards, onDiscard, pending = false,
+  vetoUnlocked = false, vetoRequested = false, vetoRefused = false, onVeto, onVetoResponse,
+}) => {
   const isRegent = mySeat === regentSeat;
   const isConseiller = mySeat === chambellanSeat;
-  const isActivePlayer = (phase === 'LEGIS_REGENT' && isRegent) || (phase === 'LEGIS_CHAMBELLAN' && isConseiller);
+  const kingDecidesVeto = phase === 'LEGIS_CHAMBELLAN' && vetoRequested;
+  const isActivePlayer = kingDecidesVeto
+    ? isRegent
+    : (phase === 'LEGIS_REGENT' && isRegent) || (phase === 'LEGIS_CHAMBELLAN' && isConseiller);
 
   const regent = players.find(p => p.seat === regentSeat);
   const chambellan = players.find(p => p.seat === chambellanSeat);
@@ -22,9 +28,15 @@ const LegislativePanel = ({ phase, mySeat, regentSeat, chambellanSeat, players, 
     ? (isRegent
         ? 'Vous devez défausser une carte et passer les 2 restantes au Conseiller.'
         : `Le Roi (${regent?.name || '…'}) examine 3 cartes et en défausse une.`)
+    : kingDecidesVeto
+      ? (isRegent
+          ? `${chambellan?.name || 'Le Conseiller'} demande le veto sur ces deux décrets. Si vous acceptez, ils sont défaussés et la piste de Crise avance.`
+          : `${chambellan?.name || 'Le Conseiller'} demande le veto : le Roi (${regent?.name || '…'}) décide.`)
     : phase === 'LEGIS_CHAMBELLAN'
       ? (isConseiller
-          ? "Choisissez une carte à adopter et défaussez l'autre."
+          ? (vetoUnlocked && !vetoRefused
+              ? "Adoptez une carte, ou demandez au Roi d'opposer son veto aux deux."
+              : "Choisissez une carte à adopter et défaussez l'autre.")
           : `Le Conseiller (${chambellan?.name || '…'}) choisit la carte à adopter.`)
       : 'Session législative en cours.';
 
@@ -71,6 +83,43 @@ const LegislativePanel = ({ phase, mySeat, regentSeat, chambellanSeat, players, 
 
   // --- Active player view ---
   const isLoyalCard = (c) => c === 'LOYAL';
+
+  // --- King answering a veto request ---
+  if (kingDecidesVeto) {
+    return (
+      <div className="space-y-4">
+        <div className="p-3 rounded-lg flex items-start gap-3" style={{ background: 'rgba(120, 53, 15, 0.3)', border: '1px solid rgba(199, 168, 105, 0.45)' }}>
+          <Gavel className="h-5 w-5 text-amber-400 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-amber-200 font-medium text-sm mb-1" style={titleFont}>Demande de veto</p>
+            <p className="text-amber-100/80 text-xs leading-relaxed">{phaseDescription}</p>
+          </div>
+        </div>
+        <div className="flex gap-2 justify-center">
+          {(cards || []).map((card, i) => (
+            <span key={i} className="px-3 py-2 rounded text-xs font-semibold" style={{
+              ...titleFont,
+              background: isLoyalCard(card) ? 'rgba(30, 58, 138, 0.35)' : 'rgba(127, 29, 29, 0.4)',
+              border: `1px solid ${isLoyalCard(card) ? '#3b82f6' : '#dc2626'}`,
+              color: isLoyalCard(card) ? '#bfdbfe' : '#fecaca',
+            }}>
+              {isLoyalCard(card) ? 'Loyal' : 'Trahison'}
+            </span>
+          ))}
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Button onClick={() => onVetoResponse && onVetoResponse(true)} disabled={pending} className="h-11"
+            style={{ background: 'rgba(22, 101, 52, 0.6)', border: '1px solid rgba(134, 239, 172, 0.5)', color: '#d1fae5', ...titleFont }}>
+            Accepter le veto
+          </Button>
+          <Button onClick={() => onVetoResponse && onVetoResponse(false)} disabled={pending} className="h-11"
+            style={{ background: 'rgba(127, 29, 29, 0.6)', border: '1px solid rgba(252, 165, 165, 0.5)', color: '#fee2e2', ...titleFont }}>
+            Refuser
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -186,6 +235,17 @@ const LegislativePanel = ({ phase, mySeat, regentSeat, chambellanSeat, players, 
           </div>
         )}
       </div>
+
+      {phase === 'LEGIS_CHAMBELLAN' && vetoUnlocked && (
+        vetoRefused ? (
+          <p className="text-center text-xs italic text-red-300/80">Le Roi a refusé le veto : vous devez adopter un décret.</p>
+        ) : (
+          <Button onClick={() => onVeto && onVeto()} disabled={pending} className="w-full h-10"
+            style={{ background: 'rgba(20, 14, 8, 0.7)', border: '1px dashed rgba(199, 168, 105, 0.6)', color: '#e8d9a8', ...titleFont, fontSize: '0.8rem' }}>
+            <Gavel className="h-4 w-4 mr-2" /> Demander le veto des deux décrets
+          </Button>
+        )
+      )}
 
       {/* Current government */}
       <div

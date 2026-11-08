@@ -37,3 +37,25 @@ export const ROLE_LABELS = {
   CONJURE: 'Traître',
   USURPATEUR: 'Tyran',
 };
+
+// Pouvoirs du Roi (plateau Trahison, selon le nombre de joueurs)
+export const POWER_ICONS = { INVESTIGATE: '🔍', PEEK: '👁️', SPECIAL_ELECTION: '🗳️', EXECUTE: '🪓' };
+export const POWER_LABELS = {
+  INVESTIGATE: 'Enquête',
+  PEEK: 'Regard sur la pioche',
+  SPECIAL_ELECTION: 'Élection spéciale',
+  EXECUTE: 'Exécution',
+};
+
+// { slot: icon } for the Trahison track, from the server's power_board
+export const powerMarks = (board) => {
+  const marks = { 6: '☠️' };
+  Object.entries(board || {}).forEach(([slot, power]) => { marks[Number(slot)] = POWER_ICONS[power] || '✦'; });
+  return marks;
+};
+
+export const powerLegend = (board) => {
+  const seen = [];
+  Object.values(board || {}).forEach((p) => { if (!seen.includes(p)) seen.push(p); });
+  return seen.map((p) => `${POWER_ICONS[p]} ${POWER_LABELS[p]}`).join(' · ');
+};

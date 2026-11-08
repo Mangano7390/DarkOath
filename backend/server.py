@@ -70,9 +70,28 @@ class Phase(str, Enum):
     POWER = "POWER"
     ENDGAME = "ENDGAME"
 
-# Piste de Défiance config
+# Piste de Défiance config (variante maison, désactivée : règles Secret Hitler)
+ENABLE_DEFIANCE = False
 DEFIANCE_DURATION_SECONDS = 25
 DEFIANCE_MARK_THRESHOLD = 3
+
+# Pouvoirs du Roi, comme le plateau fasciste de Secret Hitler : le pouvoir
+# dépend du nombre de joueurs et de la case de Trahison qui vient d'être
+# remplie par un gouvernement élu (jamais par la Colère du Peuple).
+POWER_BOARDS = {
+    "small": {3: "PEEK", 4: "EXECUTE", 5: "EXECUTE"},                                   # 5-6 joueurs
+    "medium": {2: "INVESTIGATE", 3: "SPECIAL_ELECTION", 4: "EXECUTE", 5: "EXECUTE"},      # 7-8 joueurs
+    "large": {1: "INVESTIGATE", 2: "INVESTIGATE", 3: "SPECIAL_ELECTION", 4: "EXECUTE", 5: "EXECUTE"},  # 9-10
+}
+VETO_UNLOCK_AT = 5  # Trahisons adoptées avant que le veto soit possible
+
+
+def power_board(player_count: int) -> Dict[int, str]:
+    if player_count <= 6:
+        return POWER_BOARDS["small"]
+    if player_count <= 8:
+        return POWER_BOARDS["medium"]
+    return POWER_BOARDS["large"]
 # Conseil du Royaume (can end earlier when every present human clicks "Prêt")
 CONSEIL_DURATION_SECONDS = int(os.environ.get("DARKOATH_CONSEIL_SECONDS", "60"))
 # Presence / AFK takeover: a human not seen for AWAY_AFTER_SECONDS is "absent";
@@ -124,7 +143,14 @@ class TurnState(BaseModel):
     marked_player_seat: Optional[int] = None  # Player marked for current turn (cannot be Roi/Conseiller)
     defiance_start_time: Optional[float] = None
     # Pouvoir du Roi (POWER phase)
-    active_power: Optional[str] = None  # "INVESTIGATE" | "EXECUTE" while in POWER phase
+    active_power: Optional[str] = None  # "INVESTIGATE" | "PEEK" | "SPECIAL_ELECTION" | "EXECUTE" while in POWER phase
+    pending_power: Optional[str] = None  # power earned by the decree just enacted (used after the Conseil)
+    # Veto (après 5 Trahisons)
+    veto_requested: bool = False
+    veto_refused: bool = False
+    # Élection spéciale : prochain Roi imposé, puis la rotation reprend après l'ancien Roi
+    special_next_seat: Optional[int] = None
+    resume_after_seat: Optional[int] = None
     power_result: Optional[Dict] = None  # Investigation result, visible to King only: {target_seat, target_name, camp}
     last_execution_seat: Optional[int] = None  # Seat just executed (for death banner broadcast)
     # Conseil du Royaume — players who clicked "Prêt" (early end when every present human is ready)
@@ -161,6 +187,8 @@ class GameState(BaseModel):
     last_seen: Dict[str, float] = {}          # player_id -> last request timestamp
     bot_memory: Dict[str, Dict[str, Any]] = {}  # player_id -> private bot memory
     bot_next_act: Dict[str, float] = {}       # player_id -> when the bot may act in this phase
+    bot_chat_queue: List[Dict[str, Any]] = []  # delayed bot chat lines {due, player_id, text}
+    investigated_seats: List[int] = []        # nobody can be investigated twice
     phase_key: Optional[str] = None           # detects phase changes for the phase clock
 
 
@@ -194,20 +222,19 @@ def seat_name(game_state: "GameState", seat: Optional[int]) -> str:
 def eligible_nominee_seats(game_state: "GameState") -> List[int]:
     """Seats the current King may nominate as Conseiller.
 
-    Constraints: alive, not the King, not in the last elected government,
-    not disgraced (Colère du Peuple), not marked (Piste de Défiance).
-    If those constraints leave nobody (late game with few survivors), they
-    are relaxed in order so the game can never deadlock.
+    Secret Hitler term limits: the last *elected* Conseiller can't be nominated,
+    nor the last elected King while more than 5 players are alive. The
+    Colère du Peuple clears these limits. If nobody is left (never happens
+    with the official limits, kept as a safety net) they are relaxed.
     """
     t = game_state.turn
-    alive = [p.seat for p in game_state.players if p.alive and p.seat != t.regent_seat]
+    alive_all = [p.seat for p in game_state.players if p.alive]
+    alive = [s for s in alive_all if s != t.regent_seat]
     prev = t.prev_government or {}
-    layers = [
-        {prev.get("regent"), prev.get("chambellan"), t.disgraced_player_seat, t.marked_player_seat},
-        {prev.get("chambellan"), t.disgraced_player_seat, t.marked_player_seat},
-        {prev.get("chambellan"), t.disgraced_player_seat},
-        set(),
-    ]
+    first = {prev.get("chambellan"), t.marked_player_seat}
+    if len(alive_all) > 5:
+        first.add(prev.get("regent"))
+    layers = [first, {prev.get("chambellan")}, set()]
     for forbidden in layers:
         seats = [s for s in alive if s not in forbidden]
         if seats:
@@ -330,7 +357,8 @@ class WebSocketManager:
         if game_state.status != "lobby" or len(game_state.players) >= 10:
             return None
         taken = {(p.name or "").strip().lower() for p in game_state.players}
-        name = next((n for n in bots.BOT_NAMES if n.lower() not in taken), None)
+        free = [n for n in bots.BOT_NAMES if n.lower() not in taken]
+        name = random.choice(free) if free else None
         if not name:
             name = f"Écuyer {len(game_state.players) + 1}"
         bot = Player(
@@ -381,6 +409,8 @@ class WebSocketManager:
         game_state.events = []
         game_state.bot_memory = {}
         game_state.bot_next_act = {}
+        game_state.bot_chat_queue = []
+        game_state.investigated_seats = []
         game_state.phase_key = None
         for p in game_state.players:
             p.role = None
@@ -426,6 +456,8 @@ class WebSocketManager:
         game_state.events = []
         game_state.bot_memory = {}
         game_state.bot_next_act = {}
+        game_state.bot_chat_queue = []
+        game_state.investigated_seats = []
         log_event(game_state, "start", f"La partie commence à {player_count} joueurs. "
                   f"{seat_name(game_state, game_state.turn.regent_seat)} est le premier Roi.")
         game_state.version += 1
@@ -503,18 +535,62 @@ class WebSocketManager:
         prev_government (term limits) is set when a government is *elected*
         and is deliberately not touched here.
         """
-        current_seat = game_state.turn.regent_seat
-        next_regent_seat = self._next_regent_seat(game_state, current_seat)
-
-        game_state.turn.regent_seat = next_regent_seat
+        game_state.turn.regent_seat = self._rotate_regent(game_state)
         game_state.turn.phase = Phase.NOMINATION
         game_state.turn.nominee_seat = None
         game_state.turn.votes = {}
         game_state.turn.turn_number += 1
         # Clear transient power state so the next turn starts clean
         game_state.turn.active_power = None
+        game_state.turn.pending_power = None
         game_state.turn.power_result = None
         game_state.turn.last_execution_seat = None
+        game_state.turn.veto_requested = False
+        game_state.turn.veto_refused = False
+        game_state.turn.legislative_cards = []
+
+    def _rotate_regent(self, game_state: GameState) -> int:
+        """Next King, honouring a pending Élection spéciale.
+
+        After a special election the crown goes to the chosen player for one
+        term, then resumes with the player after the King who called it.
+        """
+        t = game_state.turn
+        alive = {p.seat for p in game_state.players if p.alive}
+        if t.special_next_seat and t.special_next_seat in alive:
+            nxt = t.special_next_seat
+            t.resume_after_seat = t.regent_seat
+            t.special_next_seat = None
+            return nxt
+        t.special_next_seat = None
+        if t.resume_after_seat:
+            anchor = t.resume_after_seat
+            t.resume_after_seat = None
+            return self._next_regent_seat(game_state, anchor)
+        return self._next_regent_seat(game_state, t.regent_seat)
+
+    def peoples_anger(self, game_state: GameState) -> None:
+        """Colère du Peuple (3 gouvernements ratés) : le décret du dessus est
+        adopté sans pouvoir, la piste de Crise et les limites de mandat sont remises à zéro."""
+        t = game_state.turn
+        self._ensure_deck(game_state, 1)
+        if game_state.deck:
+            top_card = game_state.deck.pop(0)
+            if top_card == DecreeType.LOYAL:
+                game_state.tracks.loyal += 1
+            else:
+                game_state.tracks.conjure += 1
+            t.last_decree = {"turn": t.turn_number, "type": top_card.value, "auto": True,
+                             "regent_seat": None, "chambellan_seat": None, "ts": _now()}
+            log_event(game_state, "decree",
+                      f"Colère du Peuple ! Le peuple impose un Décret "
+                      f"{'Loyal' if top_card == DecreeType.LOYAL else 'de Trahison'} (aucun pouvoir). "
+                      "Les limites de mandat sont levées.",
+                      type=top_card.value, auto=True, regent_seat=None, chambellan_seat=None)
+        game_state.tracks.crisis = 0
+        t.prev_government = None
+        t.peoples_anger_triggered = True
+        self._ensure_deck(game_state, 3)
 
     def _enter_defiance_phase(self, game_state: GameState):
         """Open the Piste de Défiance vote."""
@@ -566,17 +642,13 @@ class WebSocketManager:
         game_state.turn.speaking_players = []
         game_state.turn.conseil_ready = []
 
-        # Pouvoirs du Roi : déclenchés au 2ᵉ et 4ᵉ Décret de Trahison, une seule fois chacun.
-        if game_state.tracks.conjure >= 2 and not game_state.powers.get("investigation_used"):
-            game_state.powers["investigation_unlocked"] = True
+        # Pouvoir gagné par le décret de Trahison qui vient d'être adopté.
+        power = game_state.turn.pending_power
+        game_state.turn.pending_power = None
+        regent = next((p for p in game_state.players if p.seat == game_state.turn.regent_seat), None)
+        if power and regent and regent.alive:
             game_state.turn.phase = Phase.POWER
-            game_state.turn.active_power = "INVESTIGATE"
-            game_state.turn.power_result = None
-            return
-        if game_state.tracks.conjure >= 4 and not game_state.powers.get("execution_used"):
-            game_state.powers["execution_unlocked"] = True
-            game_state.turn.phase = Phase.POWER
-            game_state.turn.active_power = "EXECUTE"
+            game_state.turn.active_power = power
             game_state.turn.power_result = None
             return
 
@@ -584,7 +656,7 @@ class WebSocketManager:
 
     def _flow_to_next_turn_phase(self, game_state: GameState):
         """After decree resolution + Conseil + (optional) Power, enter Défiance or Nomination."""
-        if game_state.turn.turn_number >= 2:
+        if ENABLE_DEFIANCE and game_state.turn.turn_number >= 2:
             self._enter_defiance_phase(game_state)
         else:
             self._advance_to_next_nomination(game_state)
@@ -607,7 +679,7 @@ class WebSocketManager:
     def sync_phase_clock(self, game_state: GameState) -> bool:
         """Reset the phase clock whenever the actionable situation changes."""
         t = game_state.turn
-        key = f"{game_state.status}|{t.phase}|{t.turn_number}|{t.regent_seat}|{t.nominee_seat}|{t.active_power}|{t.power_result is not None}|{game_state.tracks.crisis}"
+        key = f"{game_state.status}|{t.phase}|{t.turn_number}|{t.regent_seat}|{t.nominee_seat}|{t.active_power}|{t.power_result is not None}|{game_state.tracks.crisis}|{t.veto_requested}|{t.veto_refused}"
         if key != game_state.phase_key:
             game_state.phase_key = key
             t.phase_started_at = _now()
@@ -631,7 +703,7 @@ class WebSocketManager:
             p = by_seat.get(t.regent_seat)
             return [p.id] if p else []
         if t.phase == Phase.LEGIS_CHAMBELLAN:
-            p = by_seat.get(t.nominee_seat)
+            p = by_seat.get(t.regent_seat if t.veto_requested else t.nominee_seat)
             return [p.id] if p else []
         if t.phase == Phase.POWER:
             p = by_seat.get(t.regent_seat)
@@ -814,6 +886,10 @@ async def send_chat_message(
 
     game_state.last_seen[player.id] = _now()
     chat_message = post_chat(game_state, player, message)
+    try:
+        bots.on_human_chat(game_state, player, message, _now())
+    except Exception:  # bot table talk must never break the chat
+        logging.getLogger(__name__).exception("bot chat reaction failed")
     game_state.version += 1
 
     await manager.broadcast_to_room(room_code, {
@@ -956,6 +1032,8 @@ async def perform_action(
                 game_state.tracks.crisis = 0
                 t.disgraced_player_seat = None
                 t.peoples_anger_triggered = False
+                t.veto_requested = False
+                t.veto_refused = False
                 t.prev_government = {"regent": regent_seat, "chambellan": nominee_seat}
                 t.votes = {}
                 nominee = by_seat.get(nominee_seat)
@@ -976,27 +1054,9 @@ async def perform_action(
                 t.votes = {}
                 t.nominee_seat = None
                 if game_state.tracks.crisis >= 3:
-                    # COLÈRE DU PEUPLE : décret du dessus adopté, Roi désavoué
-                    manager._ensure_deck(game_state, 1)
-                    if game_state.deck:
-                        top_card = game_state.deck.pop(0)
-                        t.deck_count = len(game_state.deck)
-                        if top_card == DecreeType.LOYAL:
-                            game_state.tracks.loyal += 1
-                        else:
-                            game_state.tracks.conjure += 1
-                        t.last_decree = {"turn": t.turn_number, "type": top_card.value, "auto": True,
-                                         "regent_seat": None, "chambellan_seat": None, "ts": _now()}
-                        log_event(game_state, "decree",
-                                  f"Colère du Peuple ! Le peuple impose un Décret "
-                                  f"{'Loyal' if top_card == DecreeType.LOYAL else 'de Trahison'}. "
-                                  f"{seat_name(game_state, regent_seat)} est désavoué.",
-                                  type=top_card.value, auto=True, regent_seat=None, chambellan_seat=None)
-                    t.disgraced_player_seat = regent_seat
-                    t.peoples_anger_triggered = True
-                    game_state.tracks.crisis = 0
+                    manager.peoples_anger(game_state)
                 if not manager.check_win_conditions(game_state):
-                    t.regent_seat = manager._next_regent_seat(game_state, t.regent_seat)
+                    t.regent_seat = manager._rotate_regent(game_state)
                     t.phase = Phase.NOMINATION
             game_state.version += 1
             await manager.broadcast_to_room(room_code, {
@@ -1031,6 +1091,8 @@ async def perform_action(
         elif t.phase == Phase.LEGIS_CHAMBELLAN:
             if player.seat != t.nominee_seat:
                 _bad_request("Seul le Conseiller peut choisir maintenant.")
+            if t.veto_requested:
+                _bad_request("Le Roi doit d'abord répondre à votre demande de veto.")
             card_index = payload.get("cardId")
             if not isinstance(card_index, int) or not (0 <= card_index < len(t.legislative_cards)):
                 _bad_request("Carte invalide.")
@@ -1041,8 +1103,12 @@ async def perform_action(
             t.discard_count = len(game_state.discard)
             if adopted_card == DecreeType.LOYAL:
                 game_state.tracks.loyal += 1
+                t.pending_power = None
             else:
                 game_state.tracks.conjure += 1
+                t.pending_power = power_board(len(game_state.players)).get(game_state.tracks.conjure)
+            t.veto_requested = False
+            t.veto_refused = False
             decree = {"turn": t.turn_number, "type": adopted_card.value, "auto": False,
                       "regent_seat": t.regent_seat, "chambellan_seat": t.nominee_seat, "ts": _now()}
             t.last_decree = decree
@@ -1061,7 +1127,7 @@ async def perform_action(
                     if gov and gov.alive and gov.is_bot:
                         claim = bots.decree_claims(game_state, gov, decree)
                         if claim:
-                            post_chat(game_state, gov, claim)
+                            bots.queue_line(game_state, gov, claim, _now(), quick=True)
 
             t.votes = {}
             game_state.version += 1
@@ -1072,6 +1138,84 @@ async def perform_action(
             })
         else:
             _bad_request("Ce n'est pas la phase législative.")
+
+    elif action_type == "VETO":
+        if t.phase != Phase.LEGIS_CHAMBELLAN or player.seat != t.nominee_seat:
+            _bad_request("Seul le Conseiller peut demander le veto.")
+        if game_state.tracks.conjure < VETO_UNLOCK_AT:
+            _bad_request("Le veto n'est possible qu'après 5 Décrets de Trahison.")
+        if t.veto_refused:
+            _bad_request("Le Roi a déjà refusé le veto : vous devez adopter un décret.")
+        if t.veto_requested:
+            _bad_request("Veto déjà demandé.")
+        t.veto_requested = True
+        log_event(game_state, "veto", f"{who} (Conseiller) demande le veto sur les deux décrets.",
+                  seat=player.seat)
+        game_state.version += 1
+
+    elif action_type == "VETO_RESPONSE":
+        if t.phase != Phase.LEGIS_CHAMBELLAN or not t.veto_requested:
+            _bad_request("Aucun veto en attente.")
+        if player.seat != t.regent_seat:
+            _bad_request("Seul le Roi peut répondre au veto.")
+        accept = bool(payload.get("accept"))
+        t.veto_requested = False
+        if accept:
+            game_state.discard.extend(t.legislative_cards)
+            t.legislative_cards = []
+            t.discard_count = len(game_state.discard)
+            game_state.tracks.crisis += 1
+            log_event(game_state, "veto",
+                      f"{who} (Roi) accepte le veto : les deux décrets sont défaussés. La piste de Crise avance.",
+                      seat=player.seat, accepted=True)
+            if game_state.tracks.crisis >= 3:
+                manager.peoples_anger(game_state)
+            if not manager.check_win_conditions(game_state):
+                manager._ensure_deck(game_state, 3)
+                manager._advance_to_next_nomination(game_state)
+        else:
+            t.veto_refused = True
+            log_event(game_state, "veto", f"{who} (Roi) refuse le veto : le Conseiller doit adopter un décret.",
+                      seat=player.seat, accepted=False)
+        game_state.version += 1
+        await manager.broadcast_to_room(room_code, {"type": "game_update", "data": "veto", "version": game_state.version})
+
+    elif action_type == "PEEK":
+        if t.phase != Phase.POWER or t.active_power != "PEEK":
+            _bad_request("Ce n'est pas le moment de consulter la pioche.")
+        if player.seat != t.regent_seat:
+            _bad_request("Seul le Roi peut consulter la pioche.")
+        if t.power_result is None:
+            manager._ensure_deck(game_state, 3)
+            cards = [c.value for c in game_state.deck[:3]]
+            t.power_result = {"cards": cards}
+            bots.memory(game_state, player)["peek"] = {"turn": t.turn_number, "cards": cards}
+            log_event(game_state, "peek", f"{who} (Roi) consulte en secret les 3 prochains décrets.",
+                      regent_seat=player.seat)
+            if player.is_bot:
+                bots.queue_line(game_state, player, bots.peek_claim(game_state, player, cards), _now())
+        game_state.version += 1
+
+    elif action_type == "SPECIAL_ELECTION":
+        if t.phase != Phase.POWER or t.active_power != "SPECIAL_ELECTION":
+            _bad_request("Ce n'est pas le moment d'une élection spéciale.")
+        if player.seat != t.regent_seat:
+            _bad_request("Seul le Roi peut désigner son successeur.")
+        try:
+            target_seat = int(payload.get("targetSeat"))
+        except (TypeError, ValueError):
+            _bad_request("Cible invalide.")
+        target = by_seat.get(target_seat)
+        if not target or not target.alive or target_seat == player.seat:
+            _bad_request("Cible invalide.")
+        t.special_next_seat = target_seat
+        log_event(game_state, "special_election",
+                  f"{who} (Roi) convoque une élection spéciale : {target.name} sera le prochain Roi.",
+                  regent_seat=player.seat, target_seat=target_seat)
+        manager._advance_after_power(game_state)
+        game_state.version += 1
+        await manager.broadcast_to_room(room_code, {"type": "game_update", "data": "special_election",
+                                                    "version": game_state.version})
 
     elif action_type == "CONSEIL_READY":
         if t.phase != Phase.CONSEIL_ROYAUME:
@@ -1121,6 +1265,9 @@ async def perform_action(
         target = by_seat.get(target_seat)
         if not target or not target.alive or target_seat == player.seat:
             _bad_request("Cible invalide.")
+        if target_seat in game_state.investigated_seats:
+            _bad_request("Ce joueur a déjà fait l'objet d'une enquête.")
+        game_state.investigated_seats.append(target_seat)
         # Camp révélé : Fidèle vs Traître (le Tyran apparaît comme Traître).
         camp = "Fidèle" if target.role == Role.LOYAL else "Traître"
         t.power_result = {"target_seat": target_seat, "target_name": target.name, "camp": camp}
@@ -1129,7 +1276,7 @@ async def perform_action(
         log_event(game_state, "investigate",
                   f"{who} (Roi) enquête sur {target.name}.", regent_seat=player.seat, target_seat=target_seat)
         if player.is_bot:
-            post_chat(game_state, player, bots.investigation_claim(game_state, player, target_seat, camp))
+            bots.queue_line(game_state, player, bots.investigation_claim(game_state, player, target_seat, camp), _now())
         game_state.version += 1
         await manager.broadcast_to_room(room_code, {
             "type": "game_update", "data": "investigation_done", "version": game_state.version,
@@ -1167,8 +1314,8 @@ async def perform_action(
         if t.phase != Phase.POWER:
             return {"success": True, "stale": True, "version": game_state.version}
         if player.seat != t.regent_seat:
-            _bad_request("Seul le Roi peut fermer l'enquête.")
-        if t.active_power != "INVESTIGATE" or t.power_result is None:
+            _bad_request("Seul le Roi peut fermer ce pouvoir.")
+        if t.active_power not in ("INVESTIGATE", "PEEK") or t.power_result is None:
             _bad_request("Aucun résultat à fermer.")
         manager._advance_after_power(game_state)
         game_state.version += 1
@@ -1237,19 +1384,22 @@ async def tick_room(room_code: str, game_state: GameState) -> bool:
         if game_state.version != before:
             return True
 
-    # Bot chatter during the Conseil
+    # Table talk: reactions to nominations / votes, Conseil remarks, then post due lines
+    if t.phase == Phase.VOTE and t.nominee_seat:
+        bots.react_to_nomination(game_state, now)
+    if t.last_vote and now - t.last_vote.get("ts", 0) < 10:
+        bots.react_to_vote(game_state, now)
     if t.phase == Phase.CONSEIL_ROYAUME and t.conseil_royaume_start_time:
         for p in game_state.players:
             if p.is_bot and p.alive:
                 mem = bots.memory(game_state, p)
                 key = f"conseil-{t.turn_number}"
-                if key not in mem["claims_done"] and now - t.conseil_royaume_start_time >= mem.setdefault("chat_delay", random.uniform(4, 12)):
+                if key not in mem["claims_done"] and now - t.conseil_royaume_start_time >= mem.setdefault("chat_delay", random.uniform(5, 25)):
                     mem["claims_done"].append(key)
                     mem.pop("chat_delay", None)
-                    line = bots.accusation(game_state, p)
-                    if line:
-                        post_chat(game_state, p, line)
-                        game_state.version += 1
+                    bots.queue_line(game_state, p, bots.accusation(game_state, p), now, delay=0.5)
+    if bots.flush_chat(game_state, now, lambda p, text: post_chat(game_state, p, text)):
+        game_state.version += 1
 
     started = t.phase_started_at or now
     for pid in manager.pending_actor_ids(game_state):
@@ -1362,10 +1512,18 @@ async def get_game_state(
         legislative_cards = t.legislative_cards
     elif t.phase == Phase.LEGIS_CHAMBELLAN and player.seat == t.nominee_seat:
         legislative_cards = t.legislative_cards
+    if t.phase == Phase.LEGIS_CHAMBELLAN and t.veto_requested and player.seat == t.regent_seat:
+        legislative_cards = t.legislative_cards  # the King sees what he is asked to veto
 
     # Règle Dark Oath : les Traîtres connaissent les autres Traîtres et le Tyran ;
     # le Tyran et les Fidèles ne connaissent personne.
     teammates = []
+    # Secret Hitler : à 5-6 joueurs, le Tyran connaît aussi son Traître.
+    if player.role == Role.USURPATEUR and len(game_state.players) <= 6:
+        teammates = [
+            {"seat": p.seat, "name": p.name, "role": p.role}
+            for p in game_state.players if p.role == Role.CONJURE
+        ]
     if player.role == Role.CONJURE:
         teammates = [
             {"seat": p.seat, "name": p.name, "role": p.role}
@@ -1423,9 +1581,15 @@ async def get_game_state(
         "active_power": t.active_power,
         "power_result": (
             t.power_result
-            if t.active_power == "INVESTIGATE" and player.seat == t.regent_seat
+            if t.active_power in ("INVESTIGATE", "PEEK") and player.seat == t.regent_seat
             else None
         ),
+        "power_board": {str(k): v for k, v in power_board(len(game_state.players)).items()},
+        "investigated_seats": game_state.investigated_seats,
+        "veto_unlocked": game_state.tracks.conjure >= VETO_UNLOCK_AT,
+        "veto_requested": t.veto_requested,
+        "veto_refused": t.veto_refused,
+        "special_next_seat": t.special_next_seat,
         "my_investigations": bots.memory(game_state, player)["investigations"],
         "last_execution_seat": t.last_execution_seat,
         "powers": game_state.powers,

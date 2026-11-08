@@ -148,6 +148,87 @@ def test_term_limit_survives_full_turn():
         assert gs.turn.prev_government == {"regent": king_seat, "chambellan": nominee}
 
 
+def _room(code, n_humans, n_bots=0, seed=7):
+    random.seed(seed)
+    clock = FakeClock()
+    server._now = clock
+    mgr = server.manager
+    gs = mgr.create_room(code)
+    for i in range(n_humans):
+        mgr.add_player(code, f"{code}-h{i}", f"Joueur{i}")
+    for _ in range(n_bots):
+        mgr.add_bot(gs)
+    assert mgr.start_game(code)
+    return gs, clock
+
+
+def test_special_election_then_rotation_resumes():
+    gs, _ = _room("SPEC1", 7)
+    t = gs.turn
+    t.regent_seat = 2
+    t.phase = server.Phase.POWER
+    t.active_power = "SPECIAL_ELECTION"
+    king = next(p for p in gs.players if p.seat == 2)
+    asyncio.run(server.perform_action("SPEC1", gs, king, "SPECIAL_ELECTION", {"targetSeat": 6}))
+    assert t.phase == server.Phase.NOMINATION and t.regent_seat == 6
+    server.manager._advance_to_next_nomination(gs)
+    assert t.regent_seat == 3  # back to the player after the King who called it
+
+
+def test_veto_accepted_discards_and_advances_crisis():
+    gs, _ = _room("VETO1", 5)
+    t = gs.turn
+    gs.tracks.conjure = 5
+    by = {p.seat: p for p in gs.players}
+    t.regent_seat, t.nominee_seat = 1, 2
+    t.phase = server.Phase.LEGIS_CHAMBELLAN
+    t.legislative_cards = [server.DecreeType.CONJURE, server.DecreeType.CONJURE]
+    gs.deck = gs.deck[:13]  # 17 - 2 cards in hand - 2 already enacted elsewhere doesn't matter here
+
+    async def go():
+        await server.perform_action("VETO1", gs, by[2], "VETO", {})
+        assert server.manager.pending_actor_ids(gs) == [by[1].id]
+        await server.perform_action("VETO1", gs, by[1], "VETO_RESPONSE", {"accept": True})
+    asyncio.run(go())
+    assert gs.tracks.crisis == 1 and gs.tracks.conjure == 5
+    assert t.phase == server.Phase.NOMINATION and not t.legislative_cards
+
+
+def test_term_limits_secret_hitler():
+    gs, _ = _room("TL1", 6)
+    t = gs.turn
+    t.regent_seat = 3
+    t.prev_government = {"regent": 1, "chambellan": 2}
+    assert set(server.eligible_nominee_seats(gs)) == {4, 5, 6}
+    gs.players[5].alive = False  # 5 alive: the last King becomes eligible again
+    assert set(server.eligible_nominee_seats(gs)) == {1, 4, 5}
+
+
+def test_bot_answers_when_accused_by_name():
+    gs, clock = _room("CHAT1", 1, 4)
+    human = gs.players[0]
+    bot = next(p for p in gs.players if p.is_bot)
+    first = bot.name.split()[-1]
+    server.bots.on_human_chat(gs, human, f"{first} t'es un traître non ?", clock())
+    assert any(q["player_id"] == bot.id for q in gs.bot_chat_queue)
+    clock.t += 30
+    posted = []
+    server.bots.flush_chat(gs, clock(), lambda p, text: posted.append((p.id, text)))
+    assert any(pid == bot.id for pid, _ in posted)
+
+
+def test_who_question_is_not_an_accusation():
+    gs, clock = _room("CHAT2", 1, 4)
+    human = gs.players[0]
+    bot = next(p for p in gs.players if p.is_bot)
+    first = bot.name.split()[-1]
+    server.bots.on_human_chat(gs, human, f"{first} tu penses que c'est qui le traître ?", clock())
+    lines = [q["text"].lower() for q in gs.bot_chat_queue if q["player_id"] == bot.id]
+    assert lines, "the bot should answer"
+    assert not any(w in lines[0] for w in ("moi ?", "preuve", "pourquoi moi", "fausse route")), lines[0]
+    assert not server.bots.table(gs)["accused"].get(str(bot.seat))
+
+
 if __name__ == "__main__":
     n = int(sys.argv[1]) if len(sys.argv) > 1 else 300
     stats, reasons, turns, afk, chat = run(n)

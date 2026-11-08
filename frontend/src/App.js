@@ -392,7 +392,7 @@ const LandingPage = () => {
                     <h4 className="font-bold text-purple-300 mb-2 text-lg" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.1em' }}>👑 TYRAN</h4>
                     <p className="text-sm text-amber-100/90 mb-2 leading-relaxed"><strong>But&nbsp;:</strong> être élu Conseiller après que 3 Décrets de Trahison ont été adoptés (victoire immédiate avec les Traîtres).</p>
                     <p className="text-sm text-amber-100/75 leading-relaxed"><strong>Ce que vous savez&nbsp;:</strong>
-                      {' '}<strong>rien du tout</strong>. Vous ignorez l'identité de vos alliés comme de vos ennemis. Seuls les Traîtres savent qui vous êtes — c'est à eux de manœuvrer pour vous faire élire Conseiller. Agissez comme un Fidèle pour passer inaperçu jusqu'au bon moment.
+                      {' '}à <strong>5 ou 6 joueurs</strong>, vous connaissez votre Traître (et il vous connaît). À <strong>7 joueurs et plus</strong>, vous ne savez <strong>rien</strong>&nbsp;: seuls les Traîtres savent qui vous êtes, c'est à eux de manœuvrer pour vous faire élire Conseiller. Agissez comme un Fidèle pour passer inaperçu jusqu'au bon moment.
                     </p>
                   </div>
                 </div>
@@ -437,13 +437,13 @@ const LandingPage = () => {
                 </h3>
                 <div className="space-y-3">
                   {[
-                    { num: '1', title: 'Nomination', text: "Le Roi (désigné à tour de rôle autour de la table) propose un Conseiller parmi les joueurs éligibles." },
-                    { num: '2', title: 'Vote', text: "Tous les joueurs vivants (Roi et Conseiller compris) votent OUI ou NON à la majorité simple. Les votes restent secrets jusqu'au dernier bulletin, puis sont révélés à tous. Si OUI, le gouvernement est formé. Si NON ou égalité, on passe au joueur suivant et la Piste de Crise avance d'une case." },
+                    { num: '1', title: 'Nomination', text: "Le Roi (à tour de rôle autour de la table) propose un Conseiller. Ne peuvent pas être nommés : le dernier Conseiller élu, et le dernier Roi élu (sauf s'il ne reste que 5 joueurs en vie)." },
+                    { num: '2', title: 'Vote', text: "Tous les joueurs vivants (Roi et Conseiller compris) votent OUI ou NON à la majorité simple. Les votes restent secrets jusqu'au dernier bulletin, puis sont révélés à tous. Si OUI, le gouvernement est formé. Si NON ou égalité, la couronne passe au joueur suivant et la Piste de Crise avance d'une case. Après 3 Trahisons, élire le Tyran Conseiller fait gagner les Traîtres." },
                     { num: '3', title: 'Législation — le Roi', text: "Le Roi pioche 3 décrets, en défausse 1 secrètement, et transmet les 2 restants au Conseiller." },
                     { num: '4', title: 'Législation — le Conseiller', text: "Le Conseiller défausse 1 décret en secret et révèle le dernier. Ce décret est appliqué et avance la piste correspondante (Fidèles ou Trahison)." },
                     { num: '5', title: 'Conseil du Royaume', text: "Après chaque décret révélé, jusqu'à 60 secondes de discussion (vocal et chat). Le Conseil se termine plus tôt si tous les joueurs cliquent « Prêt »." },
-                    { num: '6', title: 'Pouvoir du Roi (si déclenché)', text: "Au 2ᵉ puis au 4ᵉ Décret de Trahison posé sur la piste des Traîtres, et à la fin du Conseil, le Roi exerce un pouvoir (Investigation puis Exécution — voir section Pouvoirs)." },
-                    { num: '7', title: 'Piste de Défiance (dès le tour 2)', text: "25 secondes pour désigner un suspect ou passer. Les votes s'accumulent ; 3 votes cumulés = joueur marqué, exclu de toute fonction au tour suivant." },
+                    { num: '6', title: 'Pouvoir du Roi (si déclenché)', text: "Certaines cases de la piste Trahison donnent un pouvoir au Roi qui vient de l'adopter : Enquête, Regard sur la pioche, Élection spéciale ou Exécution, selon le nombre de joueurs (voir Pouvoirs du Roi). Le Roi doit l'utiliser." },
+                    { num: '7', title: 'Veto (après 5 Trahisons)', text: "Le Conseiller peut demander le veto des deux décrets reçus. Si le Roi accepte, les deux sont défaussés et la Piste de Crise avance. S'il refuse, le Conseiller doit en adopter un." },
                   ].map((step) => (
                     <div key={step.num} className="flex gap-4 items-start p-4 rounded-lg" style={{
                       background: 'linear-gradient(180deg, rgba(30, 20, 12, 0.6), rgba(18, 12, 8, 0.7))',
@@ -501,18 +501,37 @@ const LandingPage = () => {
                   ⚜️ &nbsp;Pouvoirs du Roi
                 </h3>
                 <p className="text-amber-100/85 text-sm leading-relaxed mb-4" style={{ fontFamily: "'IM Fell English', serif" }}>
-                  Les pouvoirs se débloquent selon le <strong>nombre de Décrets de Trahison</strong> posés sur la piste des Traîtres (et non selon le nombre de joueurs)&nbsp;:
+                  Quand un gouvernement élu adopte un Décret de Trahison sur une case marquée, le Roi doit utiliser le pouvoir de cette case. Les cases dépendent du <strong>nombre de joueurs</strong>. Un décret imposé par la Colère du Peuple ne donne <strong>aucun</strong> pouvoir.
                 </p>
-                <div className="space-y-2 text-sm">
-                  <div className="flex gap-3 p-3 rounded" style={{ background: 'rgba(20, 14, 8, 0.6)', border: '1px solid rgba(199, 168, 105, 0.2)' }}>
-                    <span className="text-red-300 font-bold min-w-[9rem]" style={{ fontFamily: "'Cinzel', serif" }}>2<sup>e</sup> Trahison</span>
-                    <span className="text-amber-100/85"><strong>Investigation&nbsp;:</strong> le Roi consulte secrètement le camp (Fidèle / Traîtres) d'un autre joueur.</span>
-                  </div>
-                  <div className="flex gap-3 p-3 rounded" style={{ background: 'rgba(20, 14, 8, 0.6)', border: '1px solid rgba(199, 168, 105, 0.2)' }}>
-                    <span className="text-red-300 font-bold min-w-[9rem]" style={{ fontFamily: "'Cinzel', serif" }}>4<sup>e</sup> Trahison</span>
-                    <span className="text-amber-100/85"><strong>Exécution&nbsp;:</strong> le Roi élimine définitivement un joueur. Si c'était le Tyran, les Fidèles gagnent.</span>
-                  </div>
+                <div className="overflow-x-auto mb-4">
+                  <table className="w-full text-sm" style={{ color: '#e8d9a8' }}>
+                    <thead>
+                      <tr className="text-left border-b" style={{ borderColor: 'rgba(199, 168, 105, 0.3)', fontFamily: "'Cinzel', serif" }}>
+                        <th className="py-2 pr-2">Joueurs</th>
+                        {[1, 2, 3, 4, 5].map((n) => <th key={n} className="py-2 pr-2 text-red-300">{n}<sup>e</sup></th>)}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        ['5-6', '—', '—', '👁️', '🪓', '🪓'],
+                        ['7-8', '—', '🔍', '🗳️', '🪓', '🪓'],
+                        ['9-10', '🔍', '🔍', '🗳️', '🪓', '🪓'],
+                      ].map(([n, ...cells]) => (
+                        <tr key={n} className="border-b" style={{ borderColor: 'rgba(199, 168, 105, 0.1)' }}>
+                          <td className="py-2 pr-2 font-bold">{n}</td>
+                          {cells.map((c, k) => <td key={k} className="py-2 pr-2">{c}</td>)}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
+                <ul className="space-y-2 text-sm text-amber-100/85">
+                  <li><strong>🔍 Enquête&nbsp;:</strong> le Roi voit en secret le camp d'un joueur (le Tyran apparaît Traître). Personne ne peut être sondé deux fois.</li>
+                  <li><strong>👁️ Regard sur la pioche&nbsp;:</strong> le Roi voit en secret les 3 prochains décrets.</li>
+                  <li><strong>🗳️ Élection spéciale&nbsp;:</strong> le Roi choisit le prochain Roi. Ensuite, la couronne reprend son ordre normal.</li>
+                  <li><strong>🪓 Exécution&nbsp;:</strong> le Roi élimine un joueur. Si c'était le Tyran, les Fidèles gagnent.</li>
+                  <li><strong>Veto&nbsp;:</strong> débloqué à partir de 5 Décrets de Trahison.</li>
+                </ul>
               </section>
 
               {/* Crise */}
@@ -521,24 +540,8 @@ const LandingPage = () => {
                   ⚡ &nbsp;Colère du Peuple (Piste de Crise)
                 </h3>
                 <p className="text-amber-100/90 leading-relaxed" style={{ fontFamily: "'IM Fell English', serif" }}>
-                  À chaque gouvernement rejeté, la Piste de Crise avance d'une case. Au <strong>3<sup>e</sup> rejet consécutif</strong>, le décret du dessus de la pioche est adopté <strong>automatiquement</strong>, le Roi est désavoué (inéligible au tour suivant), et la piste repart à zéro. Un gouvernement accepté remet également la piste à zéro.
+                  À chaque gouvernement rejeté, la Piste de Crise avance d'une case. Au <strong>3<sup>e</sup> rejet consécutif</strong>, le décret du dessus de la pioche est adopté <strong>automatiquement</strong>, sans pouvoir&nbsp;; les limites de mandat sont levées et la piste repart à zéro. Un gouvernement accepté remet également la piste à zéro.
                 </p>
-              </section>
-
-              {/* Piste de Défiance */}
-              <section className="oath-card p-6 md:p-8">
-                <h3 className="darkoath-title mb-3" style={{ fontSize: '1.6rem' }}>
-                  🗡️ &nbsp;Piste de Défiance
-                </h3>
-                <p className="text-amber-100/90 leading-relaxed mb-3" style={{ fontFamily: "'IM Fell English', serif" }}>
-                  À la fin de chaque Conseil du Royaume (<strong>sauf au tour 1</strong>), une phase de <strong>défiance</strong> s'ouvre. Chaque joueur peut désigner <strong>un suspect</strong> ou <strong>passer</strong> (25 secondes).
-                </p>
-                <ul className="space-y-2 text-sm text-amber-100/85 list-disc list-inside" style={{ fontFamily: "'IM Fell English', serif" }}>
-                  <li>Les votes de défiance <strong>s'accumulent</strong> d'un tour à l'autre.</li>
-                  <li>Un joueur atteignant <strong>3 votes de défiance</strong> est <strong className="text-red-300">marqué</strong>.</li>
-                  <li>Un joueur marqué <strong>ne peut être ni Roi ni Conseiller</strong> au tour suivant (1 tour uniquement).</li>
-                  <li>Après l'effet, son compteur <strong>repart à zéro</strong>.</li>
-                </ul>
               </section>
 
               {/* Chat vocal */}
@@ -562,6 +565,7 @@ const LandingPage = () => {
                 <ul className="space-y-2 text-amber-100/85 text-sm" style={{ fontFamily: "'IM Fell English', serif" }}>
                   <li>• L'hôte de la salle peut <strong>ajouter des bots</strong> pour compléter la table : on peut jouer dès <strong>1 humain</strong>.</li>
                   <li>• Les bots jouent selon leur rôle secret : un bot Traître ment, protège le Tyran et sabote les décrets.</li>
+                  <li>• Ils lisent le chat : appelez-les par leur nom pour leur demander leurs cartes, leur vote ou leurs soupçons. Accusez-les et ils se défendront. Mentez sur vos cartes et votre partenaire de gouvernement vous démasquera.</li>
                   <li>• Si un joueur n'agit pas pendant <strong>45 secondes</strong> (ou se déconnecte), le destin choisit à sa place pour que la partie ne bloque jamais.</li>
                   <li>• Quand la pioche est vide, la défausse est remélangée.</li>
                 </ul>
@@ -589,7 +593,7 @@ const LandingPage = () => {
                       <li>Jouez la normalité tant que votre camp ne domine pas la piste.</li>
                       <li>Accusez un Fidèle pour détourner les soupçons.</li>
                       <li>À 3 Trahison, faites élire le Tyran au poste de Conseiller.</li>
-                      <li><strong>Tyran&nbsp;:</strong> vous ignorez qui sont vos alliés comme vos ennemis. Agissez comme un Fidèle, laissez les Traîtres vous porter au pouvoir.</li>
+                      <li><strong>Tyran&nbsp;:</strong> à 7 joueurs et plus, vous ignorez qui sont vos alliés. Agissez comme un Fidèle, laissez les Traîtres vous porter au pouvoir.</li>
                     </ul>
                   </div>
                 </div>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Eye, Skull, Crown, Hourglass, Shield, Sword, Check } from 'lucide-react';
 import { Button } from './ui/button';
+import { POWER_LABELS } from '../lib/game';
 
 const titleFont = { fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' };
 
@@ -16,8 +17,15 @@ const PowerPanel = ({ gameState, currentPlayerId, onAction }) => {
   const kingName = players.find((p) => p.seat === regentSeat)?.name;
   const [pending, setPending] = useState(false);
 
-  const powerLabel = activePower === 'INVESTIGATE' ? 'Investigation' : activePower === 'EXECUTE' ? 'Exécution' : 'Pouvoir';
-  const powerIcon = activePower === 'INVESTIGATE' ? <Eye className="h-5 w-5 text-amber-300" /> : <Skull className="h-5 w-5 text-red-400" />;
+  const powerLabel = POWER_LABELS[activePower] || 'Pouvoir';
+  const powerIcon = activePower === 'EXECUTE'
+    ? <Skull className="h-5 w-5 text-red-400" />
+    : activePower === 'SPECIAL_ELECTION' ? <Crown className="h-5 w-5 text-amber-300" /> : <Eye className="h-5 w-5 text-amber-300" />;
+  const ackPower = async () => {
+    if (pending) return;
+    setPending(true);
+    try { await onAction('ACK_POWER', {}); } finally { setPending(false); }
+  };
 
   // ---- Non-King : waiting screen ------------------------------------------
   if (!isKing) {
@@ -40,18 +48,61 @@ const PowerPanel = ({ gameState, currentPlayerId, onAction }) => {
     );
   }
 
+  // ---- King + peek : look at the next 3 decrees --------------------------
+  if (activePower === 'PEEK') {
+    const cards = result?.cards;
+    const look = async () => {
+      if (pending) return;
+      setPending(true);
+      try { await onAction('PEEK', {}); } finally { setPending(false); }
+    };
+    return (
+      <div className="space-y-4">
+        <div className="p-3 rounded-lg flex items-start gap-3" style={{ background: 'rgba(120, 53, 15, 0.3)', border: '1px solid rgba(199, 168, 105, 0.45)' }}>
+          <Eye className="h-5 w-5 text-amber-300 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-amber-200 font-medium text-sm mb-1" style={titleFont}>Pouvoir du Roi — {powerLabel}</p>
+            <p className="text-amber-100/80 text-xs leading-relaxed">
+              Vous voyez en secret les 3 prochains décrets de la pioche, dans l'ordre. À vous de dire la vérité… ou non.
+            </p>
+          </div>
+        </div>
+        {cards ? (
+          <>
+            <div className="flex gap-2 justify-center">
+              {cards.map((c, i) => (
+                <div key={i} className="flex-1 max-w-[110px] p-3 rounded-lg text-center" style={{
+                  background: c === 'LOYAL' ? 'rgba(30, 58, 138, 0.35)' : 'rgba(127, 29, 29, 0.4)',
+                  border: `1px solid ${c === 'LOYAL' ? '#3b82f6' : '#dc2626'}`,
+                }}>
+                  {c === 'LOYAL' ? <Shield className="h-6 w-6 mx-auto text-blue-400" /> : <Sword className="h-6 w-6 mx-auto text-red-400" />}
+                  <div className="text-xs mt-1 font-semibold" style={{ ...titleFont, color: c === 'LOYAL' ? '#bfdbfe' : '#fecaca' }}>
+                    {i + 1}. {c === 'LOYAL' ? 'Loyal' : 'Trahison'}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <Button onClick={ackPower} disabled={pending} className="w-full"
+              style={{ background: 'rgba(120, 53, 15, 0.6)', border: '1px solid #c7a869', color: '#e8d9a8', ...titleFont, textTransform: 'uppercase', fontSize: '0.9rem' }}>
+              <Check className="h-4 w-4 mr-2" /> Continuer
+            </Button>
+          </>
+        ) : (
+          <Button onClick={look} disabled={pending} className="w-full h-12"
+            style={{ background: 'rgba(120, 53, 15, 0.6)', border: '1px solid #c7a869', color: '#e8d9a8', ...titleFont, textTransform: 'uppercase', fontSize: '0.9rem' }}>
+            <Eye className="h-4 w-4 mr-2" /> Regarder la pioche
+          </Button>
+        )}
+      </div>
+    );
+  }
+
   // ---- King + investigation result : reveal modal -------------------------
   if (activePower === 'INVESTIGATE' && result) {
     const isFidele = result.camp === 'Fidèle';
     const accent = isFidele ? '#3b82f6' : '#dc2626';
     const glow = isFidele ? 'rgba(59, 130, 246, 0.45)' : 'rgba(220, 38, 38, 0.5)';
     const CampIcon = isFidele ? Shield : Sword;
-
-    const ack = async () => {
-      if (pending) return;
-      setPending(true);
-      try { await onAction('ACK_POWER', {}); } finally { setPending(false); }
-    };
 
     return (
       <div className="space-y-4">
@@ -81,7 +132,7 @@ const PowerPanel = ({ gameState, currentPlayerId, onAction }) => {
         </div>
 
         <Button
-          onClick={ack}
+          onClick={ackPower}
           disabled={pending}
           className="w-full"
           style={{
@@ -100,7 +151,9 @@ const PowerPanel = ({ gameState, currentPlayerId, onAction }) => {
   }
 
   // ---- King choosing target -----------------------------------------------
-  const candidates = players.filter((p) => p.alive && p.seat !== mySeat);
+  const investigated = gameState?.investigated_seats || [];
+  const candidates = players.filter((p) => p.alive && p.seat !== mySeat
+    && !(activePower === 'INVESTIGATE' && investigated.includes(p.seat)));
 
   const act = async (targetSeat) => {
     if (pending) return;
@@ -120,7 +173,9 @@ const PowerPanel = ({ gameState, currentPlayerId, onAction }) => {
   const headerBorder = isExec ? 'rgba(220, 38, 38, 0.55)' : 'rgba(199, 168, 105, 0.45)';
   const headerText = isExec
     ? 'Choisissez un joueur à exécuter. Si c\'est le Tyran, les Fidèles triomphent.'
-    : 'Choisissez un joueur à investiguer. Vous apprendrez s\'il est Fidèle ou Traître.';
+    : activePower === 'SPECIAL_ELECTION'
+      ? 'Choisissez le prochain Roi. Après son tour, la couronne reprend son ordre normal à partir de votre gauche.'
+      : 'Choisissez un joueur à investiguer. Vous apprendrez s\'il est Fidèle ou Traître (le Tyran apparaît Traître). Personne ne peut être sondé deux fois.';
 
   return (
     <div className="space-y-4">

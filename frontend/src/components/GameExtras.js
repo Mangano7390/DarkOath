@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Check, ScrollText, Timer, X } from 'lucide-react';
-import { serverNow } from '../lib/game';
+import { serverNow, powerMarks } from '../lib/game';
 
 const cinzel = { fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' };
 const fell = { fontFamily: "'IM Fell English', serif" };
@@ -80,12 +80,17 @@ export const pendingInfo = (gs, me) => {
         ? { mine: true, label: 'À vous : défaussez un décret' }
         : { mine: false, label: `${king?.name || 'Le Roi'} examine 3 décrets…` };
     case 'LEGIS_CHAMBELLAN':
+      if (gs.veto_requested) {
+        return me?.seat === gs.regent_seat
+          ? { mine: true, label: 'À vous : acceptez ou refusez le veto' }
+          : { mine: false, label: `${king?.name || 'Le Roi'} décide du veto…` };
+      }
       return me?.seat === gs.nominee_seat
         ? { mine: true, label: 'À vous : adoptez un décret' }
         : { mine: false, label: `${nominee?.name || 'Le Conseiller'} choisit le décret…` };
     case 'POWER':
       return me?.seat === gs.regent_seat
-        ? { mine: true, label: gs.active_power === 'EXECUTE' ? 'À vous : exécutez un joueur' : 'À vous : enquêtez sur un joueur' }
+        ? { mine: true, label: ({ EXECUTE: 'À vous : exécutez un joueur', INVESTIGATE: 'À vous : enquêtez sur un joueur', PEEK: 'À vous : regardez la pioche', SPECIAL_ELECTION: 'À vous : choisissez le prochain Roi' })[gs.active_power] || 'À vous : utilisez votre pouvoir' }
         : { mine: false, label: `${king?.name || 'Le Roi'} exerce son pouvoir…` };
     case 'DEFIANCE':
       return alive && !gs.defiance_has_voted
@@ -162,7 +167,7 @@ export const TurnHint = ({ gameState, me }) => {
 };
 
 // Compact tracks for small screens (L x/5 · T x/6 · Crise x/3)
-export const MiniTracks = ({ tracks = {}, deckCount }) => {
+export const MiniTracks = ({ tracks = {}, deckCount, powerBoard }) => {
   const pip = (n, max, color, special = {}) => (
     <span className="inline-flex gap-0.5 align-middle">
       {Array.from({ length: max }, (_, i) => (
@@ -184,7 +189,7 @@ export const MiniTracks = ({ tracks = {}, deckCount }) => {
   return (
     <div className="flex items-center justify-center gap-3 flex-wrap text-[11px] px-2 py-1.5" style={{ color: '#e8d9a8', background: 'rgba(10,6,4,0.75)', borderBottom: '1px solid rgba(199,168,105,0.2)' }}>
       <span className="inline-flex items-center gap-1">🛡️ {pip(tracks.loyal || 0, 5, '#3b82f6')}</span>
-      <span className="inline-flex items-center gap-1">⚔️ {pip(tracks.conjure || 0, 6, '#dc2626', { 2: '🔍', 4: '🪓' })}</span>
+      <span className="inline-flex items-center gap-1">⚔️ {pip(tracks.conjure || 0, 6, '#dc2626', powerMarks(powerBoard))}</span>
       <span className="inline-flex items-center gap-1">⚡ {pip(tracks.crisis || 0, 3, '#f59e0b')}</span>
       {typeof deckCount === 'number' && <span className="opacity-70">📜 {deckCount}</span>}
     </div>
