@@ -13,6 +13,7 @@ import './styles/medieval.css';
 import axios from 'axios';
 import GameInterface from './components/GameInterface';
 import DashAdmin from './components/DashAdmin';
+import Tutorial, { tutorialDone } from './components/Tutorial';
 import { Toaster, toast } from 'sonner';
 import { LAST_ROOM_KEY, rememberRoom, forgetRoom, errorMessage } from './lib/game';
 
@@ -145,6 +146,10 @@ const LandingPage = () => {
   const [showRules, setShowRules] = useState(() => {
     try { return new URLSearchParams(window.location.search).get('regles') === '1'; } catch { return false; }
   });
+  const [showTuto, setShowTuto] = useState(() => {
+    try { return new URLSearchParams(window.location.search).get('tuto') === '1'; } catch { return false; }
+  });
+  const [tutoDone, setTutoDone] = useState(() => tutorialDone());
   const audioRef = useRef(null);
 
   // Track a site visit once per session
@@ -637,6 +642,15 @@ const LandingPage = () => {
 
   return (
     <div className="darkoath-landing">
+      <Tutorial
+        open={showTuto}
+        onClose={() => { setShowTuto(false); setTutoDone(tutorialDone()); }}
+        onFinish={() => {
+          setShowTuto(false);
+          setTutoDone(true);
+          setTimeout(() => document.getElementById('player-name')?.focus(), 50);
+        }}
+      />
       {/* Floating embers */}
       {embers.map((e, i) => (
         <span
@@ -692,14 +706,30 @@ const LandingPage = () => {
             Derrière chaque sourire, une lame. Derrière chaque vote, un complot.
           </p>
 
-          <Button
-            onClick={() => setShowRules(true)}
-            variant="outline"
-            className="border-amber-700/70 text-amber-300 hover:bg-amber-950/40 bg-black/40 backdrop-blur-sm"
-          >
-            <BookOpen className="h-4 w-4 mr-2" />
-            Parchemin des Règles
-          </Button>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Button
+              onClick={() => setShowTuto(true)}
+              className="oath-btn-primary px-6 py-5 text-base relative"
+            >
+              🎓&nbsp; Tutoriel <span className="font-normal ml-1 normal-case">· 3 min</span>
+              {!tutoDone && (
+                <span className="absolute -top-2 -right-2 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-300 text-black animate-pulse">
+                  Nouveau ?
+                </span>
+              )}
+            </Button>
+            <Button
+              onClick={() => setShowRules(true)}
+              variant="outline"
+              className="border-amber-700/70 text-amber-300 hover:bg-amber-950/40 bg-black/40 backdrop-blur-sm py-5"
+            >
+              <BookOpen className="h-4 w-4 mr-2" />
+              Parchemin des Règles
+            </Button>
+          </div>
+          {!tutoDone && (
+            <p className="darkoath-subtitle text-sm mt-3 italic">Première partie ? Commencez par le tutoriel : tout est expliqué pas à pas.</p>
+          )}
         </div>
 
         {/* Role Cards */}
@@ -841,6 +871,7 @@ const Lobby = ({ roomCode }) => {
   const [loading, setLoading] = useState(true);
   const [gameStarted, setGameStarted] = useState(false);
   const [pending, setPending] = useState(false);
+  const [showTuto, setShowTuto] = useState(false);
   const joinedRef = useRef(false);
 
   const currentPlayerId = localStorage.getItem('userId');
@@ -1034,6 +1065,7 @@ const Lobby = ({ roomCode }) => {
 
   return (
     <div className="darkoath-landing">
+      <Tutorial open={showTuto} onClose={() => setShowTuto(false)} />
       {embers.map((e, i) => (
         <span
           key={i}
@@ -1217,6 +1249,14 @@ const Lobby = ({ roomCode }) => {
                       </p>
                     </div>
                   )}
+
+                  <Button
+                    onClick={() => setShowTuto(true)}
+                    variant="outline"
+                    className="w-full py-5 bg-black/40 border-amber-700/60 text-amber-100 hover:bg-amber-950/50"
+                  >
+                    🎓 Première partie ? Suivez le tutoriel (3 min)
+                  </Button>
 
                   <div className="text-center">
                     <button type="button" onClick={leaveRoom} className="text-sm text-amber-200/60 hover:text-amber-100 underline underline-offset-4 font-serif">

@@ -14,6 +14,7 @@ import ConseilRoyaumePanel from './ConseilRoyaumePanel';
 import DefiancePanel from './DefiancePanel';
 import PowerPanel from './PowerPanel';
 import { IdentityBar, TurnSteps, CourtTable, useMedia } from './ThroneRoom';
+import Tutorial from './Tutorial';
 import { RevealOverlay, Chronicle, TurnHint, MiniTracks, ConseilReady, SpectatorNotice, useIsDesktop, playCue } from './GameExtras';
 import { errorMessage, rememberRoom, forgetRoom, syncServerClock, serverNow, powerMarks, powerLegend } from '../lib/game';
 
@@ -498,6 +499,7 @@ const GameInterface = ({ roomCode }) => {
   const [sideTab, setSideTab] = useState('chat'); // desktop right column: 'chat' | 'log'
   const [unread, setUnread] = useState(0);
   const [showPeoplesAnger, setShowPeoplesAnger] = useState(false);
+  const [showTuto, setShowTuto] = useState(false);
   const [defianceBanner, setDefianceBanner] = useState(null); // 'opening' | 'marked' | null
   const [executionBanner, setExecutionBanner] = useState(null); // { seat, name } | null
   const prevPhaseRef = useRef(null);
@@ -1072,6 +1074,15 @@ const GameInterface = ({ roomCode }) => {
           )}
           <button
             type="button"
+            onClick={() => setShowTuto(true)}
+            className="h-9 px-3 rounded-full border border-amber-700/60 text-amber-200 hover:bg-amber-900/40 text-sm whitespace-nowrap"
+            title="Tutoriel : comment jouer, pas à pas"
+            aria-label="Ouvrir le tutoriel"
+          >
+            🎓{isDesktop && <span className="ml-1" style={{ fontFamily: "'Cinzel', serif" }}>Tuto</span>}
+          </button>
+          <button
+            type="button"
             onClick={() => window.open('/?regles=1', '_blank', 'noopener')}
             className="w-9 h-9 rounded-full border border-amber-700/60 text-amber-200 hover:bg-amber-900/40"
             title="Règles du jeu"
@@ -1128,6 +1139,7 @@ const GameInterface = ({ roomCode }) => {
   return (
     <div className="darkoath-game text-gray-100 relative flex flex-col" style={isDesktop ? { height: '100dvh', overflow: 'hidden' } : { minHeight: '100dvh' }}>
       <RevealOverlay gameState={gameState} />
+      <Tutorial open={showTuto} onClose={() => setShowTuto(false)} />
 
       {/* Piste de Défiance banners */}
       {defianceBanner && (
