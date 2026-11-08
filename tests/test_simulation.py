@@ -111,12 +111,22 @@ def test_all_players_vote_and_votes_are_secret():
 
     async def go():
         await server.perform_action("VOTE1", gs, king, "NOMINATE", {"nomineeSeat": seat})
-        for p in gs.players[:-1]:
+        gov = (king.seat, seat)
+        for p in (q for q in gs.players if q.seat in gov):
+            try:
+                await server.perform_action("VOTE1", gs, p, "VOTE", {"vote": "oui"})
+                raise AssertionError("the government must not vote")
+            except server.HTTPException:
+                pass
+        table = [p for p in gs.players if p.seat not in gov]
+        assert set(server.manager.pending_actor_ids(gs)) == {p.id for p in table}
+        for p in table[:-1]:
             await server.perform_action("VOTE1", gs, p, "VOTE", {"vote": "oui"})
-        assert gs.turn.phase == server.Phase.VOTE  # still waiting for the 5th voter (King/Conseiller vote too)
-        await server.perform_action("VOTE1", gs, gs.players[-1], "VOTE", {"vote": "non"})
+        assert gs.turn.phase == server.Phase.VOTE  # still waiting for the last voter
+        await server.perform_action("VOTE1", gs, table[-1], "VOTE", {"vote": "non"})
     asyncio.run(go())
-    assert gs.turn.last_vote["yes"] == 4 and gs.turn.last_vote["no"] == 1
+    assert gs.turn.last_vote["yes"] == 2 and gs.turn.last_vote["no"] == 1
+    assert set(gs.turn.last_vote["ballots"]) == {str(p.seat) for p in gs.players if p.seat not in (king.seat, seat)}
     assert gs.turn.phase == server.Phase.LEGIS_REGENT
 
 
@@ -136,7 +146,8 @@ def test_term_limit_survives_full_turn():
         nominee = server.eligible_nominee_seats(gs)[0]
         await server.perform_action("TERM1", gs, king, "NOMINATE", {"nomineeSeat": nominee})
         for p in gs.players:
-            await server.perform_action("TERM1", gs, p, "VOTE", {"vote": "oui"})
+            if p.seat not in (king.seat, nominee):
+                await server.perform_action("TERM1", gs, p, "VOTE", {"vote": "oui"})
         await server.perform_action("TERM1", gs, king, "DISCARD", {"cardId": 0})
         await server.perform_action("TERM1", gs, by[nominee], "DISCARD", {"cardId": 0})
         for p in gs.players:

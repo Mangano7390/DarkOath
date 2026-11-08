@@ -265,7 +265,7 @@ def decide(gs, player, eligible_nominees: List[int]) -> Optional[Action]:
     if phase == "NOMINATION" and t.regent_seat == player.seat:
         return ("NOMINATE", {"nomineeSeat": _nominate(gs, player, eligible_nominees)})
 
-    if phase == "VOTE" and player.id not in t.votes:
+    if phase == "VOTE" and player.id not in t.votes and player.seat not in (t.regent_seat, t.nominee_seat):
         return ("VOTE", {"vote": _vote(gs, player)})
 
     if phase == "LEGIS_REGENT" and t.regent_seat == player.seat and t.legislative_cards:

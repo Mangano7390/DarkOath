@@ -698,7 +698,7 @@ class WebSocketManager:
             p = by_seat.get(t.regent_seat)
             return [p.id] if p else []
         if t.phase == Phase.VOTE:
-            return [p.id for p in alive if p.id not in t.votes]
+            return [p.id for p in voters(game_state) if p.id not in t.votes]
         if t.phase == Phase.LEGIS_REGENT:
             p = by_seat.get(t.regent_seat)
             return [p.id] if p else []
@@ -713,6 +713,13 @@ class WebSocketManager:
         if t.phase == Phase.CONSEIL_ROYAUME:
             return [p.id for p in alive if p.id not in t.conseil_ready]
         return []
+
+
+def voters(game_state) -> list:
+    """Règle de la maison : le Roi et le Conseiller proposé ne votent pas."""
+    t = game_state.turn
+    return [p for p in game_state.players
+            if p.alive and p.seat not in (t.regent_seat, t.nominee_seat)]
 
 
 manager = WebSocketManager()
@@ -1000,17 +1007,19 @@ async def perform_action(
         })
 
     elif action_type == "VOTE":
-        # Livret : tous les joueurs vivants votent (Roi et Conseiller compris).
+        # Règle de la maison : seuls les joueurs hors gouvernement votent.
         if t.phase != Phase.VOTE:
             _bad_request("Ce n'est pas la phase de vote.")
         if not player.alive:
             _bad_request("Les morts ne votent pas.")
+        if player.seat in (t.regent_seat, t.nominee_seat):
+            _bad_request("Le Roi et le Conseiller proposé ne votent pas : la table décide.")
         vote = payload.get("vote")
         if vote not in ("oui", "non"):
             _bad_request("Vote invalide.")
         t.votes[player_id] = vote
 
-        alive_players = [p for p in game_state.players if p.alive]
+        alive_players = voters(game_state)
         if all(p.id in t.votes for p in alive_players):
             yes_votes = sum(1 for v in t.votes.values() if v == "oui")
             no_votes = len(t.votes) - yes_votes

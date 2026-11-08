@@ -103,6 +103,7 @@ export const narrate = (gs, me) => {
   const iAmNominee = me?.seat === gs.nominee_seat;
   const alive = players.filter((p) => p.alive);
   const voted = (gs.votes_cast || []).length;
+  const voterCount = alive.filter((p) => p.seat !== gs.regent_seat && p.seat !== gs.nominee_seat).length;
   const d = gs.last_decree;
   switch (gs.phase) {
     case 'NOMINATION':
@@ -111,8 +112,10 @@ export const narrate = (gs, me) => {
         : { text: `${king} est le Roi. Il choisit un Conseiller pour former un gouvernement.` };
     case 'VOTE':
       return {
-        text: `${king} propose ${nominee} comme Conseiller. Chacun vote OUI ou NON (${voted}/${alive.length} ont voté). Bulletins révélés à la fin.`,
-        mine: me?.alive !== false && !(gs.votes_cast || []).includes(me?.id),
+        text: iAmKing || iAmNominee
+          ? `${iAmKing ? `Vous proposez ${nominee}` : `${king} vous propose`} comme Conseiller. Le gouvernement ne vote pas : la table décide (${voted}/${voterCount} ont voté). Plaidez votre cause dans le chat !`
+          : `${king} propose ${nominee} comme Conseiller. Les autres joueurs votent OUI ou NON (${voted}/${voterCount} ont voté). Bulletins révélés à la fin.`,
+        mine: me?.alive !== false && !iAmKing && !iAmNominee && !(gs.votes_cast || []).includes(me?.id),
       };
     case 'LEGIS_REGENT':
       return iAmKing
@@ -154,6 +157,7 @@ const tipFor = (gs, me, role) => {
       return evil ? 'Astuce : un Roi Traître peut nommer un allié… mais trop souvent, ça se voit.'
         : 'Astuce : nommez quelqu\'un qui a déjà fait passer un Décret Loyal.';
     case 'VOTE':
+      if (me.seat === gs.regent_seat || me.seat === gs.nominee_seat) return 'Astuce : vous ne votez pas, mais le chat compte. Expliquez pourquoi ce gouvernement est fiable.';
       if (t3 && !evil && role !== 'USURPATEUR') return 'Attention : 3 Trahisons. Si ce Conseiller est le Tyran, les Traîtres gagnent. Votez NON au moindre doute.';
       if ((gs.tracks?.crisis || 0) >= 2) return 'La Colère du Peuple est à 2 : un nouveau rejet impose le décret du dessus de la pioche.';
       return evil ? 'Astuce : soutenez les gouvernements de vos alliés, sans voter toujours comme eux.'
@@ -337,7 +341,7 @@ export const SeatCard = ({ p, gs, me, teammates, selectable, onSelect, width = 1
         {p.is_bot && <Chip color="#94a3b8" title="Joueur contrôlé par l'ordinateur">Bot</Chip>}
         {dead && <Chip color="#a3a3a3">Mort</Chip>}
         {!dead && p.connected === false && !p.is_bot && <Chip color="#a3a3a3" title="Absent : le destin jouera pour lui">Absent</Chip>}
-        {gs.phase === 'VOTE' && p.alive && (hasVoted ? <Chip color="#86efac">✓ a voté</Chip> : <Chip color="rgba(232,217,168,0.55)">vote…</Chip>)}
+        {gs.phase === 'VOTE' && p.alive && !isKing && !isNominee && (hasVoted ? <Chip color="#86efac">✓ a voté</Chip> : <Chip color="rgba(232,217,168,0.55)">vote…</Chip>)}
         {ballot && <Chip color={ballot === 'oui' ? '#86efac' : '#fca5a5'} bg={ballot === 'oui' ? 'rgba(22,101,52,0.6)' : 'rgba(127,29,29,0.6)'} title="Son vote pour le dernier gouvernement">{ballot === 'oui' ? 'Oui' : 'Non'}</Chip>}
         {ineligible && <Chip color="rgba(232,217,168,0.6)" title="Était au dernier gouvernement : ne peut pas être Conseiller">🔒 Exclu</Chip>}
         {(gs.investigated_seats || []).includes(p.seat) && !dead && <Chip color="#fbbf24" title="A déjà fait l'objet d'une enquête">🔍</Chip>}

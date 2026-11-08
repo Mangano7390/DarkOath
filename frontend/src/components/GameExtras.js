@@ -72,7 +72,7 @@ export const pendingInfo = (gs, me) => {
         ? { mine: true, label: 'À vous : nommez votre Conseiller' }
         : { mine: false, label: `${king?.name || 'Le Roi'} choisit son Conseiller…` };
     case 'VOTE':
-      return alive && !(gs.votes_cast || []).includes(me.id)
+      return alive && me.seat !== gs.regent_seat && me.seat !== gs.nominee_seat && !(gs.votes_cast || []).includes(me.id)
         ? { mine: true, label: 'À vous : votez pour ce gouvernement' }
         : { mine: false, label: 'Vote en cours…' };
     case 'LEGIS_REGENT':

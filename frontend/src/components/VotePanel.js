@@ -8,11 +8,12 @@ const VotePanel = ({ players, regentSeat, nomineeSeat, votesCast = [], myVote, m
   const regent = players.find(p => p.seat === regentSeat);
   const nominee = players.find(p => p.seat === nomineeSeat);
 
-  // Livret : tous les joueurs vivants votent (Roi et Conseiller compris)
+  // Règle de la maison : le Roi et le Conseiller proposé ne votent pas
   const me = players.find(p => p.seat === mySeat);
-  const canIVote = !!me && me.alive !== false;
+  const inGovernment = mySeat === regentSeat || mySeat === nomineeSeat;
+  const canIVote = !!me && me.alive !== false && !inGovernment;
 
-  const alivePlayers = players.filter(p => p.alive);
+  const alivePlayers = players.filter(p => p.alive && p.seat !== regentSeat && p.seat !== nomineeSeat);
   const totalVotes = votesCast.length;
   const votesNeeded = alivePlayers.length;
   const progressPct = votesNeeded > 0 ? (totalVotes / votesNeeded) * 100 : 0;
@@ -34,7 +35,7 @@ const VotePanel = ({ players, regentSeat, nomineeSeat, votesCast = [], myVote, m
             Vote du Gouvernement
           </p>
           <p className="text-amber-100/80 text-xs leading-relaxed">
-            Approuvez ou rejetez ce gouvernement. La majorité simple est requise — en cas d'égalité, il est rejeté.
+            Les joueurs hors gouvernement approuvent ou rejettent. Majorité simple — en cas d'égalité, il est rejeté.
           </p>
         </div>
       </div>
@@ -53,7 +54,11 @@ const VotePanel = ({ players, regentSeat, nomineeSeat, votesCast = [], myVote, m
             Vous ne votez pas
           </p>
           <p className="text-amber-100/70 text-xs">
-            Les morts observent en silence. Vous êtes spectateur.
+            {inGovernment
+              ? (mySeat === regentSeat
+                ? 'Vous êtes le Roi : le gouvernement proposé ne vote pas. Convainquez la table dans le chat !'
+                : 'Vous êtes le Conseiller proposé : le gouvernement ne vote pas. Défendez-vous dans le chat !')
+              : 'Les morts observent en silence. Vous êtes spectateur.'}
           </p>
         </div>
       ) : !myVote ? (
