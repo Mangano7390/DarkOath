@@ -19,6 +19,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 import admin_stats
+import bots
 from auth import (
     PlayerIdentity,
     issue_player_token,
@@ -72,6 +73,16 @@ class Phase(str, Enum):
 # Piste de Défiance config
 DEFIANCE_DURATION_SECONDS = 25
 DEFIANCE_MARK_THRESHOLD = 3
+# Conseil du Royaume (can end earlier when every present human clicks "Prêt")
+CONSEIL_DURATION_SECONDS = int(os.environ.get("DARKOATH_CONSEIL_SECONDS", "60"))
+# Presence / AFK takeover: a human not seen for AWAY_AFTER_SECONDS is "absent";
+# a bot plays for an absent human after AWAY_GRACE_SECONDS, and for anyone
+# who has not acted after AFK_ACTION_TIMEOUT_SECONDS.
+AWAY_AFTER_SECONDS = 20
+AWAY_GRACE_SECONDS = 5
+AFK_ACTION_TIMEOUT_SECONDS = int(os.environ.get("DARKOATH_AFK_SECONDS", "45"))  # overridable for local testing
+# Bots "think" for a random delay before acting (seconds)
+BOT_THINK_SECONDS = (1.5, 4.0)
 
 class DecreeType(str, Enum):
     LOYAL = "LOYAL"
@@ -84,6 +95,7 @@ class Player(BaseModel):
     role: Optional[Role] = None
     alive: bool = True
     connected: bool = True
+    is_bot: bool = False
 
 class GameTracks(BaseModel):
     loyal: int = 0
@@ -115,6 +127,13 @@ class TurnState(BaseModel):
     active_power: Optional[str] = None  # "INVESTIGATE" | "EXECUTE" while in POWER phase
     power_result: Optional[Dict] = None  # Investigation result, visible to King only: {target_seat, target_name, camp}
     last_execution_seat: Optional[int] = None  # Seat just executed (for death banner broadcast)
+    # Conseil du Royaume — players who clicked "Prêt" (early end when every present human is ready)
+    conseil_ready: List[str] = []
+    # Public reveals
+    last_vote: Optional[Dict[str, Any]] = None    # {turn, regent_seat, nominee_seat, result, yes, no, ballots: {seat: "oui"|"non"}}
+    last_decree: Optional[Dict[str, Any]] = None  # {turn, type, regent_seat, chambellan_seat, auto}
+    # Server clock for the current phase (used for AFK timeouts + client countdowns)
+    phase_started_at: Optional[float] = None
 
 class GameState(BaseModel):
     room_code: str
@@ -134,6 +153,66 @@ class GameState(BaseModel):
     version: int = 0
     deck: List[DecreeType] = []
     discard: List[DecreeType] = []
+    # Room creator; may add/remove bots, kick, start and restart.
+    host_id: Optional[str] = None
+    # Public game log ("Chronique du Royaume")
+    events: List[Dict[str, Any]] = []
+    # Server-side bookkeeping (never sent to clients)
+    last_seen: Dict[str, float] = {}          # player_id -> last request timestamp
+    bot_memory: Dict[str, Dict[str, Any]] = {}  # player_id -> private bot memory
+    bot_next_act: Dict[str, float] = {}       # player_id -> when the bot may act in this phase
+    phase_key: Optional[str] = None           # detects phase changes for the phase clock
+
+
+def _now() -> float:
+    """Single clock for the game engine (monkeypatched by the simulation tests)."""
+    return time.time()
+
+
+MAX_EVENTS = 300
+
+
+def log_event(game_state: "GameState", kind: str, text: str, **data: Any) -> None:
+    """Append a public entry to the Chronique du Royaume."""
+    game_state.events.append({
+        "id": (game_state.events[-1]["id"] + 1) if game_state.events else 1,
+        "turn": game_state.turn.turn_number,
+        "kind": kind,
+        "text": text,
+        "ts": _now(),
+        **data,
+    })
+    if len(game_state.events) > MAX_EVENTS:
+        game_state.events = game_state.events[-MAX_EVENTS:]
+
+
+def seat_name(game_state: "GameState", seat: Optional[int]) -> str:
+    p = next((p for p in game_state.players if p.seat == seat), None)
+    return p.name if p else f"Siège {seat}"
+
+
+def eligible_nominee_seats(game_state: "GameState") -> List[int]:
+    """Seats the current King may nominate as Conseiller.
+
+    Constraints: alive, not the King, not in the last elected government,
+    not disgraced (Colère du Peuple), not marked (Piste de Défiance).
+    If those constraints leave nobody (late game with few survivors), they
+    are relaxed in order so the game can never deadlock.
+    """
+    t = game_state.turn
+    alive = [p.seat for p in game_state.players if p.alive and p.seat != t.regent_seat]
+    prev = t.prev_government or {}
+    layers = [
+        {prev.get("regent"), prev.get("chambellan"), t.disgraced_player_seat, t.marked_player_seat},
+        {prev.get("chambellan"), t.disgraced_player_seat, t.marked_player_seat},
+        {prev.get("chambellan"), t.disgraced_player_seat},
+        set(),
+    ]
+    for forbidden in layers:
+        seats = [s for s in alive if s not in forbidden]
+        if seats:
+            return seats
+    return []
 
 # Connection manager for WebSocket
 class WebSocketManager:
@@ -142,10 +221,20 @@ class WebSocketManager:
         self.game_states: Dict[str, GameState] = {}
         # Last-activity timestamp per room, used to prune idle rooms from RAM.
         self.last_activity: Dict[str, float] = {}
+        # One lock per room: HTTP actions and the bot/timeout ticker never
+        # mutate the same room concurrently.
+        self.locks: Dict[str, asyncio.Lock] = {}
+
+    def lock_for(self, room_code: str) -> asyncio.Lock:
+        lock = self.locks.get(room_code)
+        if lock is None:
+            lock = asyncio.Lock()
+            self.locks[room_code] = lock
+        return lock
 
     def touch_room(self, room_code: str) -> None:
         """Mark a room as active. Called on every authenticated action."""
-        self.last_activity[room_code] = time.time()
+        self.last_activity[room_code] = _now()
 
     def prune_idle_rooms(self) -> int:
         """Drop rooms with no activity for longer than ROOM_IDLE_TTL_SECONDS.
@@ -153,7 +242,7 @@ class WebSocketManager:
         Keeps the in-memory state from growing without bound when players
         abandon rooms and never trigger a clean tear-down.
         """
-        now = time.time()
+        now = _now()
         stale = [
             code for code, ts in self.last_activity.items()
             if now - ts > ROOM_IDLE_TTL_SECONDS
@@ -162,6 +251,7 @@ class WebSocketManager:
             self.game_states.pop(code, None)
             self.active_connections.pop(code, None)
             self.last_activity.pop(code, None)
+            self.locks.pop(code, None)
         return len(stale)
 
     async def connect(self, websocket: WebSocket, room_code: str):
@@ -171,17 +261,21 @@ class WebSocketManager:
         self.active_connections[room_code].append(websocket)
 
     def disconnect(self, websocket: WebSocket, room_code: str):
-        if room_code in self.active_connections:
-            self.active_connections[room_code].remove(websocket)
+        conns = self.active_connections.get(room_code)
+        if conns and websocket in conns:
+            conns.remove(websocket)
 
     async def broadcast_to_room(self, room_code: str, message: dict):
         if room_code in self.active_connections:
-            for connection in self.active_connections[room_code]:
+            for connection in list(self.active_connections[room_code]):
                 try:
                     await connection.send_text(json.dumps(message))
-                except:
+                except Exception:
                     pass
 
+    # ------------------------------------------------------------------
+    # Room / lobby
+    # ------------------------------------------------------------------
     def create_deck(self) -> List[DecreeType]:
         deck = [DecreeType.LOYAL] * 6 + [DecreeType.CONJURE] * 11
         random.shuffle(deck)
@@ -194,7 +288,7 @@ class WebSocketManager:
         )
         game_state.turn.deck_count = len(game_state.deck)
         self.game_states[room_code] = game_state
-        self.last_activity[room_code] = time.time()
+        self.last_activity[room_code] = _now()
         return game_state
 
     def get_game_state(self, room_code: str) -> Optional[GameState]:
@@ -205,11 +299,15 @@ class WebSocketManager:
         if not game_state:
             return False, "room_not_found"
 
-        # Allow reconnection by id even if room is full / name matches the caller
+        # Allow reconnection by id even if room is full / game started
         for p in game_state.players:
             if p.id == player_id:
                 p.connected = True
+                game_state.last_seen[player_id] = _now()
                 return True, "ok"
+
+        if game_state.status != "lobby":
+            return False, "game_started"
 
         if len(game_state.players) >= 10:
             return False, "room_full"
@@ -222,39 +320,97 @@ class WebSocketManager:
         seat = len(game_state.players) + 1
         player = Player(id=player_id, name=player_name, seat=seat)
         game_state.players.append(player)
+        game_state.last_seen[player_id] = _now()
+        if not game_state.host_id:
+            game_state.host_id = player_id
+        game_state.version += 1
         return True, "ok"
+
+    def add_bot(self, game_state: GameState) -> Optional[Player]:
+        if game_state.status != "lobby" or len(game_state.players) >= 10:
+            return None
+        taken = {(p.name or "").strip().lower() for p in game_state.players}
+        name = next((n for n in bots.BOT_NAMES if n.lower() not in taken), None)
+        if not name:
+            name = f"Écuyer {len(game_state.players) + 1}"
+        bot = Player(
+            id=f"bot-{uuid.uuid4()}",
+            name=name,
+            seat=len(game_state.players) + 1,
+            is_bot=True,
+        )
+        game_state.players.append(bot)
+        game_state.version += 1
+        return bot
+
+    def remove_player(self, game_state: GameState, player_id: str) -> bool:
+        """Remove a player or bot from the lobby and renumber seats."""
+        if game_state.status != "lobby":
+            return False
+        before = len(game_state.players)
+        game_state.players = [p for p in game_state.players if p.id != player_id]
+        if len(game_state.players) == before:
+            return False
+        for i, p in enumerate(game_state.players, start=1):
+            p.seat = i
+        game_state.last_seen.pop(player_id, None)
+        if game_state.host_id == player_id:
+            nxt = next((p for p in game_state.players if not p.is_bot), None)
+            game_state.host_id = nxt.id if nxt else None
+        game_state.version += 1
+        return True
+
+    def reset_to_lobby(self, game_state: GameState) -> None:
+        """'Rejouer' — same room, same players, fresh game."""
+        keep_chat = game_state.turn.chat_messages[-50:]
+        game_state.status = "lobby"
+        game_state.tracks = GameTracks()
+        game_state.turn = TurnState(chat_messages=keep_chat)
+        game_state.powers = {
+            "investigation_unlocked": False,
+            "investigation_used": False,
+            "execution_unlocked": False,
+            "execution_used": False,
+            "executed_once": False,
+        }
+        game_state.winner = None
+        game_state.winner_reason = None
+        game_state.deck = self.create_deck()
+        game_state.discard = []
+        game_state.turn.deck_count = len(game_state.deck)
+        game_state.events = []
+        game_state.bot_memory = {}
+        game_state.bot_next_act = {}
+        game_state.phase_key = None
+        for p in game_state.players:
+            p.role = None
+            p.alive = True
+        game_state.version += 1
 
     def start_game(self, room_code: str) -> bool:
         game_state = self.get_game_state(room_code)
-        if not game_state or len(game_state.players) < 5:
+        if not game_state or game_state.status != "lobby" or len(game_state.players) < 5:
             return False
-        
-        player_count = len(game_state.players)
-        
-        # Assign roles based on player count according to the rules
-        if player_count == 5:
-            roles = [Role.LOYAL, Role.LOYAL, Role.LOYAL, Role.CONJURE, Role.USURPATEUR]
-        elif player_count == 6:
-            roles = [Role.LOYAL, Role.LOYAL, Role.LOYAL, Role.LOYAL, Role.CONJURE, Role.USURPATEUR]
-        elif player_count == 7:
-            roles = [Role.LOYAL, Role.LOYAL, Role.LOYAL, Role.LOYAL, Role.CONJURE, Role.CONJURE, Role.USURPATEUR]
-        elif player_count == 8:
-            roles = [Role.LOYAL, Role.LOYAL, Role.LOYAL, Role.LOYAL, Role.LOYAL, Role.CONJURE, Role.CONJURE, Role.USURPATEUR]
-        elif player_count == 9:
-            roles = [Role.LOYAL, Role.LOYAL, Role.LOYAL, Role.LOYAL, Role.LOYAL, Role.CONJURE, Role.CONJURE, Role.CONJURE, Role.USURPATEUR]
-        elif player_count == 10:
-            roles = [Role.LOYAL, Role.LOYAL, Role.LOYAL, Role.LOYAL, Role.LOYAL, Role.LOYAL, Role.CONJURE, Role.CONJURE, Role.CONJURE, Role.USURPATEUR]
-        else:
-            return False
-        
-        # Shuffle roles randomly
-        random.shuffle(roles)
-        
-        # Assign roles to players
-        for i, player in enumerate(game_state.players[:player_count]):
-            player.role = roles[i]
 
-        # Randomize starting regent (seat). Previously always seat 1 = room creator.
+        player_count = len(game_state.players)
+        # Répartition officielle (livret) : Fidèles / Traîtres / Tyran
+        distribution = {5: (3, 1), 6: (4, 1), 7: (4, 2), 8: (5, 2), 9: (5, 3), 10: (6, 3)}
+        if player_count not in distribution:
+            return False
+        n_loyal, n_conj = distribution[player_count]
+        roles = [Role.LOYAL] * n_loyal + [Role.CONJURE] * n_conj + [Role.USURPATEUR]
+        random.shuffle(roles)
+        for player, role in zip(game_state.players, roles):
+            player.role = role
+            player.alive = True
+
+        # Fresh deck for every game
+        game_state.deck = self.create_deck()
+        game_state.discard = []
+        game_state.turn.deck_count = len(game_state.deck)
+        game_state.turn.discard_count = 0
+
+        # Randomize starting King (seat). Previously always seat 1 = room creator.
         alive_seats = [p.seat for p in game_state.players if p.alive]
         game_state.turn.regent_seat = random.choice(alive_seats)
 
@@ -267,64 +423,91 @@ class WebSocketManager:
 
         game_state.status = "in_progress"
         game_state.turn.phase = Phase.NOMINATION
+        game_state.events = []
+        game_state.bot_memory = {}
+        game_state.bot_next_act = {}
+        log_event(game_state, "start", f"La partie commence à {player_count} joueurs. "
+                  f"{seat_name(game_state, game_state.turn.regent_seat)} est le premier Roi.")
         game_state.version += 1
         return True
 
+    # ------------------------------------------------------------------
+    # Rules helpers
+    # ------------------------------------------------------------------
+    def _ensure_deck(self, game_state: GameState, needed: int) -> None:
+        """Remélange la défausse dans la pioche quand il reste trop peu de cartes."""
+        if len(game_state.deck) < needed and game_state.discard:
+            game_state.deck.extend(game_state.discard)
+            game_state.discard = []
+            random.shuffle(game_state.deck)
+            log_event(game_state, "reshuffle", "La pioche est épuisée : la défausse est remélangée.")
+        game_state.turn.deck_count = len(game_state.deck)
+        game_state.turn.discard_count = len(game_state.discard)
+
+    def _set_winner(self, game_state: GameState, winner: str, reason: str) -> None:
+        game_state.winner = winner
+        game_state.winner_reason = reason
+        game_state.turn.phase = Phase.ENDGAME
+        game_state.status = "finished"
+        game_state.turn.active_power = None
+        texts = {
+            "5_loyal": "Cinq Décrets Loyaux sont adoptés : les Fidèles sauvent la Couronne !",
+            "6_conjure": "Six Décrets de Trahison sont adoptés : les Traîtres s'emparent du trône !",
+            "tyran_executed": "Le Tyran a été exécuté : les Fidèles triomphent !",
+            "tyran_elected": "Le Tyran est élu Conseiller après 3 Trahisons : les Traîtres triomphent !",
+        }
+        log_event(game_state, "endgame", texts.get(reason, "La partie est terminée."), winner=winner, reason=reason)
+
     def check_win_conditions(self, game_state: GameState) -> Optional[str]:
-        # Loyaux win: 5 loyal decrees or Usurpateur executed
+        """Sets winner/winner_reason/phase if the game is over; returns the winner."""
+        if game_state.winner:
+            return game_state.winner
         if game_state.tracks.loyal >= 5:
-            game_state.winner_reason = "5_loyal"
-            return "LOYAUX"
-
-        # Check if Usurpateur was executed
-        usurpateur_alive = any(p.role == Role.USURPATEUR and p.alive for p in game_state.players)
-        if not usurpateur_alive:
-            game_state.winner_reason = "tyran_executed"
-            return "LOYAUX"
-
-        # Conjures win: 6 conjure decrees
-        if game_state.tracks.conjure >= 6:
-            game_state.winner_reason = "6_conjure"
-            return "CONJURES"
-
-        # Conjures win: Usurpateur elected Chambellan after 3 conjure decrees
-        if game_state.tracks.conjure >= 3:
-            # This will be checked during nomination phase
-            pass
-
-        return None
+            self._set_winner(game_state, "FIDELES", "5_loyal")
+        elif not any(p.role == Role.USURPATEUR and p.alive for p in game_state.players):
+            self._set_winner(game_state, "FIDELES", "tyran_executed")
+        elif game_state.tracks.conjure >= 6:
+            self._set_winner(game_state, "CONJURES", "6_conjure")
+        return game_state.winner
 
     def _next_regent_seat(self, game_state: GameState, current_seat: int) -> int:
-        """Rotate to the next alive regent, skipping disgraced and marked players."""
+        """Rotate to the next alive King, skipping disgraced and marked players."""
         alive_seats = sorted([p.seat for p in game_state.players if p.alive])
-        if current_seat not in alive_seats:
-            return alive_seats[0] if alive_seats else current_seat
+        if not alive_seats:
+            return current_seat
         forbidden = set()
         if game_state.turn.disgraced_player_seat:
             forbidden.add(game_state.turn.disgraced_player_seat)
         if game_state.turn.marked_player_seat:
             forbidden.add(game_state.turn.marked_player_seat)
-        idx = alive_seats.index(current_seat)
-        n = len(alive_seats)
+        # Walk the full table (dead seats included) so a dead King still passes
+        # the crown to the next living player in seat order.
+        all_seats = sorted(p.seat for p in game_state.players)
+        idx = all_seats.index(current_seat) if current_seat in all_seats else -1
+        n = len(all_seats)
+        fallback = None
         for _ in range(n):
             idx = (idx + 1) % n
-            candidate = alive_seats[idx]
+            candidate = all_seats[idx]
+            if candidate not in alive_seats:
+                continue
+            if fallback is None:
+                fallback = candidate
             if candidate not in forbidden:
                 return candidate
-        # All forbidden (edge case) — just return next
-        return alive_seats[(alive_seats.index(current_seat) + 1) % n]
+        return fallback if fallback is not None else alive_seats[0]
 
     def _advance_to_next_nomination(self, game_state: GameState):
-        """Rotate regent and enter NOMINATION for the next turn."""
+        """Rotate King and enter NOMINATION for the next turn.
+
+        prev_government (term limits) is set when a government is *elected*
+        and is deliberately not touched here.
+        """
         current_seat = game_state.turn.regent_seat
         next_regent_seat = self._next_regent_seat(game_state, current_seat)
 
         game_state.turn.regent_seat = next_regent_seat
         game_state.turn.phase = Phase.NOMINATION
-        game_state.turn.prev_government = {
-            "regent": current_seat,
-            "chambellan": game_state.turn.nominee_seat
-        }
         game_state.turn.nominee_seat = None
         game_state.turn.votes = {}
         game_state.turn.turn_number += 1
@@ -335,17 +518,15 @@ class WebSocketManager:
 
     def _enter_defiance_phase(self, game_state: GameState):
         """Open the Piste de Défiance vote."""
-        import time
         game_state.turn.phase = Phase.DEFIANCE
         game_state.turn.defiance_votes = {}
-        game_state.turn.defiance_start_time = time.time()
+        game_state.turn.defiance_start_time = _now()
 
     def _resolve_defiance(self, game_state: GameState):
         """Tally defiance votes, update counts, set marked player, advance to NOMINATION."""
         # Clear previous turn's mark (its 1-turn effect has been served)
         game_state.turn.marked_player_seat = None
 
-        # Tally non-null votes into cumulative counts
         for target_seat in game_state.turn.defiance_votes.values():
             if target_seat is None:
                 continue
@@ -353,31 +534,37 @@ class WebSocketManager:
                 game_state.turn.defiance_counts.get(target_seat, 0) + 1
             )
 
-        # Find players at/over threshold; pick the highest count (ties: lowest seat)
         over = [
             (seat, count) for seat, count in game_state.turn.defiance_counts.items()
             if count >= DEFIANCE_MARK_THRESHOLD
+            and any(p.seat == seat and p.alive for p in game_state.players)
         ]
         if over:
             over.sort(key=lambda x: (-x[1], x[0]))
             marked_seat = over[0][0]
             game_state.turn.marked_player_seat = marked_seat
-            # Reset that player's counter only
             game_state.turn.defiance_counts[marked_seat] = 0
+            log_event(game_state, "marked",
+                      f"{seat_name(game_state, marked_seat)} est marqué par la Défiance : "
+                      "ni Roi ni Conseiller au prochain tour.", seat=marked_seat)
 
-        # Clear round-local votes and timer
         game_state.turn.defiance_votes = {}
         game_state.turn.defiance_start_time = None
-
-        # Advance to next turn's NOMINATION
         self._advance_to_next_nomination(game_state)
 
+    def _start_conseil(self, game_state: GameState):
+        game_state.turn.phase = Phase.CONSEIL_ROYAUME
+        game_state.turn.conseil_royaume_timer = CONSEIL_DURATION_SECONDS
+        game_state.turn.conseil_royaume_start_time = _now()
+        game_state.turn.speaking_players = []
+        game_state.turn.conseil_ready = []
+
     async def advance_after_conseil(self, game_state: GameState):
-        """Advance game to next phase after Conseil du Royaume expires"""
-        # Reset council phase data
+        """Advance game to next phase after Conseil du Royaume ends."""
         game_state.turn.conseil_royaume_timer = None
         game_state.turn.conseil_royaume_start_time = None
         game_state.turn.speaking_players = []
+        game_state.turn.conseil_ready = []
 
         # Pouvoirs du Roi : déclenchés au 2ᵉ et 4ᵉ Décret de Trahison, une seule fois chacun.
         if game_state.tracks.conjure >= 2 and not game_state.powers.get("investigation_used"):
@@ -393,7 +580,6 @@ class WebSocketManager:
             game_state.turn.power_result = None
             return
 
-        # Pas de pouvoir → Piste de Défiance (dès le tour 2) ou Nomination directe
         self._flow_to_next_turn_phase(game_state)
 
     def _flow_to_next_turn_phase(self, game_state: GameState):
@@ -409,41 +595,53 @@ class WebSocketManager:
         game_state.turn.power_result = None
         self._flow_to_next_turn_phase(game_state)
 
-    async def check_defiance_timeout(self):
-        """Auto-resolve expired DEFIANCE phases."""
-        import time
-        current_time = time.time()
-        for room_code, game_state in list(self.game_states.items()):
-            if (game_state.turn.phase == Phase.DEFIANCE and
-                    game_state.turn.defiance_start_time and
-                    (current_time - game_state.turn.defiance_start_time) >= DEFIANCE_DURATION_SECONDS):
-                self._resolve_defiance(game_state)
-                game_state.version += 1
-                await self.broadcast_to_room(room_code, {
-                    "type": "game_update",
-                    "data": "defiance_timeout",
-                    "version": game_state.version
-                })
+    # ------------------------------------------------------------------
+    # Presence / phase clock
+    # ------------------------------------------------------------------
+    def is_present(self, game_state: GameState, player: Player) -> bool:
+        if player.is_bot:
+            return True
+        seen = game_state.last_seen.get(player.id)
+        return seen is not None and (_now() - seen) <= AWAY_AFTER_SECONDS
 
-    async def check_conseil_royaume_timeout(self):
-        """Check all games for expired Conseil du Royaume phases"""
-        import time
-        current_time = time.time()
-        
-        for room_code, game_state in self.game_states.items():
-            if (game_state.turn.phase == Phase.CONSEIL_ROYAUME and
-                game_state.turn.conseil_royaume_start_time and
-                (current_time - game_state.turn.conseil_royaume_start_time) >= 60):
-                
-                # Time's up! Advance to next phase
-                await self.advance_after_conseil(game_state)
-                game_state.version += 1
-                
-                await self.broadcast_to_room(room_code, {
-                    "type": "game_update",
-                    "data": "conseil_timeout",
-                    "version": game_state.version
-                })
+    def sync_phase_clock(self, game_state: GameState) -> bool:
+        """Reset the phase clock whenever the actionable situation changes."""
+        t = game_state.turn
+        key = f"{game_state.status}|{t.phase}|{t.turn_number}|{t.regent_seat}|{t.nominee_seat}|{t.active_power}|{t.power_result is not None}|{game_state.tracks.crisis}"
+        if key != game_state.phase_key:
+            game_state.phase_key = key
+            t.phase_started_at = _now()
+            game_state.bot_next_act = {}
+            return True
+        return False
+
+    def pending_actor_ids(self, game_state: GameState) -> List[str]:
+        """Players who must act for the game to progress."""
+        t = game_state.turn
+        if game_state.status != "in_progress":
+            return []
+        alive = [p for p in game_state.players if p.alive]
+        by_seat = {p.seat: p for p in alive}
+        if t.phase == Phase.NOMINATION:
+            p = by_seat.get(t.regent_seat)
+            return [p.id] if p else []
+        if t.phase == Phase.VOTE:
+            return [p.id for p in alive if p.id not in t.votes]
+        if t.phase == Phase.LEGIS_REGENT:
+            p = by_seat.get(t.regent_seat)
+            return [p.id] if p else []
+        if t.phase == Phase.LEGIS_CHAMBELLAN:
+            p = by_seat.get(t.nominee_seat)
+            return [p.id] if p else []
+        if t.phase == Phase.POWER:
+            p = by_seat.get(t.regent_seat)
+            return [p.id] if p else []
+        if t.phase == Phase.DEFIANCE:
+            return [p.id for p in alive if p.id not in t.defiance_votes]
+        if t.phase == Phase.CONSEIL_ROYAUME:
+            return [p.id for p in alive if p.id not in t.conseil_ready]
+        return []
+
 
 manager = WebSocketManager()
 
@@ -541,7 +739,13 @@ async def get_room(room_code: str):
     return {
         "code": room_code,
         "status": game_state.status,
-        "players": [{"id": p.id, "name": p.name, "seat": p.seat, "connected": p.connected} for p in game_state.players]
+        "host_id": game_state.host_id,
+        "version": game_state.version,
+        "players": [
+            {"id": p.id, "name": p.name, "seat": p.seat, "connected": manager.is_present(game_state, p),
+             "is_bot": p.is_bot, "is_host": p.id == game_state.host_id}
+            for p in game_state.players
+        ],
     }
 
 
@@ -562,7 +766,8 @@ async def join_room(
     if not success:
         detail = {
             "room_not_found": "Room not found",
-            "room_full": "Room is full",
+            "room_full": "La salle est pleine",
+            "game_started": "La partie a déjà commencé",
             "name_taken": "Ce pseudo est déjà pris dans cette partie",
         }.get(reason, "Cannot join room")
         raise HTTPException(status_code=400, detail=detail)
@@ -607,19 +812,9 @@ async def send_chat_message(
     if len(message) > MAX_CHAT_MESSAGE_LEN:
         message = message[:MAX_CHAT_MESSAGE_LEN]
 
-    chat_message = {
-        "id": len(game_state.turn.chat_messages) + 1,
-        "player_id": identity.user_id,
-        "player_name": player.name,
-        "message": message,
-        "timestamp": datetime.now().isoformat(),
-        "type": "player"
-    }
-
-    game_state.turn.chat_messages.append(chat_message)
-    # Keep the chat buffer bounded in RAM (oldest messages roll off).
-    if len(game_state.turn.chat_messages) > 500:
-        game_state.turn.chat_messages = game_state.turn.chat_messages[-500:]
+    game_state.last_seen[player.id] = _now()
+    chat_message = post_chat(game_state, player, message)
+    game_state.version += 1
 
     await manager.broadcast_to_room(room_code, {
         "type": "chat_message",
@@ -634,563 +829,610 @@ class ActionBody(BaseModel):
     payload: Dict[str, Any] = {}
 
 
+def post_chat(game_state: GameState, player: Player, text: str, kind: str = "player") -> Dict[str, Any]:
+    msg = {
+        "id": (game_state.turn.chat_messages[-1]["id"] + 1) if game_state.turn.chat_messages else 1,
+        "player_id": player.id,
+        "player_name": player.name,
+        "message": text[:MAX_CHAT_MESSAGE_LEN],
+        "timestamp": datetime.now().isoformat(),
+        "type": kind,
+        "is_bot": player.is_bot,
+    }
+    game_state.turn.chat_messages.append(msg)
+    if len(game_state.turn.chat_messages) > 500:
+        game_state.turn.chat_messages = game_state.turn.chat_messages[-500:]
+    return msg
+
+
+def _bad_request(detail: str):
+    raise HTTPException(status_code=400, detail=detail)
+
+
+async def perform_action(
+    room_code: str,
+    game_state: GameState,
+    player: Player,
+    action_type: str,
+    payload: Dict[str, Any],
+    auto: bool = False,
+) -> Dict[str, Any]:
+    """Apply one game action. Shared by human requests, bots and AFK takeover.
+
+    Raises HTTPException(400) with a French message on invalid actions.
+    The caller must hold manager.lock_for(room_code).
+    """
+    t = game_state.turn
+    player_id = player.id
+    by_seat = {p.seat: p for p in game_state.players}
+
+    # ---------------- Lobby / host actions ----------------
+    if action_type in ("ADD_BOT", "REMOVE_PLAYER", "RESTART"):
+        if player_id != game_state.host_id:
+            _bad_request("Seul l'hôte de la salle peut faire cela.")
+        if action_type == "ADD_BOT":
+            if game_state.status != "lobby":
+                _bad_request("La partie a déjà commencé.")
+            if not manager.add_bot(game_state):
+                _bad_request("La salle est pleine (10 joueurs maximum).")
+        elif action_type == "REMOVE_PLAYER":
+            target_id = payload.get("playerId")
+            if not target_id or target_id == player_id:
+                _bad_request("Joueur invalide.")
+            if not manager.remove_player(game_state, target_id):
+                _bad_request("Impossible de retirer ce joueur maintenant.")
+        else:  # RESTART
+            if t.phase != Phase.ENDGAME:
+                _bad_request("La partie n'est pas terminée.")
+            manager.reset_to_lobby(game_state)
+        await manager.broadcast_to_room(room_code, {"type": "lobby_update", "version": game_state.version})
+        return {"success": True, "version": game_state.version}
+
+    if action_type == "LEAVE":
+        if game_state.status != "lobby":
+            _bad_request("Impossible de quitter une partie en cours.")
+        manager.remove_player(game_state, player_id)
+        await manager.broadcast_to_room(room_code, {"type": "lobby_update", "version": game_state.version})
+        return {"success": True, "version": game_state.version}
+
+    if game_state.status != "in_progress" or t.phase == Phase.ENDGAME:
+        _bad_request("La partie n'est pas en cours.")
+
+    who = player.name + (" (remplacé)" if auto and not player.is_bot else "")
+
+    if action_type == "NOMINATE":
+        if t.phase != Phase.NOMINATION:
+            _bad_request("Ce n'est pas la phase de nomination.")
+        if player.seat != t.regent_seat:
+            _bad_request("Seul le Roi peut nommer un Conseiller.")
+        try:
+            nominee_seat = int(payload.get("nomineeSeat"))
+        except (TypeError, ValueError):
+            _bad_request("Conseiller invalide.")
+        if nominee_seat not in eligible_nominee_seats(game_state):
+            _bad_request("Ce joueur ne peut pas être nommé Conseiller.")
+
+        t.nominee_seat = nominee_seat
+        t.phase = Phase.VOTE
+        t.votes = {}
+        log_event(game_state, "nomination",
+                  f"{who} (Roi) propose {seat_name(game_state, nominee_seat)} comme Conseiller.",
+                  regent_seat=t.regent_seat, nominee_seat=nominee_seat)
+        game_state.version += 1
+        await manager.broadcast_to_room(room_code, {
+            "type": "game_update", "phase": t.phase, "nominee_seat": nominee_seat, "version": game_state.version,
+        })
+
+    elif action_type == "VOTE":
+        # Livret : tous les joueurs vivants votent (Roi et Conseiller compris).
+        if t.phase != Phase.VOTE:
+            _bad_request("Ce n'est pas la phase de vote.")
+        if not player.alive:
+            _bad_request("Les morts ne votent pas.")
+        vote = payload.get("vote")
+        if vote not in ("oui", "non"):
+            _bad_request("Vote invalide.")
+        t.votes[player_id] = vote
+
+        alive_players = [p for p in game_state.players if p.alive]
+        if all(p.id in t.votes for p in alive_players):
+            yes_votes = sum(1 for v in t.votes.values() if v == "oui")
+            no_votes = len(t.votes) - yes_votes
+            elected = yes_votes > no_votes
+            ballots = {str(p.seat): t.votes[p.id] for p in alive_players}
+            regent_seat, nominee_seat = t.regent_seat, t.nominee_seat
+            t.last_vote = {
+                "turn": t.turn_number, "regent_seat": regent_seat, "nominee_seat": nominee_seat,
+                "result": "elected" if elected else "rejected",
+                "yes": yes_votes, "no": no_votes, "ballots": ballots, "ts": _now(),
+            }
+            log_event(game_state, "vote",
+                      f"Gouvernement {seat_name(game_state, regent_seat)} / {seat_name(game_state, nominee_seat)} "
+                      f"{'élu' if elected else 'rejeté'} ({yes_votes} oui, {no_votes} non).",
+                      result="elected" if elected else "rejected", ballots=ballots,
+                      regent_seat=regent_seat, nominee_seat=nominee_seat)
+
+            if elected:
+                game_state.tracks.crisis = 0
+                t.disgraced_player_seat = None
+                t.peoples_anger_triggered = False
+                t.prev_government = {"regent": regent_seat, "chambellan": nominee_seat}
+                t.votes = {}
+                nominee = by_seat.get(nominee_seat)
+                # Victoire des Traîtres : Tyran élu Conseiller après 3+ Trahisons
+                if game_state.tracks.conjure >= 3 and nominee and nominee.role == Role.USURPATEUR:
+                    manager._set_winner(game_state, "CONJURES", "tyran_elected")
+                else:
+                    if game_state.tracks.conjure >= 3:
+                        log_event(game_state, "info",
+                                  f"{seat_name(game_state, nominee_seat)} n'est pas le Tyran.", seat=nominee_seat)
+                    manager._ensure_deck(game_state, 3)
+                    t.legislative_cards = game_state.deck[:3]
+                    game_state.deck = game_state.deck[3:]
+                    t.deck_count = len(game_state.deck)
+                    t.phase = Phase.LEGIS_REGENT
+            else:
+                game_state.tracks.crisis += 1
+                t.votes = {}
+                t.nominee_seat = None
+                if game_state.tracks.crisis >= 3:
+                    # COLÈRE DU PEUPLE : décret du dessus adopté, Roi désavoué
+                    manager._ensure_deck(game_state, 1)
+                    if game_state.deck:
+                        top_card = game_state.deck.pop(0)
+                        t.deck_count = len(game_state.deck)
+                        if top_card == DecreeType.LOYAL:
+                            game_state.tracks.loyal += 1
+                        else:
+                            game_state.tracks.conjure += 1
+                        t.last_decree = {"turn": t.turn_number, "type": top_card.value, "auto": True,
+                                         "regent_seat": None, "chambellan_seat": None, "ts": _now()}
+                        log_event(game_state, "decree",
+                                  f"Colère du Peuple ! Le peuple impose un Décret "
+                                  f"{'Loyal' if top_card == DecreeType.LOYAL else 'de Trahison'}. "
+                                  f"{seat_name(game_state, regent_seat)} est désavoué.",
+                                  type=top_card.value, auto=True, regent_seat=None, chambellan_seat=None)
+                    t.disgraced_player_seat = regent_seat
+                    t.peoples_anger_triggered = True
+                    game_state.tracks.crisis = 0
+                if not manager.check_win_conditions(game_state):
+                    t.regent_seat = manager._next_regent_seat(game_state, t.regent_seat)
+                    t.phase = Phase.NOMINATION
+            game_state.version += 1
+            await manager.broadcast_to_room(room_code, {
+                "type": "vote_result", "result": "elected" if elected else "rejected",
+                "yes_votes": yes_votes, "no_votes": no_votes, "new_phase": t.phase,
+                "tracks": game_state.tracks.model_dump(), "regent_seat": t.regent_seat,
+                "winner": game_state.winner, "version": game_state.version,
+            })
+        else:
+            game_state.version += 1
+            await manager.broadcast_to_room(room_code, {
+                "type": "vote_progress", "votes_count": len(t.votes),
+                "total_needed": len(alive_players), "version": game_state.version,
+            })
+
+    elif action_type == "DISCARD":
+        if t.phase == Phase.LEGIS_REGENT:
+            if player.seat != t.regent_seat:
+                _bad_request("Seul le Roi peut défausser maintenant.")
+            card_index = payload.get("cardId")
+            if not isinstance(card_index, int) or not (0 <= card_index < len(t.legislative_cards)):
+                _bad_request("Carte invalide.")
+            discarded_card = t.legislative_cards.pop(card_index)
+            game_state.discard.append(discarded_card)
+            t.discard_count = len(game_state.discard)
+            t.phase = Phase.LEGIS_CHAMBELLAN
+            game_state.version += 1
+            await manager.broadcast_to_room(room_code, {
+                "type": "phase_change", "new_phase": t.phase, "version": game_state.version,
+            })
+
+        elif t.phase == Phase.LEGIS_CHAMBELLAN:
+            if player.seat != t.nominee_seat:
+                _bad_request("Seul le Conseiller peut choisir maintenant.")
+            card_index = payload.get("cardId")
+            if not isinstance(card_index, int) or not (0 <= card_index < len(t.legislative_cards)):
+                _bad_request("Carte invalide.")
+            # The chosen card is adopted, the other is discarded
+            adopted_card = t.legislative_cards.pop(card_index)
+            game_state.discard.extend(t.legislative_cards)
+            t.legislative_cards = []
+            t.discard_count = len(game_state.discard)
+            if adopted_card == DecreeType.LOYAL:
+                game_state.tracks.loyal += 1
+            else:
+                game_state.tracks.conjure += 1
+            decree = {"turn": t.turn_number, "type": adopted_card.value, "auto": False,
+                      "regent_seat": t.regent_seat, "chambellan_seat": t.nominee_seat, "ts": _now()}
+            t.last_decree = decree
+            log_event(game_state, "decree",
+                      f"Décret {'Loyal' if adopted_card == DecreeType.LOYAL else 'de Trahison'} adopté "
+                      f"par {seat_name(game_state, t.regent_seat)} et {seat_name(game_state, t.nominee_seat)}.",
+                      type=adopted_card.value, auto=False,
+                      regent_seat=t.regent_seat, chambellan_seat=t.nominee_seat)
+
+            if not manager.check_win_conditions(game_state):
+                manager._ensure_deck(game_state, 3)
+                manager._start_conseil(game_state)
+                # Bots in the government announce what they saw (truth or lies)
+                for seat in (decree["regent_seat"], decree["chambellan_seat"]):
+                    gov = by_seat.get(seat)
+                    if gov and gov.alive and gov.is_bot:
+                        claim = bots.decree_claims(game_state, gov, decree)
+                        if claim:
+                            post_chat(game_state, gov, claim)
+
+            t.votes = {}
+            game_state.version += 1
+            await manager.broadcast_to_room(room_code, {
+                "type": "legislation_enacted", "adopted_card": adopted_card,
+                "new_tracks": game_state.tracks.model_dump(), "new_phase": t.phase,
+                "regent_seat": t.regent_seat, "winner": game_state.winner, "version": game_state.version,
+            })
+        else:
+            _bad_request("Ce n'est pas la phase législative.")
+
+    elif action_type == "CONSEIL_READY":
+        if t.phase != Phase.CONSEIL_ROYAUME:
+            return {"success": True, "stale": True, "version": game_state.version}
+        if player_id not in t.conseil_ready:
+            t.conseil_ready.append(player_id)
+        game_state.version += 1
+        await maybe_end_conseil(room_code, game_state)
+
+    elif action_type == "DEFIANCE_VOTE":
+        # Race-tolerant: a late click after auto-resolution is a no-op.
+        if t.phase != Phase.DEFIANCE:
+            return {"success": True, "stale": True, "version": game_state.version}
+        if not player.alive:
+            _bad_request("Les morts ne votent pas.")
+        raw_target = payload.get("targetSeat")
+        target_seat: Optional[int] = None
+        if raw_target is not None:
+            try:
+                target_seat = int(raw_target)
+            except (TypeError, ValueError):
+                _bad_request("Cible invalide.")
+            target_player = by_seat.get(target_seat)
+            if not target_player or not target_player.alive:
+                _bad_request("Cible invalide.")
+            if target_seat == player.seat:
+                _bad_request("Vous ne pouvez pas vous désigner vous-même.")
+        t.defiance_votes[player_id] = target_seat
+        if all(p.id in t.defiance_votes for p in game_state.players if p.alive):
+            manager._resolve_defiance(game_state)
+        game_state.version += 1
+        await manager.broadcast_to_room(room_code, {
+            "type": "game_update", "data": "defiance_vote", "phase": t.phase, "version": game_state.version,
+        })
+
+    elif action_type == "INVESTIGATE":
+        if t.phase != Phase.POWER or t.active_power != "INVESTIGATE":
+            _bad_request("Ce n'est pas le moment d'enquêter.")
+        if player.seat != t.regent_seat:
+            _bad_request("Seul le Roi peut enquêter.")
+        if t.power_result is not None:
+            _bad_request("L'enquête a déjà eu lieu.")
+        try:
+            target_seat = int(payload.get("targetSeat"))
+        except (TypeError, ValueError):
+            _bad_request("Cible invalide.")
+        target = by_seat.get(target_seat)
+        if not target or not target.alive or target_seat == player.seat:
+            _bad_request("Cible invalide.")
+        # Camp révélé : Fidèle vs Traître (le Tyran apparaît comme Traître).
+        camp = "Fidèle" if target.role == Role.LOYAL else "Traître"
+        t.power_result = {"target_seat": target_seat, "target_name": target.name, "camp": camp}
+        game_state.powers["investigation_used"] = True
+        bots.memory(game_state, player)["investigations"][str(target_seat)] = camp
+        log_event(game_state, "investigate",
+                  f"{who} (Roi) enquête sur {target.name}.", regent_seat=player.seat, target_seat=target_seat)
+        if player.is_bot:
+            post_chat(game_state, player, bots.investigation_claim(game_state, player, target_seat, camp))
+        game_state.version += 1
+        await manager.broadcast_to_room(room_code, {
+            "type": "game_update", "data": "investigation_done", "version": game_state.version,
+        })
+
+    elif action_type == "EXECUTE":
+        if t.phase != Phase.POWER or t.active_power != "EXECUTE":
+            _bad_request("Ce n'est pas le moment d'exécuter.")
+        if player.seat != t.regent_seat:
+            _bad_request("Seul le Roi peut exécuter.")
+        try:
+            target_seat = int(payload.get("targetSeat"))
+        except (TypeError, ValueError):
+            _bad_request("Cible invalide.")
+        target = by_seat.get(target_seat)
+        if not target or not target.alive or target_seat == player.seat:
+            _bad_request("Cible invalide.")
+        target.alive = False
+        game_state.powers["execution_used"] = True
+        game_state.powers["executed_once"] = True
+        t.last_execution_seat = target_seat
+        t.speaking_players = [s for s in t.speaking_players if s != target_seat]
+        log_event(game_state, "execute", f"{who} (Roi) fait exécuter {target.name}.",
+                  regent_seat=player.seat, target_seat=target_seat)
+        if not manager.check_win_conditions(game_state):
+            log_event(game_state, "info", f"{target.name} n'était pas le Tyran.", seat=target_seat)
+            manager._advance_after_power(game_state)
+        game_state.version += 1
+        await manager.broadcast_to_room(room_code, {
+            "type": "game_update", "data": "execution_done", "executed_seat": target_seat,
+            "winner": game_state.winner, "version": game_state.version,
+        })
+
+    elif action_type == "ACK_POWER":
+        if t.phase != Phase.POWER:
+            return {"success": True, "stale": True, "version": game_state.version}
+        if player.seat != t.regent_seat:
+            _bad_request("Seul le Roi peut fermer l'enquête.")
+        if t.active_power != "INVESTIGATE" or t.power_result is None:
+            _bad_request("Aucun résultat à fermer.")
+        manager._advance_after_power(game_state)
+        game_state.version += 1
+        await manager.broadcast_to_room(room_code, {
+            "type": "game_update", "data": "power_acknowledged", "version": game_state.version,
+        })
+
+    elif action_type == "SPEAK_TOGGLE":
+        if not player.alive:
+            _bad_request("Les morts ne parlent pas.")
+        if player.seat in t.speaking_players:
+            t.speaking_players.remove(player.seat)
+        else:
+            t.speaking_players.append(player.seat)
+        game_state.version += 1
+        await manager.broadcast_to_room(room_code, {
+            "type": "game_update", "data": "speaking_update", "version": game_state.version,
+        })
+
+    else:
+        _bad_request("Action inconnue.")
+
+    manager.sync_phase_clock(game_state)
+    return {"success": True, "version": game_state.version}
+
+
+async def maybe_end_conseil(room_code: str, game_state: GameState) -> None:
+    """End the Conseil early once every present, living human is ready."""
+    t = game_state.turn
+    if t.phase != Phase.CONSEIL_ROYAUME:
+        return
+    humans = [p for p in game_state.players if p.alive and not p.is_bot and manager.is_present(game_state, p)]
+    expired = t.conseil_royaume_start_time and (_now() - t.conseil_royaume_start_time) >= CONSEIL_DURATION_SECONDS
+    all_ready = all(p.id in t.conseil_ready for p in humans)
+    if expired or all_ready:
+        await manager.advance_after_conseil(game_state)
+        game_state.version += 1
+        manager.sync_phase_clock(game_state)
+        await manager.broadcast_to_room(room_code, {
+            "type": "game_update", "data": "conseil_end", "version": game_state.version,
+        })
+
+
+# ----------------------------------------------------------------------
+# Ticker: timeouts, bots and AFK takeover
+# ----------------------------------------------------------------------
+async def tick_room(room_code: str, game_state: GameState) -> bool:
+    """Advance one room by at most one automatic step. Returns True if something happened."""
+    now = _now()
+    t = game_state.turn
+    manager.sync_phase_clock(game_state)
+    if game_state.status != "in_progress" or t.phase == Phase.ENDGAME:
+        return False
+
+    # Phase timeouts
+    if t.phase == Phase.DEFIANCE and t.defiance_start_time and now - t.defiance_start_time >= DEFIANCE_DURATION_SECONDS:
+        manager._resolve_defiance(game_state)
+        game_state.version += 1
+        manager.sync_phase_clock(game_state)
+        await manager.broadcast_to_room(room_code, {"type": "game_update", "data": "defiance_timeout",
+                                                    "version": game_state.version})
+        return True
+    if t.phase == Phase.CONSEIL_ROYAUME:
+        before = game_state.version
+        await maybe_end_conseil(room_code, game_state)
+        if game_state.version != before:
+            return True
+
+    # Bot chatter during the Conseil
+    if t.phase == Phase.CONSEIL_ROYAUME and t.conseil_royaume_start_time:
+        for p in game_state.players:
+            if p.is_bot and p.alive:
+                mem = bots.memory(game_state, p)
+                key = f"conseil-{t.turn_number}"
+                if key not in mem["claims_done"] and now - t.conseil_royaume_start_time >= mem.setdefault("chat_delay", random.uniform(4, 12)):
+                    mem["claims_done"].append(key)
+                    mem.pop("chat_delay", None)
+                    line = bots.accusation(game_state, p)
+                    if line:
+                        post_chat(game_state, p, line)
+                        game_state.version += 1
+
+    started = t.phase_started_at or now
+    for pid in manager.pending_actor_ids(game_state):
+        player = next((p for p in game_state.players if p.id == pid), None)
+        if not player:
+            continue
+        if player.is_bot:
+            due = game_state.bot_next_act.setdefault(pid, now + random.uniform(*BOT_THINK_SECONDS))
+            if now < due:
+                continue
+            auto = False
+        else:
+            # Conseil / Défiance already have their own timers: never take over there.
+            if t.phase in (Phase.CONSEIL_ROYAUME, Phase.DEFIANCE):
+                continue
+            away = not manager.is_present(game_state, player)
+            waited = now - started
+            if not ((away and waited >= AWAY_GRACE_SECONDS) or waited >= AFK_ACTION_TIMEOUT_SECONDS):
+                continue
+            auto = True
+
+        decision = bots.decide(game_state, player, eligible_nominee_seats(game_state))
+        if not decision:
+            continue
+        action_type, payload = decision
+        try:
+            if auto:
+                log_event(game_state, "afk", f"{player.name} tarde à agir : le destin choisit à sa place.",
+                          seat=player.seat)
+            await perform_action(room_code, game_state, player, action_type, payload, auto=auto)
+        except HTTPException as e:
+            logging.getLogger(__name__).warning("bot action %s failed for %s: %s", action_type, player.name, e.detail)
+            game_state.bot_next_act[pid] = now + 2
+            continue
+        return True
+    return False
+
+
+async def ticker_loop():
+    while True:
+        try:
+            await asyncio.sleep(1.0)
+            for code, gs in list(manager.game_states.items()):
+                if gs.status != "in_progress":
+                    continue
+                async with manager.lock_for(code):
+                    await tick_room(code, gs)
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:  # never let the ticker die
+            logging.getLogger(__name__).exception("ticker error: %s", e)
+
+
 @api_router.post("/rooms/{room_code}/action")
 async def handle_game_action(
     room_code: str,
     body: ActionBody,
     identity: PlayerIdentity = Depends(require_player),
 ):
-    """Handle game actions like nomination, voting, legislative actions.
-
-    The acting player is derived from the JWT — previously any client could
-    act on behalf of anyone by passing an arbitrary player_id in the URL.
-    """
+    """Handle game actions. The acting player is derived from the JWT."""
     manager.touch_room(room_code)
     game_state = manager.get_game_state(room_code)
     if not game_state:
-        raise HTTPException(status_code=404, detail="Room not found")
+        raise HTTPException(status_code=404, detail="Salle introuvable")
+    async with manager.lock_for(room_code):
+        player = next((p for p in game_state.players if p.id == identity.user_id), None)
+        if not player:
+            raise HTTPException(status_code=403, detail="Vous n'êtes pas membre de cette salle")
+        game_state.last_seen[player.id] = _now()
+        try:
+            return await perform_action(room_code, game_state, player, body.action_type, body.payload or {})
+        except HTTPException:
+            raise
+        except Exception as e:
+            logging.getLogger(__name__).exception("action failed")
+            raise HTTPException(status_code=500, detail="Erreur interne du serveur")
 
-    player_id = identity.user_id
-    action_type = body.action_type
-    payload = body.payload or {}
 
-    player = next((p for p in game_state.players if p.id == player_id), None)
-    if not player:
-        raise HTTPException(status_code=403, detail="Not a member of this room")
-    
-    try:
-        if action_type == "NOMINATE":
-            # Only regent can nominate during NOMINATION phase
-            if game_state.turn.phase != Phase.NOMINATION:
-                raise HTTPException(status_code=400, detail="Wrong phase for nomination")
-            if player.seat != game_state.turn.regent_seat:
-                raise HTTPException(status_code=400, detail="Only regent can nominate")
-            
-            nominee_seat = payload.get("nomineeSeat")
-            if not nominee_seat:
-                raise HTTPException(status_code=400, detail="Missing nominee seat")
-            
-            # Check if nominee is valid
-            nominee = next((p for p in game_state.players if p.seat == nominee_seat), None)
-            if not nominee or not nominee.alive:
-                raise HTTPException(status_code=400, detail="Invalid nominee")
-            
-            # Check if nominee was in previous government
-            if game_state.turn.prev_government:
-                prev_gov = game_state.turn.prev_government
-                if nominee_seat == prev_gov.get("regent") or nominee_seat == prev_gov.get("chambellan"):
-                    raise HTTPException(status_code=400, detail="Nominee was in previous government")
-            
-            # Check if nominee is disgraced (cannot be nominated after "Colère du Peuple")
-            if game_state.turn.disgraced_player_seat == nominee_seat:
-                raise HTTPException(status_code=400, detail="Cannot nominate disgraced player")
+def _public_player(game_state: GameState, p: Player, reveal: bool) -> Dict[str, Any]:
+    d = {
+        "id": p.id, "name": p.name, "seat": p.seat, "alive": p.alive,
+        "connected": manager.is_present(game_state, p), "is_bot": p.is_bot,
+        "is_host": p.id == game_state.host_id,
+    }
+    if reveal:
+        d["role"] = p.role
+    return d
 
-            # Check if nominee is marked by Piste de Défiance
-            if game_state.turn.marked_player_seat == nominee_seat:
-                raise HTTPException(status_code=400, detail="Cannot nominate marked player")
-
-            # Can't nominate self
-            if nominee_seat == game_state.turn.regent_seat:
-                raise HTTPException(status_code=400, detail="Cannot nominate self")
-            
-            # Update game state
-            game_state.turn.nominee_seat = nominee_seat
-            game_state.turn.phase = Phase.VOTE
-            game_state.turn.votes = {}  # Reset votes
-            game_state.version += 1
-            
-            # Broadcast update
-            await manager.broadcast_to_room(room_code, {
-                "type": "game_update",
-                "phase": game_state.turn.phase,
-                "nominee_seat": nominee_seat,
-                "version": game_state.version
-            })
-            
-        elif action_type == "VOTE":
-            # Only non-government players can vote during VOTE phase
-            if game_state.turn.phase != Phase.VOTE:
-                raise HTTPException(status_code=400, detail="Wrong phase for voting")
-            if not player.alive:
-                raise HTTPException(status_code=400, detail="Dead players cannot vote")
-            
-            # Check if player is regent or nominee - they cannot vote
-            if player.seat == game_state.turn.regent_seat:
-                raise HTTPException(status_code=400, detail="Regent cannot vote")
-            if player.seat == game_state.turn.nominee_seat:
-                raise HTTPException(status_code=400, detail="Nominee cannot vote")
-            
-            vote = payload.get("vote")
-            if vote not in ["oui", "non"]:
-                raise HTTPException(status_code=400, detail="Invalid vote")
-            
-            # Record vote
-            game_state.turn.votes[player_id] = vote
-            
-            # Check if all eligible players have voted (excluding regent and nominee)
-            alive_players = [p for p in game_state.players if p.alive]
-            eligible_voters = [p for p in alive_players if p.seat != game_state.turn.regent_seat and p.seat != game_state.turn.nominee_seat]
-            if len(game_state.turn.votes) >= len(eligible_voters):
-                # Count votes
-                yes_votes = sum(1 for v in game_state.turn.votes.values() if v == "oui")
-                no_votes = len(game_state.turn.votes) - yes_votes
-                
-                if yes_votes > no_votes:
-                    # Government elected - move to legislative phase
-                    game_state.turn.phase = Phase.LEGIS_REGENT
-                    game_state.tracks.crisis = 0  # Reset crisis on successful election
-                    
-                    # Rehabilitate disgraced player after successful election
-                    game_state.turn.disgraced_player_seat = None
-                    game_state.turn.peoples_anger_triggered = False
-                    
-                    # Draw 3 cards from deck for the regent to examine
-                    if len(game_state.deck) >= 3:
-                        game_state.turn.legislative_cards = game_state.deck[:3]
-                        game_state.deck = game_state.deck[3:]
-                        game_state.turn.deck_count = len(game_state.deck)
-                    else:
-                        # Handle edge case where deck is almost empty
-                        game_state.turn.legislative_cards = game_state.deck.copy()
-                        game_state.deck = []
-                        game_state.turn.deck_count = 0
-                    
-                    # Set previous government
-                    game_state.turn.prev_government = {
-                        "regent": game_state.turn.regent_seat,
-                        "chambellan": game_state.turn.nominee_seat
-                    }
-                    
-                    # Clear votes but keep nominee_seat for legislative phase
-                    game_state.turn.votes = {}
-                else:
-                    # Government rejected - crisis increases
-                    game_state.tracks.crisis += 1
-                    
-                    if game_state.tracks.crisis >= 3:
-                        # COLÈRE DU PEUPLE - Enhanced crisis rule
-                        # Auto-adopt top card
-                        if len(game_state.deck) > 0:
-                            top_card = game_state.deck.pop(0)
-                            if top_card == DecreeType.LOYAL:
-                                game_state.tracks.loyal += 1
-                            else:
-                                game_state.tracks.conjure += 1
-                        
-                        # Disgrace the current Seigneur (can't be Seigneur or Sénéchal next turn)
-                        game_state.turn.disgraced_player_seat = game_state.turn.regent_seat
-                        game_state.turn.peoples_anger_triggered = True
-                        
-                        # Reset crisis
-                        game_state.tracks.crisis = 0
-                    
-                    # Move to next regent (skip disgraced and marked players)
-                    current_seat = game_state.turn.regent_seat
-                    next_regent_seat = manager._next_regent_seat(game_state, current_seat)
-
-                    game_state.turn.regent_seat = next_regent_seat
-                    game_state.turn.phase = Phase.NOMINATION
-
-                    # Clear nominee and votes for rejected government
-                    game_state.turn.nominee_seat = None
-                    game_state.turn.votes = {}
-                game_state.version += 1
-                
-                # Check win conditions
-                winner = manager.check_win_conditions(game_state)
-                if winner:
-                    game_state.winner = winner
-                    game_state.turn.phase = Phase.ENDGAME
-                
-                await manager.broadcast_to_room(room_code, {
-                    "type": "vote_result",
-                    "result": "elected" if yes_votes > no_votes else "rejected",
-                    "yes_votes": yes_votes,
-                    "no_votes": no_votes,
-                    "new_phase": game_state.turn.phase,
-                    "tracks": game_state.tracks.dict(),
-                    "regent_seat": game_state.turn.regent_seat,
-                    "winner": winner,
-                    "version": game_state.version
-                })
-            else:
-                # Just broadcast vote count update with eligible voters count
-                alive_players = [p for p in game_state.players if p.alive]
-                eligible_voters = [p for p in alive_players if p.seat != game_state.turn.regent_seat and p.seat != game_state.turn.nominee_seat]
-                await manager.broadcast_to_room(room_code, {
-                    "type": "vote_progress",
-                    "votes_count": len(game_state.turn.votes),
-                    "total_needed": len(eligible_voters)
-                })
-        
-        elif action_type == "DISCARD":
-            # Handle legislative card discard during LEGIS_REGENT or CONSEIL_ROYAUME phase
-            if game_state.turn.phase == Phase.LEGIS_REGENT:
-                # Only regent can discard during LEGIS_REGENT phase
-                if player.seat != game_state.turn.regent_seat:
-                    raise HTTPException(status_code=400, detail="Only regent can discard during this phase")
-                
-                card_index = payload.get("cardId")
-                if card_index is None or card_index < 0 or card_index >= len(game_state.turn.legislative_cards):
-                    raise HTTPException(status_code=400, detail="Invalid card index")
-                
-                # Discard the selected card
-                discarded_card = game_state.turn.legislative_cards.pop(card_index)
-                game_state.discard.append(discarded_card)
-                game_state.turn.discard_count = len(game_state.discard)
-                
-                # Move to LEGIS_CHAMBELLAN phase (2 cards remain for chambellan)
-                game_state.turn.phase = Phase.LEGIS_CHAMBELLAN
-                game_state.version += 1
-                
-                await manager.broadcast_to_room(room_code, {
-                    "type": "phase_change",
-                    "new_phase": game_state.turn.phase,
-                    "version": game_state.version
-                })
-                
-            elif game_state.turn.phase == Phase.LEGIS_CHAMBELLAN:
-                # Only chambellan can discard during LEGIS_CHAMBELLAN phase
-                if player.seat != game_state.turn.nominee_seat:
-                    raise HTTPException(status_code=400, detail="Only chambellan can discard during this phase") 
-                
-                card_index = payload.get("cardId")
-                if card_index is None or card_index < 0 or card_index >= len(game_state.turn.legislative_cards):
-                    raise HTTPException(status_code=400, detail="Invalid card index")
-                
-                # The chosen card is adopted, the other is discarded
-                adopted_card = game_state.turn.legislative_cards.pop(card_index)
-                discarded_card = game_state.turn.legislative_cards.pop(0)  # Remaining card is discarded
-                
-                # Update tracks based on adopted card
-                if adopted_card == DecreeType.LOYAL:
-                    game_state.tracks.loyal += 1
-                else:
-                    game_state.tracks.conjure += 1
-                
-                # Add discarded card to discard pile
-                game_state.discard.append(discarded_card)
-                game_state.turn.discard_count = len(game_state.discard)
-                
-                # Clear legislative cards
-                game_state.turn.legislative_cards = []
-                
-                # Check for powers and win conditions
-                winner = manager.check_win_conditions(game_state)
-                if winner:
-                    game_state.winner = winner
-                    game_state.turn.phase = Phase.ENDGAME
-                else:
-                    # After a decree is revealed, trigger Conseil du Royaume phase
-                    import time
-                    game_state.turn.phase = Phase.CONSEIL_ROYAUME
-                    game_state.turn.conseil_royaume_timer = 60  # 60 seconds (1 min)
-                    game_state.turn.conseil_royaume_start_time = time.time()
-                    game_state.turn.speaking_players = []
-                
-                game_state.turn.nominee_seat = None
-                game_state.turn.votes = {}
-                game_state.version += 1
-                
-                await manager.broadcast_to_room(room_code, {
-                    "type": "legislation_enacted",
-                    "adopted_card": adopted_card,
-                    "new_tracks": game_state.tracks.dict(),
-                    "new_phase": game_state.turn.phase,
-                    "regent_seat": game_state.turn.regent_seat,
-                    "winner": winner,
-                    "version": game_state.version
-                })
-            else:
-                raise HTTPException(status_code=400, detail="Wrong phase for card discard")
-        
-        elif action_type == "DEFIANCE_VOTE":
-            # Cast a suspicion vote during the DEFIANCE phase (or pass).
-            # Graceful race-handling: if the DEFIANCE phase has already auto-resolved
-            # (timeout elapsed, or every other player just voted) between the user
-            # opening the panel and clicking, we treat the vote as a no-op instead of
-            # raising. This avoids the "Wrong phase for defiance vote" error that
-            # popped up when a player clicked "Passer" just after resolution.
-            if game_state.turn.phase != Phase.DEFIANCE:
-                return {"success": True, "stale": True, "version": game_state.version}
-            if not player.alive:
-                raise HTTPException(status_code=400, detail="Dead players cannot vote")
-
-            raw_target = payload.get("targetSeat")
-            target_seat: Optional[int] = None
-            if raw_target is not None:
-                try:
-                    target_seat = int(raw_target)
-                except (TypeError, ValueError):
-                    raise HTTPException(status_code=400, detail="Invalid target seat")
-                target_player = next((p for p in game_state.players if p.seat == target_seat), None)
-                if not target_player or not target_player.alive:
-                    raise HTTPException(status_code=400, detail="Invalid target")
-                if target_seat == player.seat:
-                    raise HTTPException(status_code=400, detail="Cannot target yourself")
-
-            # Record vote (None = passed). Overwrites if player re-votes before resolution.
-            game_state.turn.defiance_votes[player_id] = target_seat
-
-            # If every alive player has voted, resolve immediately
-            alive_ids = {p.id for p in game_state.players if p.alive}
-            if alive_ids.issubset(set(game_state.turn.defiance_votes.keys())):
-                manager._resolve_defiance(game_state)
-
-            game_state.version += 1
-            await manager.broadcast_to_room(room_code, {
-                "type": "game_update",
-                "data": "defiance_vote",
-                "phase": game_state.turn.phase,
-                "version": game_state.version
-            })
-
-        elif action_type == "INVESTIGATE":
-            # Pouvoir Investigation — seul le Roi agit pendant POWER / active_power == INVESTIGATE.
-            if game_state.turn.phase != Phase.POWER or game_state.turn.active_power != "INVESTIGATE":
-                raise HTTPException(status_code=400, detail="Wrong phase for investigation")
-            if player.seat != game_state.turn.regent_seat:
-                raise HTTPException(status_code=400, detail="Only the King can investigate")
-            if game_state.turn.power_result is not None:
-                raise HTTPException(status_code=400, detail="Investigation already performed this turn")
-
-            raw_target = payload.get("targetSeat")
-            try:
-                target_seat = int(raw_target)
-            except (TypeError, ValueError):
-                raise HTTPException(status_code=400, detail="Invalid target seat")
-            target = next((p for p in game_state.players if p.seat == target_seat), None)
-            if not target or not target.alive:
-                raise HTTPException(status_code=400, detail="Invalid target")
-            if target_seat == player.seat:
-                raise HTTPException(status_code=400, detail="Cannot investigate yourself")
-
-            # Camp révélé : Fidèle vs Traître (Tyran se camoufle dans "Traître").
-            camp = "Fidèle" if target.role == Role.LOYAL else "Traître"
-            game_state.turn.power_result = {
-                "target_seat": target_seat,
-                "target_name": target.name,
-                "camp": camp,
-            }
-            game_state.powers["investigation_used"] = True
-            game_state.version += 1
-
-            await manager.broadcast_to_room(room_code, {
-                "type": "game_update",
-                "data": "investigation_done",
-                "version": game_state.version,
-            })
-
-        elif action_type == "EXECUTE":
-            # Pouvoir Exécution — seul le Roi agit pendant POWER / active_power == EXECUTE.
-            if game_state.turn.phase != Phase.POWER or game_state.turn.active_power != "EXECUTE":
-                raise HTTPException(status_code=400, detail="Wrong phase for execution")
-            if player.seat != game_state.turn.regent_seat:
-                raise HTTPException(status_code=400, detail="Only the King can execute")
-
-            raw_target = payload.get("targetSeat")
-            try:
-                target_seat = int(raw_target)
-            except (TypeError, ValueError):
-                raise HTTPException(status_code=400, detail="Invalid target seat")
-            target = next((p for p in game_state.players if p.seat == target_seat), None)
-            if not target or not target.alive:
-                raise HTTPException(status_code=400, detail="Invalid target")
-            if target_seat == player.seat:
-                raise HTTPException(status_code=400, detail="Cannot execute yourself")
-
-            # Kill target
-            target.alive = False
-            game_state.powers["execution_used"] = True
-            game_state.powers["executed_once"] = True
-            game_state.turn.last_execution_seat = target_seat
-
-            # Victoire Fidèles si le Tyran est exécuté
-            if target.role == Role.USURPATEUR:
-                game_state.winner = "FIDELES"
-                game_state.winner_reason = "tyran_executed"
-                game_state.turn.phase = Phase.ENDGAME
-                game_state.turn.active_power = None
-                game_state.turn.power_result = None
-            else:
-                # Si le mort était Roi du prochain tour, _flow → _next_regent_seat sautera
-                # automatiquement les morts. Continue le flow normal.
-                manager._advance_after_power(game_state)
-
-            game_state.version += 1
-            await manager.broadcast_to_room(room_code, {
-                "type": "game_update",
-                "data": "execution_done",
-                "executed_seat": target_seat,
-                "winner": game_state.winner,
-                "version": game_state.version,
-            })
-
-        elif action_type == "ACK_POWER":
-            # Le Roi ferme le résultat d'investigation et on enchaîne la phase suivante.
-            if game_state.turn.phase != Phase.POWER:
-                raise HTTPException(status_code=400, detail="Wrong phase")
-            if player.seat != game_state.turn.regent_seat:
-                raise HTTPException(status_code=400, detail="Only the King can acknowledge")
-            if game_state.turn.active_power != "INVESTIGATE" or game_state.turn.power_result is None:
-                raise HTTPException(status_code=400, detail="No power result to acknowledge")
-
-            manager._advance_after_power(game_state)
-            game_state.version += 1
-            await manager.broadcast_to_room(room_code, {
-                "type": "game_update",
-                "data": "power_acknowledged",
-                "version": game_state.version,
-            })
-
-        elif action_type == "SPEAK_TOGGLE":
-            # Voice is available for the whole game. Only require that the
-            # game is in progress and the player is alive.
-            if game_state.status != "in_progress":
-                raise HTTPException(status_code=400, detail="Game not in progress")
-            if not player.alive:
-                raise HTTPException(status_code=400, detail="Dead players cannot speak")
-
-            if player.seat in game_state.turn.speaking_players:
-                game_state.turn.speaking_players.remove(player.seat)
-            else:
-                game_state.turn.speaking_players.append(player.seat)
-
-            game_state.version += 1
-            await manager.broadcast_to_room(room_code, {
-                "type": "game_update",
-                "data": "speaking_update",
-                "version": game_state.version
-            })
-        
-        else:
-            raise HTTPException(status_code=400, detail="Unknown action type")
-            
-        return {"success": True, "version": game_state.version}
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Action failed: {str(e)}")
 
 @api_router.get("/rooms/{room_code}/game_state")
 async def get_game_state(
     room_code: str,
     identity: PlayerIdentity = Depends(require_player),
 ):
-    """Get current game state for a player.
-
-    CRITICAL: the caller is identified by JWT, never by a client-supplied
-    player_id. Before this fix, a client could pass ?player_id=X in the
-    URL and read X's secret role (your_role / teammates / power_result).
-    """
+    """Get current game state for the caller (identified by JWT only)."""
     manager.touch_room(room_code)
-    if room_code not in manager.game_states:
-        raise HTTPException(status_code=404, detail="Room not found")
+    game_state = manager.get_game_state(room_code)
+    if not game_state:
+        raise HTTPException(status_code=404, detail="Salle introuvable")
 
     player_id = identity.user_id
-    game_state = manager.game_states[room_code]
-    
-    # Check if Conseil du Royaume has expired and auto-advance if needed
-    if game_state.turn.phase == Phase.CONSEIL_ROYAUME and game_state.turn.conseil_royaume_start_time:
-        import time
-        current_time = time.time()
-        if (current_time - game_state.turn.conseil_royaume_start_time) >= 60:
-            # Time's up! Advance to next phase
-            await manager.advance_after_conseil(game_state)
-            game_state.version += 1
-
-            # Broadcast the update
-            await manager.broadcast_to_room(room_code, {
-                "type": "game_update",
-                "data": "conseil_timeout",
-                "version": game_state.version
-            })
-
-    # Check if DEFIANCE phase has expired and auto-resolve
-    elif game_state.turn.phase == Phase.DEFIANCE and game_state.turn.defiance_start_time:
-        import time
-        current_time = time.time()
-        if (current_time - game_state.turn.defiance_start_time) >= DEFIANCE_DURATION_SECONDS:
-            manager._resolve_defiance(game_state)
-            game_state.version += 1
-            await manager.broadcast_to_room(room_code, {
-                "type": "game_update",
-                "data": "defiance_timeout",
-                "version": game_state.version
-            })
-    
     player = next((p for p in game_state.players if p.id == player_id), None)
     if not player:
-        raise HTTPException(status_code=403, detail="Not a member of this room")
+        raise HTTPException(status_code=403, detail="Vous n'êtes pas membre de cette salle")
+    game_state.last_seen[player_id] = _now()
+    t = game_state.turn
 
-    # Determine if player can see legislative cards
     legislative_cards = []
-    if game_state.turn.phase == Phase.LEGIS_REGENT and player.seat == game_state.turn.regent_seat:
-        # Regent can see the cards during LEGIS_REGENT phase
-        legislative_cards = game_state.turn.legislative_cards
-    elif game_state.turn.phase == Phase.LEGIS_CHAMBELLAN and player.seat == game_state.turn.nominee_seat:
-        # Chambellan can see the cards during LEGIS_CHAMBELLAN phase
-        legislative_cards = game_state.turn.legislative_cards
-    
-    # Compute teammates (secret info visible to this player only)
-    #
-    # Règle Dark Oath :
-    # - Les Conjurés (traîtres) connaissent l'identité du Tyran ET des autres Conjurés.
-    # - Le Tyran (Usurpateur) ne connaît l'identité de PERSONNE (ni Conjurés, ni Fidèles).
-    # - Les Fidèles ne connaissent l'identité de personne.
+    if t.phase == Phase.LEGIS_REGENT and player.seat == t.regent_seat:
+        legislative_cards = t.legislative_cards
+    elif t.phase == Phase.LEGIS_CHAMBELLAN and player.seat == t.nominee_seat:
+        legislative_cards = t.legislative_cards
+
+    # Règle Dark Oath : les Traîtres connaissent les autres Traîtres et le Tyran ;
+    # le Tyran et les Fidèles ne connaissent personne.
     teammates = []
     if player.role == Role.CONJURE:
-        # Les Conjurés voient les autres Conjurés ET le Tyran.
         teammates = [
             {"seat": p.seat, "name": p.name, "role": p.role}
             for p in game_state.players
             if p.id != player.id and p.role in (Role.CONJURE, Role.USURPATEUR)
         ]
-    # Le Tyran et les Fidèles n'ont aucun allié révélé au début de la partie.
 
+    reveal = t.phase == Phase.ENDGAME
     return {
         "status": game_state.status,
-        "phase": game_state.turn.phase,
-        "regent_seat": game_state.turn.regent_seat,
-        "nominee_seat": game_state.turn.nominee_seat,
-        "prev_government": game_state.turn.prev_government,
-        "votes": game_state.turn.votes,
-        "tracks": game_state.tracks.dict(),
+        "phase": t.phase,
+        "server_time": _now(),
+        "phase_started_at": t.phase_started_at,
+        "afk_timeout": AFK_ACTION_TIMEOUT_SECONDS,
+        "host_id": game_state.host_id,
+        "regent_seat": t.regent_seat,
+        "nominee_seat": t.nominee_seat,
+        "prev_government": t.prev_government,
+        "eligible_nominee_seats": eligible_nominee_seats(game_state) if t.phase == Phase.NOMINATION else [],
+        # Votes are secret until everyone has voted: only who has voted is public.
+        "votes_cast": list(t.votes.keys()),
+        "my_vote": t.votes.get(player_id),
+        "last_vote": t.last_vote,
+        "last_decree": t.last_decree,
+        "tracks": game_state.tracks.model_dump(),
         "crisis": game_state.tracks.crisis,
+        "deck_count": len(game_state.deck),
+        "discard_count": len(game_state.discard),
         "your_role": player.role if player.role else None,
+        "your_seat": player.seat,
         "teammates": teammates,
-        "players": [{"id": p.id, "name": p.name, "seat": p.seat, "alive": p.alive, "connected": p.connected} for p in game_state.players],
+        "players": [_public_player(game_state, p, reveal) for p in game_state.players],
         "winner": game_state.winner,
         "winner_reason": game_state.winner_reason,
         "version": game_state.version,
         "legislative_cards": legislative_cards,
-        "disgraced_player_seat": game_state.turn.disgraced_player_seat,
-        "peoples_anger_triggered": game_state.turn.peoples_anger_triggered,
-        "conseil_royaume_timer": game_state.turn.conseil_royaume_timer,
-        "conseil_royaume_start_time": game_state.turn.conseil_royaume_start_time,
-        "speaking_players": game_state.turn.speaking_players,
+        "disgraced_player_seat": t.disgraced_player_seat,
+        "peoples_anger_triggered": t.peoples_anger_triggered,
+        "conseil_royaume_timer": t.conseil_royaume_timer,
+        "conseil_royaume_start_time": t.conseil_royaume_start_time,
+        "conseil_duration": CONSEIL_DURATION_SECONDS,
+        "conseil_ready": t.conseil_ready,
+        "speaking_players": t.speaking_players,
         # Piste de Défiance
-        "turn_number": game_state.turn.turn_number,
-        "defiance_counts": game_state.turn.defiance_counts,
-        "defiance_voted_ids": list(game_state.turn.defiance_votes.keys()),
-        "defiance_my_target": game_state.turn.defiance_votes.get(player_id) if player_id in game_state.turn.defiance_votes else None,
-        "defiance_has_voted": player_id in game_state.turn.defiance_votes,
-        "marked_player_seat": game_state.turn.marked_player_seat,
-        "defiance_start_time": game_state.turn.defiance_start_time,
+        "turn_number": t.turn_number,
+        "defiance_counts": t.defiance_counts,
+        "defiance_voted_ids": list(t.defiance_votes.keys()),
+        "defiance_my_target": t.defiance_votes.get(player_id),
+        "defiance_has_voted": player_id in t.defiance_votes,
+        "marked_player_seat": t.marked_player_seat,
+        "defiance_start_time": t.defiance_start_time,
         "defiance_duration": DEFIANCE_DURATION_SECONDS,
         "defiance_threshold": DEFIANCE_MARK_THRESHOLD,
         # Pouvoir du Roi — active_power visible à tous, power_result uniquement au Roi
-        "active_power": game_state.turn.active_power,
+        "active_power": t.active_power,
         "power_result": (
-            game_state.turn.power_result
-            if game_state.turn.active_power == "INVESTIGATE"
-               and player.seat == game_state.turn.regent_seat
+            t.power_result
+            if t.active_power == "INVESTIGATE" and player.seat == t.regent_seat
             else None
         ),
-        "last_execution_seat": game_state.turn.last_execution_seat,
+        "my_investigations": bots.memory(game_state, player)["investigations"],
+        "last_execution_seat": t.last_execution_seat,
         "powers": game_state.powers,
+        "events": game_state.events[-120:],
     }
+
+
 @api_router.post("/rooms/{room_code}/start")
 async def start_game(
     room_code: str,
@@ -1199,33 +1441,28 @@ async def start_game(
     manager.touch_room(room_code)
     game_state = manager.get_game_state(room_code)
     if not game_state:
-        raise HTTPException(status_code=404, detail="Room not found")
-    # Only an actual room member can start. Previously /start was unauthenticated
-    # and a random attacker could force-start any room by knowing the 6-letter code.
-    if not any(p.id == identity.user_id for p in game_state.players):
-        raise HTTPException(status_code=403, detail="Not a member of this room")
-    success = manager.start_game(room_code)
-    if not success:
-        raise HTTPException(status_code=400, detail="Cannot start game")
+        raise HTTPException(status_code=404, detail="Salle introuvable")
+    async with manager.lock_for(room_code):
+        if not any(p.id == identity.user_id for p in game_state.players):
+            raise HTTPException(status_code=403, detail="Vous n'êtes pas membre de cette salle")
+        if game_state.host_id and identity.user_id != game_state.host_id:
+            raise HTTPException(status_code=403, detail="Seul l'hôte peut lancer la partie")
+        if not manager.start_game(room_code):
+            raise HTTPException(status_code=400, detail="Impossible de lancer : il faut entre 5 et 10 joueurs")
+        manager.sync_phase_clock(game_state)
 
-    game_state = manager.get_game_state(room_code)
-
-    # Track games played
     try:
         admin_stats.increment("games_played")
     except Exception as e:
         logging.warning(f"Could not increment games_played stat: {e}")
 
-    # Send roles to each player privately and game start to all
-    for player in game_state.players:
-        await manager.broadcast_to_room(room_code, {
-            "type": "game_started",
-            "phase": game_state.turn.phase,
-            "regent_seat": game_state.turn.regent_seat,
-            "tracks": game_state.tracks.dict(),
-            "version": game_state.version
-        })
-
+    await manager.broadcast_to_room(room_code, {
+        "type": "game_started",
+        "phase": game_state.turn.phase,
+        "regent_seat": game_state.turn.regent_seat,
+        "tracks": game_state.tracks.model_dump(),
+        "version": game_state.version,
+    })
     return {"success": True}
 
 
@@ -1321,7 +1558,7 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str, player_id: st
                         "phase": game_state.turn.phase,
                         "regent_seat": game_state.turn.regent_seat,
                         "nominee_seat": game_state.turn.nominee_seat,
-                        "tracks": game_state.tracks.dict(),
+                        "tracks": game_state.tracks.model_dump(),
                         "crisis": game_state.tracks.crisis,
                         "your_role": player.role if player.role else None,
                         "players": [{"id": p.id, "name": p.name, "seat": p.seat, "alive": p.alive} for p in game_state.players]
@@ -1457,6 +1694,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 _prune_task: Optional[asyncio.Task] = None
+_ticker_task: Optional[asyncio.Task] = None
 
 
 async def _prune_loop():
@@ -1475,17 +1713,18 @@ async def _prune_loop():
 
 @app.on_event("startup")
 async def _start_prune_task():
-    global _prune_task
+    global _prune_task, _ticker_task
     _prune_task = asyncio.create_task(_prune_loop())
+    _ticker_task = asyncio.create_task(ticker_loop())
 
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
-    global _prune_task
-    if _prune_task is not None:
-        _prune_task.cancel()
-        try:
-            await _prune_task
-        except (asyncio.CancelledError, Exception):
-            pass
+    for task in (_prune_task, _ticker_task):
+        if task is not None:
+            task.cancel()
+            try:
+                await task
+            except (asyncio.CancelledError, Exception):
+                pass
     client.close()

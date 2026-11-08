@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { serverNow } from '../lib/game';
 import { Mic, MicOff, Clock, Volume2, VolumeX } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -7,18 +8,18 @@ import { getAuthToken } from '../App';
 const MUTED_SEATS_KEY = 'darkoath_muted_seats';
 
 const CONSEIL_DURATION = 60; // seconds, mirrors backend
-const ConseilTimer = ({ startTime }) => {
-  const [timeLeft, setTimeLeft] = useState(CONSEIL_DURATION);
+const ConseilTimer = ({ startTime, duration = CONSEIL_DURATION }) => {
+  const [timeLeft, setTimeLeft] = useState(duration);
   useEffect(() => {
     if (!startTime) return;
     const tick = () => {
-      const elapsed = Date.now() / 1000 - startTime;
-      setTimeLeft(Math.max(0, Math.ceil(CONSEIL_DURATION - elapsed)));
+      const elapsed = serverNow() - startTime;
+      setTimeLeft(Math.max(0, Math.ceil(duration - elapsed)));
     };
     tick();
     const id = setInterval(tick, 250);
     return () => clearInterval(id);
-  }, [startTime]);
+  }, [startTime, duration]);
   const urgent = timeLeft <= 10;
   return (
     <div
@@ -366,7 +367,7 @@ const ConseilRoyaumePanel = ({
       </CardHeader>
       <CardContent className="space-y-4">
         {gameState?.phase === 'CONSEIL_ROYAUME' && gameState?.conseil_royaume_start_time && (
-          <ConseilTimer startTime={gameState.conseil_royaume_start_time} />
+          <ConseilTimer startTime={gameState.conseil_royaume_start_time} duration={gameState.conseil_duration || CONSEIL_DURATION} />
         )}
 
         <div className="text-center p-3 rounded-lg" style={{ background: 'rgba(199, 168, 105, 0.1)', border: '1px solid rgba(199, 168, 105, 0.25)' }}>

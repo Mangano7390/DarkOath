@@ -94,3 +94,6 @@ credentials.json
 *.pem
 *.key
 .credentials
+
+# Admin stats written at runtime
+backend/stats.json

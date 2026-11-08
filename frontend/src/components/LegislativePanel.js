@@ -4,7 +4,7 @@ import { Button } from './ui/button';
 
 const titleFont = { fontFamily: "'Cinzel', serif", letterSpacing: '0.05em' };
 
-const LegislativePanel = ({ phase, mySeat, regentSeat, chambellanSeat, players, cards, onDiscard }) => {
+const LegislativePanel = ({ phase, mySeat, regentSeat, chambellanSeat, players, cards, onDiscard, pending = false }) => {
   const isRegent = mySeat === regentSeat;
   const isConseiller = mySeat === chambellanSeat;
   const isActivePlayer = (phase === 'LEGIS_REGENT' && isRegent) || (phase === 'LEGIS_CHAMBELLAN' && isConseiller);
@@ -140,6 +140,7 @@ const LegislativePanel = ({ phase, mySeat, regentSeat, chambellanSeat, players, 
                   </div>
                   <Button
                     onClick={() => onDiscard(index)}
+                    disabled={pending}
                     className="transition-all flex-shrink-0"
                     style={{
                       background: 'rgba(20, 14, 8, 0.7)',

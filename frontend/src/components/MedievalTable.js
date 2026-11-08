@@ -9,6 +9,9 @@ const MedievalTable = ({
   nomineeSeat = null,
   votedPlayerIds = [],
   phase = null,
+  markedPlayerSeat = null,
+  prevGovernment = null,
+  mySeat = null,
 }) => {
   const count = Math.max(players?.length || 0, 1);
   const radius = size / 2 - 55;
@@ -17,9 +20,10 @@ const MedievalTable = ({
   const cy = size / 2;
   const votedSet = new Set(votedPlayerIds);
   const showVoteSeals = phase === 'VOTE';
+  const ariaSummary = `Table du conseil : ${(players || []).map((p) => `siège ${p.seat} ${p.name}${p.alive === false ? ' (mort)' : ''}${p.seat === regentSeat ? ' (Roi)' : ''}${p.seat === nomineeSeat ? ' (Conseiller)' : ''}`).join(', ')}`;
 
   return (
-    <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} className="mx-auto">
+    <svg viewBox={`0 0 ${size} ${size}`} width="100%" style={{ maxWidth: size }} className="mx-auto" role="img" aria-label={ariaSummary}>
       <defs>
         <radialGradient id="tableWood" cx="50%" cy="45%" r="60%">
           <stop offset="0%" stopColor="#6b4a28" />
@@ -91,7 +95,11 @@ const MedievalTable = ({
         const isNominee = nomineeSeat === seat;
         const isActive = isRegent || isNominee;
         const isDead = player.alive === false;
-        const hasVoted = showVoteSeals && player.id && votedSet.has(player.id) && !isRegent && !isNominee;
+        const hasVoted = showVoteSeals && player.id && votedSet.has(player.id);
+        const isMarked = markedPlayerSeat === seat;
+        const isTermLimited = phase === 'NOMINATION' && prevGovernment && (prevGovernment.regent === seat || prevGovernment.chambellan === seat) && !isRegent;
+        const isAway = player.connected === false && !isDead;
+        const isMe = mySeat === seat;
 
         return (
           <g key={seat} transform={`translate(${x}, ${y})`} opacity={isDead ? 0.35 : 1}>
@@ -179,6 +187,32 @@ const MedievalTable = ({
                   ✓
                 </text>
               </g>
+            )}
+
+            {/* Me ring */}
+            {isMe && !isDead && (
+              <rect x={-seatSize / 2 - 4} y={-seatSize / 2 - 4} width={seatSize + 8} height={seatSize + 8} rx={6} fill="none" stroke="#fde68a" strokeWidth={1.2} strokeDasharray="3 3" opacity={0.8} />
+            )}
+
+            {/* Marked by Défiance */}
+            {isMarked && !isDead && (
+              <text x={seatSize / 2 + 4} y={seatSize / 2 + 4} textAnchor="middle" fontSize={Math.max(14, size / 26)}>
+                <title>Marqué par la Défiance</title>🎯
+              </text>
+            )}
+
+            {/* Ex-government (not eligible as Conseiller) */}
+            {isTermLimited && (
+              <text x={-seatSize / 2 - 4} y={seatSize / 2 + 6} textAnchor="middle" fontSize={Math.max(12, size / 30)}>
+                <title>Ancien gouvernement : ne peut pas être Conseiller</title>⛓️
+              </text>
+            )}
+
+            {/* Away / replaced by fate */}
+            {isAway && (
+              <text x={seatSize / 2 + 4} y={-seatSize / 2 + 8} textAnchor="middle" fontSize={Math.max(11, size / 32)}>
+                <title>Absent</title>💤
+              </text>
             )}
 
             {/* Disgraced mark */}

@@ -2,7 +2,7 @@ import React from 'react';
 import { Crown, Users, Hourglass } from 'lucide-react';
 import { Button } from './ui/button';
 
-const NominationPanel = ({ meSeat, regentSeat, players, prevGovernment, disgracedPlayerSeat, markedPlayerSeat, onNominate }) => {
+const NominationPanel = ({ meSeat, regentSeat, players, prevGovernment, disgracedPlayerSeat, markedPlayerSeat, onNominate, eligibleSeats = null, pending = false }) => {
   const isRegent = meSeat === regentSeat;
   const regentName = players.find(p => p.seat === regentSeat)?.name;
 
@@ -20,7 +20,8 @@ const NominationPanel = ({ meSeat, regentSeat, players, prevGovernment, disgrace
     );
   }
 
-  const validCandidates = players.filter(player => {
+  // The server is the source of truth (it relaxes term limits when nobody is eligible).
+  const validCandidates = eligibleSeats ? players.filter(p => eligibleSeats.includes(p.seat)) : players.filter(player => {
     if (player.seat === regentSeat) return false;
     if (!player.alive) return false;
     if (prevGovernment) {
@@ -69,6 +70,7 @@ const NominationPanel = ({ meSeat, regentSeat, players, prevGovernment, disgrace
             <Button
               key={player.seat}
               onClick={() => onNominate(player.seat)}
+              disabled={pending}
               className="w-full justify-start h-auto p-3 transition-all"
               style={{
                 background: 'rgba(20, 14, 8, 0.6)',

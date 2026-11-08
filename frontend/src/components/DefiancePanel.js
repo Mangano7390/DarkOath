@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { serverNow } from '../lib/game';
 import { AlertTriangle, Clock, Check, X } from 'lucide-react';
 import { Button } from './ui/button';
 
@@ -23,7 +24,7 @@ const DefiancePanel = ({
   useEffect(() => {
     if (!startTime) return;
     const tick = () => {
-      const elapsed = Date.now() / 1000 - startTime;
+      const elapsed = serverNow() - startTime;
       setTimeLeft(Math.max(0, Math.ceil(duration - elapsed)));
     };
     tick();

@@ -11,10 +11,10 @@ import { useTranslation } from 'react-i18next';
 import './i18n';
 import './styles/medieval.css';
 import axios from 'axios';
-import io from 'socket.io-client';
 import GameInterface from './components/GameInterface';
-import SimpleDemo from './components/SimpleDemo';
 import DashAdmin from './components/DashAdmin';
+import { Toaster, toast } from 'sonner';
+import { LAST_ROOM_KEY, rememberRoom, forgetRoom, errorMessage } from './lib/game';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -127,11 +127,24 @@ const MusicControl = ({ enabled, volume, onToggle, onVolume }) => {
 const LandingPage = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const [playerName, setPlayerName] = useState('');
-  const [roomCode, setRoomCode] = useState('');
+  const [playerName, setPlayerName] = useState(() => {
+    try { return localStorage.getItem('playerName') || ''; } catch { return ''; }
+  });
+  // Invitation links land here as /?join=CODE
+  const [roomCode, setRoomCode] = useState(() => {
+    try {
+      return (new URLSearchParams(window.location.search).get('join') || '').toUpperCase().slice(0, 6);
+    } catch { return ''; }
+  });
+  const [lastRoom] = useState(() => {
+    try { return localStorage.getItem(LAST_ROOM_KEY) || ''; } catch { return ''; }
+  });
+  const [busy, setBusy] = useState(false);
   const [musicEnabled, setMusicEnabled] = useState(() => readEnabled(true));
   const [musicVolume, setMusicVolume] = useState(() => readVolume(0.3));
-  const [showRules, setShowRules] = useState(false);
+  const [showRules, setShowRules] = useState(() => {
+    try { return new URLSearchParams(window.location.search).get('regles') === '1'; } catch { return false; }
+  });
   const audioRef = useRef(null);
 
   // Track a site visit once per session
@@ -229,34 +242,62 @@ const LandingPage = () => {
     return { userId, token };
   };
 
-  const createRoom = async () => {
-    if (!playerName.trim()) return;
-
+  // Reuse the existing identity when the name hasn't changed, so a player who
+  // comes back keeps their seat (a new token = a new player id).
+  const ensureAuth = async (name) => {
+    let sameName = false;
+    let hasToken = false;
     try {
-      await authenticate(playerName.trim());
-      // Room creation now requires the Bearer token (interceptor handles it).
-      const roomResponse = await axios.post(`${API}/rooms`);
-      const { code } = roomResponse.data;
-      navigate(`/lobby/${code}`);
+      sameName = (localStorage.getItem('playerName') || '') === name;
+      hasToken = !!localStorage.getItem(AUTH_TOKEN_KEY);
+    } catch {}
+    if (sameName && hasToken) return;
+    await authenticate(name);
+  };
+
+  // Run a request; on 401 (expired token) re-authenticate once and retry.
+  const withAuth = async (name, fn) => {
+    await ensureAuth(name);
+    try {
+      return await fn();
     } catch (error) {
-      console.error('Error creating room:', error);
-      const detail = error?.response?.data?.detail;
-      if (detail) alert(detail);
+      if (error?.response?.status !== 401) throw error;
+      await authenticate(name);
+      return fn();
     }
   };
 
-  const joinRoom = async () => {
-    if (!playerName.trim() || !roomCode.trim()) return;
-
+  const createRoom = async () => {
+    if (!playerName.trim() || busy) return;
+    setBusy(true);
     try {
-      await authenticate(playerName.trim());
-      // Sanity-check the room exists before navigating to the lobby.
-      await axios.get(`${API}/rooms/${roomCode.toUpperCase()}`);
-      navigate(`/lobby/${roomCode.toUpperCase()}`);
+      const roomResponse = await withAuth(playerName.trim(), () => axios.post(`${API}/rooms`));
+      const { code } = roomResponse.data;
+      navigate(`/lobby/${code}`);
     } catch (error) {
-      console.error('Error joining room:', error);
-      const detail = error?.response?.data?.detail;
-      if (detail) alert(detail);
+      toast.error(errorMessage(error, "Impossible de créer la salle."));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const joinRoom = async (codeOverride) => {
+    const code = (typeof codeOverride === 'string' ? codeOverride : roomCode).trim().toUpperCase();
+    if (!playerName.trim() || !code || busy) return;
+    setBusy(true);
+    try {
+      const room = await withAuth(playerName.trim(), () => axios.get(`${API}/rooms/${code}`));
+      const me = localStorage.getItem('userId');
+      const inRoom = (room.data.players || []).some((p) => p.id === me);
+      if (room.data.status !== 'lobby' && inRoom) {
+        navigate(`/game/${code}`);
+      } else {
+        navigate(`/lobby/${code}`);
+      }
+    } catch (error) {
+      toast.error(errorMessage(error, 'Salle introuvable. Vérifiez le code.'));
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -397,10 +438,10 @@ const LandingPage = () => {
                 <div className="space-y-3">
                   {[
                     { num: '1', title: 'Nomination', text: "Le Roi (désigné à tour de rôle autour de la table) propose un Conseiller parmi les joueurs éligibles." },
-                    { num: '2', title: 'Vote', text: "Tous les joueurs vivants votent OUI ou NON à la majorité simple. Si OUI, le gouvernement est formé. Si NON ou égalité, on passe au joueur suivant et la Piste de Crise avance d'une case." },
+                    { num: '2', title: 'Vote', text: "Tous les joueurs vivants (Roi et Conseiller compris) votent OUI ou NON à la majorité simple. Les votes restent secrets jusqu'au dernier bulletin, puis sont révélés à tous. Si OUI, le gouvernement est formé. Si NON ou égalité, on passe au joueur suivant et la Piste de Crise avance d'une case." },
                     { num: '3', title: 'Législation — le Roi', text: "Le Roi pioche 3 décrets, en défausse 1 secrètement, et transmet les 2 restants au Conseiller." },
                     { num: '4', title: 'Législation — le Conseiller', text: "Le Conseiller défausse 1 décret en secret et révèle le dernier. Ce décret est appliqué et avance la piste correspondante (Fidèles ou Trahison)." },
-                    { num: '5', title: 'Conseil du Royaume', text: "Après chaque décret révélé, 30 secondes de discussion en vocal ouvert. Chacun peut s'exprimer, accuser, se justifier." },
+                    { num: '5', title: 'Conseil du Royaume', text: "Après chaque décret révélé, jusqu'à 60 secondes de discussion (vocal et chat). Le Conseil se termine plus tôt si tous les joueurs cliquent « Prêt »." },
                     { num: '6', title: 'Pouvoir du Roi (si déclenché)', text: "Au 2ᵉ puis au 4ᵉ Décret de Trahison posé sur la piste des Traîtres, et à la fin du Conseil, le Roi exerce un pouvoir (Investigation puis Exécution — voir section Pouvoirs)." },
                     { num: '7', title: 'Piste de Défiance (dès le tour 2)', text: "25 secondes pour désigner un suspect ou passer. Les votes s'accumulent ; 3 votes cumulés = joueur marqué, exclu de toute fonction au tour suivant." },
                   ].map((step) => (
@@ -506,11 +547,24 @@ const LandingPage = () => {
                   🕯️ &nbsp;Vocal & Chat
                 </h3>
                 <p className="text-amber-100/85 leading-relaxed text-sm mb-2" style={{ fontFamily: "'IM Fell English', serif" }}>
-                  Le <strong>micro est ouvert en continu</strong> dès que la partie commence. Un chat écrit est également disponible à tout moment pour chuchoter, accuser ou conspirer.
+                  Le <strong>micro s'active pendant le Conseil du Royaume</strong>, sur simple pression. Un chat écrit est disponible à tout moment pour chuchoter, accuser ou conspirer. Les bots y annoncent leurs cartes… et mentent s'ils sont Traîtres.
                 </p>
                 <p className="text-amber-100/75 leading-relaxed text-sm" style={{ fontFamily: "'IM Fell English', serif" }}>
-                  Un <strong>Conseil du Royaume</strong> de 30 secondes marque chaque révélation de décret&nbsp;: moment clé pour débattre avant le tour suivant.
+                  Un <strong>Conseil du Royaume</strong> de 60 secondes (ou moins si tout le monde est prêt) marque chaque révélation de décret&nbsp;: moment clé pour débattre avant le tour suivant.
                 </p>
+              </section>
+
+              {/* Bots & absents */}
+              <section className="oath-card p-6 md:p-8">
+                <h3 className="darkoath-title mb-3" style={{ fontSize: '1.6rem' }}>
+                  🤖 &nbsp;Bots & Joueurs absents
+                </h3>
+                <ul className="space-y-2 text-amber-100/85 text-sm" style={{ fontFamily: "'IM Fell English', serif" }}>
+                  <li>• L'hôte de la salle peut <strong>ajouter des bots</strong> pour compléter la table : on peut jouer dès <strong>1 humain</strong>.</li>
+                  <li>• Les bots jouent selon leur rôle secret : un bot Traître ment, protège le Tyran et sabote les décrets.</li>
+                  <li>• Si un joueur n'agit pas pendant <strong>45 secondes</strong> (ou se déconnecte), le destin choisit à sa place pour que la partie ne bloque jamais.</li>
+                  <li>• Quand la pioche est vide, la défausse est remélangée.</li>
+                </ul>
               </section>
 
               {/* Conseils */}
@@ -628,7 +682,7 @@ const LandingPage = () => {
             DARK OATH
           </h1>
           <p className="darkoath-tagline text-xl md:text-2xl mb-3">
-            Trois camps. Un trône. Une seule vérité.
+            Deux camps. Un trône. Une seule vérité.
           </p>
           <p className="darkoath-subtitle text-base md:text-lg mb-8 italic">
             Derrière chaque sourire, une lame. Derrière chaque vote, un complot.
@@ -687,23 +741,41 @@ const LandingPage = () => {
               Prêter Serment
             </CardTitle>
             <CardDescription className="darkoath-subtitle italic mt-2">
-              5 à 10 âmes • 30 à 45 minutes
+              1 à 10 âmes (bots inclus) • 20 à 40 minutes
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
+            {lastRoom && (
+              <div className="p-3 rounded border border-amber-600/50 bg-amber-950/30 flex items-center justify-between gap-3">
+                <div className="text-amber-100/90 font-serif text-sm">
+                  Partie en cours&nbsp;: <span className="tracking-widest text-amber-200">{lastRoom}</span>
+                </div>
+                <Button
+                  onClick={() => joinRoom(lastRoom)}
+                  disabled={!playerName.trim() || busy}
+                  className="oath-btn-primary px-4 py-2 text-sm"
+                >
+                  Reprendre
+                </Button>
+              </div>
+            )}
             <div>
-              <Label className="text-amber-200/80 mb-2 block font-serif text-sm tracking-wider uppercase">
+              <Label htmlFor="player-name" className="text-amber-200/80 mb-2 block font-serif text-sm tracking-wider uppercase">
                 Votre Nom
               </Label>
               <Input
+                id="player-name"
                 value={playerName}
                 onChange={(e) => setPlayerName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') (roomCode.trim() ? joinRoom() : createRoom()); }}
                 placeholder="Entrez dans l'arène…"
+                maxLength={24}
+                autoComplete="nickname"
                 className="bg-black/50 border-amber-800/50 text-amber-50 placeholder-amber-200/30 font-serif"
               />
             </div>
 
-            <Tabs defaultValue="create" className="w-full">
+            <Tabs defaultValue={roomCode ? 'join' : 'create'} className="w-full">
               <TabsList className="grid w-full grid-cols-2 bg-black/50 border border-amber-800/40">
                 <TabsTrigger value="create" className="text-amber-200/80 data-[state=active]:bg-amber-900/40 data-[state=active]:text-amber-100 font-serif">
                   Forger un Pacte
@@ -716,27 +788,32 @@ const LandingPage = () => {
               <TabsContent value="create" className="space-y-4 pt-4">
                 <Button
                   onClick={createRoom}
-                  disabled={!playerName.trim()}
+                  disabled={!playerName.trim() || busy}
                   className="w-full oath-btn-primary py-6"
                 >
-                  Sceller le Serment
+                  {busy ? 'Ouverture des portes…' : 'Sceller le Serment'}
                 </Button>
+                <p className="text-center text-xs text-amber-200/60 font-serif italic">
+                  Pas assez d'amis ? Ajoutez des bots dans l'antichambre.
+                </p>
               </TabsContent>
 
               <TabsContent value="join" className="space-y-4 pt-4">
                 <Input
                   value={roomCode}
                   onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => { if (e.key === 'Enter') joinRoom(); }}
                   placeholder="Code du royaume…"
+                  aria-label="Code de la salle"
                   className="bg-black/50 border-amber-800/50 text-amber-50 placeholder-amber-200/30 font-serif tracking-widest text-center uppercase"
                   maxLength={6}
                 />
                 <Button
-                  onClick={joinRoom}
-                  disabled={!playerName.trim() || !roomCode.trim()}
+                  onClick={() => joinRoom()}
+                  disabled={!playerName.trim() || !roomCode.trim() || busy}
                   className="w-full oath-btn-primary py-6"
                 >
-                  Entrer dans l'Ombre
+                  {busy ? 'Ouverture des portes…' : "Entrer dans l'Ombre"}
                 </Button>
               </TabsContent>
             </Tabs>
@@ -756,60 +833,109 @@ const Lobby = ({ roomCode }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [players, setPlayers] = useState([]);
+  const [hostId, setHostId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [gameStarted, setGameStarted] = useState(false);
+  const [pending, setPending] = useState(false);
+  const joinedRef = useRef(false);
 
   const currentPlayerId = localStorage.getItem('userId');
-  const currentPlayerName = localStorage.getItem('playerName');
+  const isHost = !!currentPlayerId && hostId === currentPlayerId;
+
+  const loadPlayers = React.useCallback(async () => {
+    try {
+      const response = await axios.get(`${API}/rooms/${roomCode}`);
+      const list = response.data.players || [];
+      setPlayers(list);
+      setHostId(response.data.host_id || null);
+      setLoading(false);
+      if (joinedRef.current && !list.some((p) => p.id === currentPlayerId)) {
+        toast.error("Vous n'êtes plus dans cette salle.");
+        forgetRoom();
+        navigate('/');
+        return;
+      }
+      if (response.data.status === 'in_progress') {
+        setGameStarted(true);
+        navigate(`/game/${roomCode}`);
+      }
+    } catch (error) {
+      if (error?.response?.status === 404) {
+        toast.error('Cette salle a disparu.');
+        forgetRoom();
+        navigate('/');
+      }
+      setLoading(false);
+    }
+  }, [roomCode, currentPlayerId, navigate]);
 
   useEffect(() => {
     if (!currentPlayerId) {
-      navigate('/');
-      return;
+      // Invitation link opened without an identity: go pick a name first.
+      navigate(`/?join=${roomCode}`);
+      return undefined;
     }
-
-    const joinRoom = async () => {
+    let cancelled = false;
+    let interval = null;
+    (async () => {
       try {
-        // Identity is derived from the Bearer token (interceptor). No more
-        // player_id / player_name in query params — those leaked in logs.
-        const response = await axios.post(`${API}/rooms/${roomCode}/join`);
-        console.log('Join room response:', response.data);
+        await axios.post(`${API}/rooms/${roomCode}/join`);
+        joinedRef.current = true;
+        rememberRoom(roomCode);
       } catch (error) {
-        console.error('Error joining room:', error);
-        const detail = error?.response?.data?.detail;
-        if (detail) {
-          alert(detail);
+        if (error?.response?.status === 401) {
+          navigate(`/?join=${roomCode}`);
+          return;
         }
+        toast.error(errorMessage(error, 'Impossible de rejoindre la salle.'));
         navigate('/');
+        return;
       }
-    };
-
-    joinRoom();
-
-    const loadPlayers = async () => {
-      try {
-        const response = await axios.get(`${API}/rooms/${roomCode}`);
-        console.log('Room data:', response.data);
-        setPlayers(response.data.players || []);
-        setLoading(false);
-        
-        if (response.data.status === 'in_progress') {
-          setGameStarted(true);
-          navigate(`/game/${roomCode}`);
-        }
-      } catch (error) {
-        console.error('Error loading room:', error);
-        setLoading(false);
-      }
-    };
-
-    loadPlayers();
-    const interval = setInterval(loadPlayers, 2000);
-
+      if (cancelled) return;
+      await loadPlayers();
+      interval = setInterval(loadPlayers, 2000);
+    })();
     return () => {
-      clearInterval(interval);
+      cancelled = true;
+      if (interval) clearInterval(interval);
     };
-  }, [roomCode, currentPlayerId, navigate, currentPlayerName]);
+  }, [roomCode, currentPlayerId, navigate, loadPlayers]);
+
+  const lobbyAction = async (action_type, payload = {}) => {
+    if (pending) return;
+    setPending(true);
+    try {
+      await axios.post(`${API}/rooms/${roomCode}/action`, { action_type, payload });
+      await loadPlayers();
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const leaveRoom = async () => {
+    joinedRef.current = false;
+    try {
+      await axios.post(`${API}/rooms/${roomCode}/action`, { action_type: 'LEAVE', payload: {} });
+    } catch {}
+    forgetRoom();
+    navigate('/');
+  };
+
+  const inviteLink = `${window.location.origin}/?join=${roomCode}`;
+  const copyInvite = async () => {
+    try {
+      if (navigator.share && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
+        await navigator.share({ title: 'Dark Oath', text: `Rejoins ma partie de Dark Oath (code ${roomCode})`, url: inviteLink });
+        return;
+      }
+      await navigator.clipboard.writeText(inviteLink);
+      toast.success("Lien d'invitation copié !");
+    } catch {
+      toast.message(`Code de la salle : ${roomCode}`);
+    }
+  };
 
   // Lobby music - Morceau 1, with shared volume/enable controls.
   const lobbyAudioRef = useRef(null);
@@ -881,31 +1007,17 @@ const Lobby = ({ roomCode }) => {
   }, [musicEnabled]);
 
   const startGame = async () => {
-    console.log('startGame called for room:', roomCode);
-    console.log('Current players:', players.length);
-    
     if (players.length < 5) {
-      alert(`Impossible de démarrer - il faut au minimum 5 joueurs (actuellement ${players.length})`);
+      toast.error(`Il faut au moins 5 joueurs (actuellement ${players.length}). Ajoutez des bots !`);
       return;
     }
-    
     try {
-      console.log('Calling start game API...');
-      const response = await axios.post(`${API}/rooms/${roomCode}/start`);
-      console.log('Start game API response:', response.data);
       setGameStarted(true);
-      console.log('Navigating to game:', `/game/${roomCode}`);
+      await axios.post(`${API}/rooms/${roomCode}/start`);
       navigate(`/game/${roomCode}`);
-      console.log('Navigation completed');
     } catch (error) {
-      console.error('Error starting game:', error);
-      console.error('Error details:', error.response?.data);
-      
-      if (error.response?.status === 400) {
-        alert('Impossible de démarrer le jeu - vérifiez que tous les joueurs sont connectés');
-      } else {
-        alert('Erreur lors du démarrage du jeu');
-      }
+      setGameStarted(false);
+      toast.error(errorMessage(error, 'Impossible de lancer la partie.'));
     }
   };
 
@@ -970,7 +1082,7 @@ const Lobby = ({ roomCode }) => {
                   <CardDescription className="darkoath-subtitle italic mt-1">
                     {players.length < 5
                       ? `${5 - players.length} âme${5 - players.length > 1 ? 's' : ''} encore attendue${5 - players.length > 1 ? 's' : ''}…`
-                      : 'Le cercle est complet. Le serment peut être scellé.'}
+                      : players.length < 10 ? "Le serment peut être scellé — ou attendez jusqu'à 10 âmes." : 'Le cercle est complet.'}
                   </CardDescription>
                 </div>
                 <div className="text-center px-4 py-2 rounded border border-amber-700/50 bg-black/40">
@@ -996,6 +1108,7 @@ const Lobby = ({ roomCode }) => {
                     {[...Array(10)].map((_, index) => {
                       const player = players[index];
                       const taken = !!player;
+                      const isMe = taken && player.id === currentPlayerId;
                       return (
                         <div
                           key={index}
@@ -1003,21 +1116,32 @@ const Lobby = ({ roomCode }) => {
                             taken
                               ? 'bg-gradient-to-r from-amber-950/50 to-black/60 border-amber-700/60 shadow-[0_0_15px_rgba(180,90,30,0.15)]'
                               : 'bg-black/40 border-amber-900/30 border-dashed'
-                          }`}
+                          } ${isMe ? 'ring-1 ring-amber-400/60' : ''}`}
                         >
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2 sm:gap-3">
                             <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold shrink-0 ${
                               taken
                                 ? 'bg-gradient-to-br from-amber-600 to-amber-900 text-amber-100 shadow-inner'
-                                : 'bg-black/60 text-amber-900/60 border border-amber-900/30'
+                                : 'bg-black/60 text-amber-200/40 border border-amber-900/30'
                             }`} style={{ fontFamily: 'Cinzel, serif' }}>
-                              {index + 1}
+                              {taken && player.is_bot ? '🤖' : index + 1}
                             </div>
-                            <span className={`flex-1 font-serif ${taken ? 'text-amber-100' : 'text-amber-900/60 italic'}`}>
+                            <span className={`flex-1 min-w-0 truncate font-serif ${taken ? 'text-amber-100' : 'text-amber-200/40 italic'}`}>
                               {player ? player.name : 'Siège vide…'}
+                              {isMe && <span className="ml-2 text-xs text-amber-300/80">(vous)</span>}
                             </span>
-                            {taken && (
-                              <span className={`text-xs px-2 py-0.5 rounded font-serif tracking-wider ${
+                            {taken && player.is_host && (
+                              <span className="text-xs px-2 py-0.5 rounded font-serif bg-amber-900/50 text-amber-200 border border-amber-600/50" title="Hôte de la salle">
+                                👑 hôte
+                              </span>
+                            )}
+                            {taken && player.is_bot && (
+                              <span className="text-xs px-2 py-0.5 rounded font-serif bg-slate-800/60 text-slate-200 border border-slate-600/50">
+                                bot
+                              </span>
+                            )}
+                            {taken && !player.is_bot && (
+                              <span className={`hidden sm:inline text-xs px-2 py-0.5 rounded font-serif tracking-wider ${
                                 player.connected
                                   ? 'bg-green-900/50 text-green-300 border border-green-700/40'
                                   : 'bg-red-900/50 text-red-300 border border-red-700/40'
@@ -1025,22 +1149,57 @@ const Lobby = ({ roomCode }) => {
                                 {player.connected ? '● présent' : '○ absent'}
                               </span>
                             )}
+                            {taken && isHost && !isMe && (
+                              <button
+                                type="button"
+                                onClick={() => lobbyAction('REMOVE_PLAYER', { playerId: player.id })}
+                                disabled={pending}
+                                className="w-9 h-9 shrink-0 rounded border border-red-800/60 text-red-300 hover:bg-red-900/40 disabled:opacity-40"
+                                aria-label={`Retirer ${player.name}`}
+                                title="Retirer de la salle"
+                              >
+                                ✕
+                              </button>
+                            )}
                           </div>
                         </div>
                       );
                     })}
                   </div>
 
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {isHost && (
+                      <Button
+                        onClick={() => lobbyAction('ADD_BOT')}
+                        disabled={pending || players.length >= 10}
+                        className="w-full oath-btn-primary py-5"
+                      >
+                        🤖 Ajouter un bot
+                      </Button>
+                    )}
+                    <Button
+                      onClick={copyInvite}
+                      variant="outline"
+                      className={`w-full py-5 bg-black/40 border-amber-700/60 text-amber-100 hover:bg-amber-950/50 ${isHost ? '' : 'sm:col-span-2'}`}
+                    >
+                      🔗 Inviter (copier le lien)
+                    </Button>
+                  </div>
+
                   {players.length >= 5 ? (
                     <div className="space-y-4">
-                      <div className="oath-divider">LE CERCLE EST COMPLET</div>
-                      <Button
-                        onClick={startGame}
-                        className="w-full oath-btn-primary py-6 text-lg"
-                        disabled={gameStarted}
-                      >
-                        {gameStarted ? 'Le Serment se scelle…' : 'Sceller le Serment'}
-                      </Button>
+                      <div className="oath-divider">LE SERMENT PEUT ÊTRE SCELLÉ</div>
+                      {isHost ? (
+                        <Button
+                          onClick={startGame}
+                          className="w-full oath-btn-primary py-6 text-lg"
+                          disabled={gameStarted}
+                        >
+                          {gameStarted ? 'Le Serment se scelle…' : `Sceller le Serment (${players.length} joueurs)`}
+                        </Button>
+                      ) : (
+                        <p className="text-center darkoath-tagline italic">En attente de l'hôte pour lancer la partie…</p>
+                      )}
                     </div>
                   ) : (
                     <div className="text-center p-4 rounded border border-amber-900/40 bg-black/40">
@@ -1048,10 +1207,18 @@ const Lobby = ({ roomCode }) => {
                         Il faut au moins 5 âmes pour sceller le serment.
                       </p>
                       <p className="darkoath-subtitle text-sm mt-2">
-                        Partagez le code <span className="text-amber-300 tracking-widest">{roomCode}</span> à vos conspirateurs.
+                        {isHost
+                          ? <>Invitez vos amis avec le code <span className="text-amber-300 tracking-widest">{roomCode}</span>, ou complétez avec des bots.</>
+                          : <>Partagez le code <span className="text-amber-300 tracking-widest">{roomCode}</span> à vos conspirateurs.</>}
                       </p>
                     </div>
                   )}
+
+                  <div className="text-center">
+                    <button type="button" onClick={leaveRoom} className="text-sm text-amber-200/60 hover:text-amber-100 underline underline-offset-4 font-serif">
+                      Quitter la salle
+                    </button>
+                  </div>
                 </>
               )}
             </CardContent>
@@ -1080,9 +1247,9 @@ const Game = ({ roomCode }) => {
 function App() {
   return (
     <BrowserRouter>
+      <Toaster theme="dark" position="top-center" richColors closeButton />
       <Routes>
         <Route path="/" element={<LandingPage />} />
-        <Route path="/demo" element={<SimpleDemo />} />
         <Route path="/lobby/:roomCode" element={<LobbyWrapper />} />
         <Route path="/game/:roomCode" element={<GameWrapper />} />
         <Route path="/dashadmin" element={<DashAdmin />} />

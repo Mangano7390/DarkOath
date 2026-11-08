@@ -1,12 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { Crown, Sword, Shield, Users, Clock, Vote, Gavel, Eye, Skull, Send, MessageCircle, Zap, Volume2, VolumeX } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
-import { Progress } from './ui/progress';
 import { Input } from './ui/input';
-import { ScrollArea } from './ui/scroll-area';
-import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import NominationPanel from './NominationPanel';
 import VotePanel from './VotePanel';
@@ -15,6 +14,8 @@ import ConseilRoyaumePanel from './ConseilRoyaumePanel';
 import DefiancePanel from './DefiancePanel';
 import PowerPanel from './PowerPanel';
 import MedievalTable from './MedievalTable.js';
+import { RevealOverlay, Chronicle, TurnHint, MiniTracks, ConseilReady, SpectatorNotice, useIsDesktop, playCue } from './GameExtras';
+import { errorMessage, rememberRoom, forgetRoom, syncServerClock, serverNow } from '../lib/game';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -65,6 +66,8 @@ const formatPhaseName = (phase) => {
       return 'Piste de Défiance';
     case 'POWER':
       return 'Pouvoir du Roi';
+    case 'ENDGAME':
+      return 'Fin de partie';
     default:
       return phase.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
   }
@@ -78,6 +81,8 @@ const TrackComponent = ({ title, current, max, variant }) => {
     crise:   { accent: '#f59e0b', glow: 'rgba(245, 158, 11, 0.4)', icon: '⚡', tag: 'Crise',    goal: 'Adoption auto' },
   };
   const v = variants[variant];
+  // Unlocks shown on empty slots: Investigation (2nd Trahison), Exécution (4th), Tyran danger zone (3+)
+  const slotMarks = variant === 'traitre' ? { 2: '🔍', 3: '👑', 4: '🪓', 6: '☠️' } : variant === 'fidele' ? { 5: '🏆' } : variant === 'crise' ? { 3: '⚡' } : {};
 
   return (
     <div className="darkoath-panel rounded-lg p-4">
@@ -104,13 +109,13 @@ const TrackComponent = ({ title, current, max, variant }) => {
                 opacity: filled ? 1 : 0.4,
               }}
             >
-              {filled ? v.icon : ''}
+              {filled ? v.icon : (slotMarks[i + 1] || '')}
             </div>
           );
         })}
       </div>
       <div className="text-xs text-center" style={{ color: 'rgba(232, 217, 168, 0.6)', fontFamily: "'IM Fell English', serif", fontStyle: 'italic' }}>
-        → {v.goal}
+        {variant === 'traitre' ? '🔍 Enquête · 👑 dès 3 : Tyran élu = défaite · 🪓 Exécution' : `→ ${v.goal}`}
       </div>
     </div>
   );
@@ -197,7 +202,7 @@ const RoleCard = ({ role, teammates = [], players = [] }) => {
 };
 
 // End-of-game banner: big camp reveal with reason + role list.
-const EndgameBanner = ({ gameState, currentPlayerId }) => {
+const EndgameBanner = ({ gameState, currentPlayerId, isHost = false, pending = false, onRestart, onHome }) => {
   const winner = gameState?.winner;
   const reason = gameState?.winner_reason;
   const tracks = gameState?.tracks || {};
@@ -238,7 +243,7 @@ const EndgameBanner = ({ gameState, currentPlayerId }) => {
   const rolesReveal = players.map((p) => {
     let label = '';
     if (p.role === 'LOYAL') label = 'Fidèle';
-    else if (p.role === 'CONJURE') label = 'Conjuré';
+    else if (p.role === 'CONJURE') label = 'Traître';
     else if (p.role === 'USURPATEUR') label = 'Tyran';
     else label = '—';
     return { ...p, _label: label };
@@ -320,16 +325,16 @@ const EndgameBanner = ({ gameState, currentPlayerId }) => {
           {rolesReveal.map((p) => {
             const isFidele = p.role === 'LOYAL';
             const isTyran = p.role === 'USURPATEUR';
-            const rowColor = isFidele ? '#93c5fd' : isTyran ? '#fef08a' : '#fca5a5';
+            const rowColor = isFidele ? '#93c5fd' : isTyran ? '#d8b4fe' : '#fca5a5';
             const rowBg = isFidele
               ? 'rgba(30, 58, 138, 0.18)'
               : isTyran
-                ? 'rgba(120, 53, 15, 0.35)'
+                ? 'rgba(88, 28, 135, 0.35)'
                 : 'rgba(127, 29, 29, 0.22)';
             const rowBorder = isFidele
               ? 'rgba(59, 130, 246, 0.4)'
               : isTyran
-                ? 'rgba(234, 179, 8, 0.55)'
+                ? 'rgba(168, 85, 247, 0.6)'
                 : 'rgba(220, 38, 38, 0.4)';
             return (
               <div
@@ -367,24 +372,39 @@ const EndgameBanner = ({ gameState, currentPlayerId }) => {
           })}
         </div>
       </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {isHost ? (
+          <Button onClick={onRestart} disabled={pending} className="oath-btn-primary py-5">
+            ⚔️ Rejouer
+          </Button>
+        ) : (
+          <div className="text-center text-sm italic py-3" style={{ color: 'rgba(232, 217, 168, 0.75)' }}>
+            L'hôte peut relancer une partie…
+          </div>
+        )}
+        <Button onClick={onHome} variant="outline" className="py-5 bg-black/40 border-amber-700/60 text-amber-100 hover:bg-amber-950/50">
+          Retour à l'accueil
+        </Button>
+      </div>
     </div>
   );
 };
 
 // Conseil du Royaume countdown (60s — mirror of backend CONSEIL_DURATION)
 const CONSEIL_COUNTDOWN_DURATION = 60;
-const ConseilCountdown = ({ startTime }) => {
-  const [timeLeft, setTimeLeft] = useState(CONSEIL_COUNTDOWN_DURATION);
+const ConseilCountdown = ({ startTime, duration = CONSEIL_COUNTDOWN_DURATION }) => {
+  const [timeLeft, setTimeLeft] = useState(duration);
   useEffect(() => {
     if (!startTime) return;
     const tick = () => {
-      const elapsed = Date.now() / 1000 - startTime;
-      setTimeLeft(Math.max(0, Math.ceil(CONSEIL_COUNTDOWN_DURATION - elapsed)));
+      const elapsed = serverNow() - startTime;
+      setTimeLeft(Math.max(0, Math.ceil(duration - elapsed)));
     };
     tick();
     const id = setInterval(tick, 250);
     return () => clearInterval(id);
-  }, [startTime]);
+  }, [startTime, duration]);
 
   const urgent = timeLeft <= 10;
   return (
@@ -465,27 +485,35 @@ const MusicControl = ({ enabled, volume, onToggle, onVolume }) => {
 
 // Main Game Interface Component
 const GameInterface = ({ roomCode }) => {
-  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const isDesktop = useIsDesktop();
   const [gameState, setGameState] = useState(null);
   const [playerRole, setPlayerRole] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [mobileTab, setMobileTab] = useState('table'); // 'table', 'tracks', 'chat'
+  const [offline, setOffline] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [mobileTab, setMobileTab] = useState('table'); // 'table', 'tracks', 'chat', 'log'
+  const [sideTab, setSideTab] = useState('chat'); // desktop right column: 'chat' | 'log'
+  const [unread, setUnread] = useState(0);
   const [showPeoplesAnger, setShowPeoplesAnger] = useState(false);
   const [defianceBanner, setDefianceBanner] = useState(null); // 'opening' | 'marked' | null
   const [executionBanner, setExecutionBanner] = useState(null); // { seat, name } | null
   const prevPhaseRef = useRef(null);
   const prevMarkedRef = useRef(null);
   const prevExecutionRef = useRef(null);
-  
+
   // Chat state variables
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
-  
+  const chatEndRef = useRef(null);
+  const seenMsgCount = useRef(0);
+
   const currentPlayerId = localStorage.getItem('userId');
-  const currentPlayerName = localStorage.getItem('playerName') || 'Joueur';
-  
+  const me = gameState?.players?.find((p) => p.id === currentPlayerId) || null;
+  const isHost = !!gameState?.host_id && gameState.host_id === currentPlayerId;
+
   // Multiplayer game music - Morceau 2
   const musicRef = useRef(null);
   const [musicEnabled, setMusicEnabled] = useState(() => {
@@ -644,246 +672,431 @@ const GameInterface = ({ roomCode }) => {
     const prevPhase = prevPhaseRef.current;
     const marked = gameState?.marked_player_seat || null;
     const prevMarked = prevMarkedRef.current;
-
-    // Entering DEFIANCE from CONSEIL_ROYAUME → "Le Conseil s'achève"
     if (prevPhase === 'CONSEIL_ROYAUME' && phase === 'DEFIANCE') {
       setDefianceBanner('opening');
-      const t = setTimeout(() => setDefianceBanner((b) => (b === 'opening' ? null : b)), 2500);
-      prevPhaseRef.current = phase;
-      prevMarkedRef.current = marked;
-      return () => clearTimeout(t);
-    }
-
-    // A new mark was just set (after DEFIANCE resolution)
-    if (prevPhase === 'DEFIANCE' && phase === 'NOMINATION' && marked && marked !== prevMarked) {
+    } else if (prevPhase === 'DEFIANCE' && phase !== 'DEFIANCE' && marked && marked !== prevMarked) {
       setDefianceBanner('marked');
-      const t = setTimeout(() => setDefianceBanner((b) => (b === 'marked' ? null : b)), 3500);
-      prevPhaseRef.current = phase;
-      prevMarkedRef.current = marked;
-      return () => clearTimeout(t);
     }
-
     prevPhaseRef.current = phase;
     prevMarkedRef.current = marked;
   }, [gameState?.phase, gameState?.marked_player_seat]);
 
-  // Detect execution: show a banner to everyone when a new player is executed
+  // Auto-hide banners (own effect so frequent re-renders can't cancel the timer)
   useEffect(() => {
-    const seat = gameState?.last_execution_seat || null;
+    if (!defianceBanner) return undefined;
+    const t = setTimeout(() => setDefianceBanner(null), defianceBanner === 'marked' ? 3500 : 2500);
+    return () => clearTimeout(t);
+  }, [defianceBanner]);
+
+  // Detect execution: show a banner to everyone when a new player is executed
+  const executedSeat = gameState?.last_execution_seat || null;
+  useEffect(() => {
     const prev = prevExecutionRef.current;
-    if (seat && seat !== prev) {
-      const victim = gameState?.players?.find((p) => p.seat === seat);
-      setExecutionBanner({ seat, name: victim?.name || `Siège ${seat}` });
-      const t = setTimeout(() => setExecutionBanner(null), 4500);
-      prevExecutionRef.current = seat;
-      return () => clearTimeout(t);
+    if (executedSeat && executedSeat !== prev) {
+      const victim = (gameState?.players || []).find((p) => p.seat === executedSeat);
+      setExecutionBanner({ seat: executedSeat, name: victim?.name || `Siège ${executedSeat}` });
+      playCue('death');
     }
-    if (!seat) {
-      prevExecutionRef.current = null;
+    prevExecutionRef.current = executedSeat;
+  }, [executedSeat]);
+
+  useEffect(() => {
+    if (!executionBanner) return undefined;
+    const t = setTimeout(() => setExecutionBanner(null), 4500);
+    return () => clearTimeout(t);
+  }, [executionBanner]);
+
+  // ------------------------------------------------------------------
+  // Server sync
+  // ------------------------------------------------------------------
+  const loadGameState = useCallback(async () => {
+    if (!currentPlayerId) return;
+    try {
+      const response = await axios.get(`${API}/rooms/${roomCode}/game_state`);
+      syncServerClock(response.data.server_time);
+      if (response.data.status === 'lobby') {
+        // The host started a new game ("Rejouer")
+        navigate(`/lobby/${roomCode}`);
+        return;
+      }
+      setGameState(response.data);
+      setPlayerRole(response.data.your_role);
+      setLoading(false);
+      setOffline(false);
+      setError(null);
+      rememberRoom(roomCode);
+    } catch (err) {
+      const status = err?.response?.status;
+      if (status === 404 || status === 403 || status === 401) {
+        forgetRoom();
+        setError(status === 404 ? "Cette partie n'existe plus (le serveur a peut-être redémarré)." : "Vous ne faites pas partie de cette partie.");
+        setLoading(false);
+      } else {
+        // Network blip: keep the last good state and show a banner.
+        setOffline(true);
+      }
     }
-  }, [gameState?.last_execution_seat, gameState?.players]);
+  }, [roomCode, currentPlayerId, navigate]);
 
+  useEffect(() => {
+    if (!currentPlayerId) {
+      navigate(`/?join=${roomCode}`);
+      return undefined;
+    }
+    loadGameState();
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') loadGameState();
+    }, 1500);
+    const onVisible = () => { if (document.visibilityState === 'visible') loadGameState(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [roomCode, currentPlayerId, loadGameState, navigate]);
 
-  // Chat functions
+  // Chat polling
+  const loadChat = useCallback(async () => {
+    try {
+      const response = await axios.get(`${API}/rooms/${roomCode}/chat`);
+      setMessages(response.data.messages || []);
+    } catch {
+      // ignore — the game-state poll reports connectivity problems
+    }
+  }, [roomCode]);
+
+  useEffect(() => {
+    if (!currentPlayerId) return undefined;
+    loadChat();
+    const id = setInterval(() => { if (document.visibilityState === 'visible') loadChat(); }, 2000);
+    return () => clearInterval(id);
+  }, [currentPlayerId, loadChat]);
+
+  const chatVisible = isDesktop ? sideTab === 'chat' : mobileTab === 'chat';
+  useEffect(() => {
+    if (chatVisible) {
+      seenMsgCount.current = messages.length;
+      setUnread(0);
+      chatEndRef.current?.scrollIntoView({ block: 'nearest' });
+    } else {
+      setUnread(Math.max(0, messages.length - seenMsgCount.current));
+    }
+  }, [messages.length, chatVisible]);
+
+  // One helper for every game action: pending state, toast on error, instant refresh.
+  const act = async (action_type, payload = {}) => {
+    if (pending) return false;
+    setPending(true);
+    try {
+      await axios.post(`${API}/rooms/${roomCode}/action`, { action_type, payload });
+      await loadGameState();
+      return true;
+    } catch (err) {
+      toast.error(errorMessage(err, "Action impossible."));
+      await loadGameState();
+      return false;
+    } finally {
+      setPending(false);
+    }
+  };
+
   const sendMessage = async () => {
-    if (!newMessage.trim() || isSending) return;
-
+    const text = newMessage.trim();
+    if (!text || isSending) return;
     setIsSending(true);
     try {
-      // Message now goes in the JSON body, not in the query string.
-      const response = await axios.post(`${API}/rooms/${roomCode}/chat`, {
-        message: newMessage,
-      });
-
-      if (response.data.success) {
-        // Add message to local state immediately
-        const newMsg = {
-          id: Date.now(),
-          player_name: currentPlayerName,
-          message: newMessage,
-          timestamp: new Date().toISOString(),
-          type: 'player'
-        };
-        setMessages(prev => [...prev, newMsg]);
-        setNewMessage('');
-      }
-      
-    } catch (error) {
-      console.error('Error sending message:', error);
-      alert('Erreur lors de l\'envoi du message: ' + (error.response?.data?.detail || error.message));
+      await axios.post(`${API}/rooms/${roomCode}/chat`, { message: text });
+      setNewMessage('');
+      await loadChat();
+    } catch (err) {
+      toast.error(errorMessage(err, "Message non envoyé."));
     } finally {
       setIsSending(false);
     }
   };
 
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  };
-  
-  // Handle speak toggle for Conseil du Royaume
-  const handleSpeakToggle = async () => {
-    try {
-      await axios.post(`${API}/rooms/${roomCode}/action`, {
-        action_type: 'SPEAK_TOGGLE',
-        payload: {},
-      });
-    } catch (error) {
-      console.error('Speak toggle failed:', error);
-      alert('Erreur lors du toggle vocal: ' + (error.response?.data?.detail || error.message));
-    }
-  };
-  
-  // Load game state from API
-  useEffect(() => {
-    const loadGameState = async () => {
-      if (!currentPlayerId) return;
-      
-      try {
-        console.log('Loading game state for room:', roomCode);
-        const response = await axios.get(`${API}/rooms/${roomCode}/game_state`);
-        console.log('Game state loaded:', response.data);
-        
-        setGameState(response.data);
-        setPlayerRole(response.data.your_role);
-        setLoading(false);
-        setError(null);
-        
-      } catch (error) {
-        console.error('Error loading game state:', error);
-        // Fallback to basic state if API fails
-        const fallbackState = {
-          status: 'in_progress',
-          phase: 'NOMINATION',
-          regent_seat: 1,
-          nominee_seat: null,
-          tracks: { loyal: 0, conjure: 0, crisis: 0 },
-          players: [
-            { id: currentPlayerId, name: currentPlayerName, seat: 1, alive: true, connected: true }
-          ]
-        };
-        setGameState(fallbackState);
-        setPlayerRole('LOYAL');
-        setLoading(false);
-      }
-    };
-    
-    // Load initial state
-    loadGameState();
-    
-    // Set up polling to refresh game state every 3 seconds
-    const interval = setInterval(loadGameState, 3000);
-    
-    return () => {
-      clearInterval(interval);
-    };
-  }, [roomCode, currentPlayerId]);
-  
-  // Chat useEffect for loading messages and polling
-  useEffect(() => {
-    const loadChatHistory = async () => {
-      try {
-        if (currentPlayerId && roomCode) {
-          const response = await axios.get(`${API}/rooms/${roomCode}/chat`);
-          if (response.data.messages && response.data.messages.length > 0) {
-            setMessages(response.data.messages);
-          } else {
-            // If no messages, add system message
-            const systemMessage = {
-              id: 'system-1',
-              player_name: 'Système',
-              message: 'Le Dark Oath a commencé. Que les conspirations débutent...',
-              timestamp: new Date().toISOString(),
-              type: 'system'
-            };
-            setMessages([systemMessage]);
-          }
-        }
-      } catch (error) {
-        console.error('Error loading chat history:', error);
-        // Fallback to system message
-        const systemMessage = {
-          id: 'system-1',
-          player_name: 'Système',
-          message: 'Le Dark Oath a commencé. Que les conspirations débutent...',
-          timestamp: new Date().toISOString(),
-          type: 'system'
-        };
-        setMessages([systemMessage]);
-      }
-    };
+  const handleSpeakToggle = () => act('SPEAK_TOGGLE');
 
-    loadChatHistory();
-
-    // Set up polling for new messages every 2 seconds
-    const pollInterval = setInterval(async () => {
-      try {
-        if (currentPlayerId && roomCode) {
-          const response = await axios.get(`${API}/rooms/${roomCode}/chat`);
-          if (response.data.messages) {
-            setMessages(prevMessages => {
-              const newMessages = response.data.messages;
-              // Check if there are new messages
-              if (newMessages.length > prevMessages.length) {
-                // Auto-scroll to bottom
-                setTimeout(() => {
-                  const chatContainer = document.querySelector('.chat-scroll-area');
-                  if (chatContainer) {
-                    chatContainer.scrollTop = chatContainer.scrollHeight;
-                  }
-                }, 100);
-              }
-              return newMessages;
-            });
-          }
-        }
-      } catch (error) {
-        console.error('Error polling chat messages:', error);
-      }
-    }, 2000);
-
-    return () => {
-      clearInterval(pollInterval);
-    };
-  }, [currentPlayerId, roomCode]);
-  
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <Card className="bg-gray-800 border-gray-700 shadow-xl p-8">
-          <div className="text-center">
-            <div className="animate-spin h-8 w-8 border-4 border-amber-600 border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-gray-100 text-lg">Chargement de Dark Oath...</p>
-            <p className="text-gray-400 text-sm mt-2">Room: {roomCode}</p>
-          </div>
-        </Card>
+      <div className="min-h-screen darkoath-game flex items-center justify-center" style={{ minHeight: '100dvh' }}>
+        <div className="text-center">
+          <div className="animate-spin h-10 w-10 border-4 border-amber-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-amber-100 text-lg" style={{ fontFamily: "'Cinzel', serif" }}>Le Conseil se réunit…</p>
+          <p className="text-amber-200/60 text-sm mt-2 tracking-widest">{roomCode}</p>
+        </div>
       </div>
     );
   }
-  
-  if (error) {
+
+  if (error || !gameState) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <Card className="bg-red-900 border-red-700 shadow-xl p-8">
-          <div className="text-center">
-            <p className="text-red-100 text-lg mb-4">Erreur de connexion</p>
-            <p className="text-red-300 text-sm">{error}</p>
-            <Button 
-              onClick={() => window.location.reload()} 
-              className="mt-4 bg-red-600 hover:bg-red-700"
-            >
-              Recharger
-            </Button>
-          </div>
-        </Card>
+      <div className="min-h-screen darkoath-game flex items-center justify-center p-4" style={{ minHeight: '100dvh' }}>
+        <div className="oath-card p-8 text-center max-w-md">
+          <p className="text-amber-100 text-xl mb-3" style={{ fontFamily: "'Cinzel', serif" }}>Partie introuvable</p>
+          <p className="text-amber-200/70 text-sm mb-6">{error || 'Connexion impossible.'}</p>
+          <Button onClick={() => navigate('/')} className="oath-btn-primary px-6">Retour à l'accueil</Button>
+        </div>
       </div>
     );
   }
-  
+
+  const phase = gameState.phase;
+  const players = gameState.players || [];
+  const iAmDead = me && me.alive === false;
+
+  // ------------------------------------------------------------------
+  // Shared pieces (rendered once, in either the desktop or the mobile layout)
+  // ------------------------------------------------------------------
+  const table = (size) => (
+    <MedievalTable
+      players={players.map((player) => ({
+        id: player.id,
+        seat: player.seat,
+        name: (player.is_bot ? '🤖 ' : '') + player.name + (player.id === currentPlayerId ? ' (vous)' : ''),
+        alive: player.alive,
+        connected: player.connected,
+      }))}
+      size={size}
+      disgracedPlayerSeat={gameState.disgraced_player_seat}
+      markedPlayerSeat={gameState.marked_player_seat}
+      prevGovernment={gameState.prev_government}
+      speakingPlayers={gameState.speaking_players || []}
+      regentSeat={gameState.regent_seat}
+      nomineeSeat={gameState.nominee_seat}
+      votedPlayerIds={gameState.votes_cast || []}
+      mySeat={me?.seat}
+      phase={phase}
+    />
+  );
+
+  const tracks = (
+    <div className="space-y-3">
+      <TrackComponent title="Fidèles" current={gameState.tracks?.loyal || 0} max={5} variant="fidele" />
+      <TrackComponent title="Trahison" current={gameState.tracks?.conjure || 0} max={6} variant="traitre" />
+      <TrackComponent title="Colère du Peuple" current={gameState.tracks?.crisis || 0} max={3} variant="crise" />
+      <div className="text-xs text-center" style={{ color: 'rgba(232,217,168,0.6)' }}>
+        📜 Pioche : {gameState.deck_count ?? '—'} · Défausse : {gameState.discard_count ?? '—'}
+      </div>
+    </div>
+  );
+
+  const chat = (
+    <div className="flex-1 flex flex-col min-h-0">
+      <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-0" role="log" aria-live="polite">
+        {messages.length === 0 && (
+          <p className="text-xs italic text-amber-200/60 p-2">Le Dark Oath a commencé. Que les conspirations débutent…</p>
+        )}
+        {messages.map((msg) => {
+          const mine = msg.player_id === currentPlayerId;
+          return (
+            <div key={msg.id} className={`p-2.5 rounded-lg text-sm border ${
+              msg.type === 'system'
+                ? 'bg-purple-950/70 text-purple-100 border-purple-800'
+                : mine
+                  ? 'bg-amber-950/70 text-amber-100 border-amber-800'
+                  : msg.is_bot
+                    ? 'bg-slate-900/80 text-slate-100 border-slate-700'
+                    : 'bg-stone-900/80 text-stone-100 border-stone-700'
+            }`}>
+              <div className="font-semibold text-xs mb-0.5 opacity-80">
+                {msg.is_bot ? '🤖 ' : ''}{msg.player_name}
+                <span className="opacity-60 ml-2 font-normal">
+                  {new Date(msg.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
+              <div className="break-words">{msg.message}</div>
+            </div>
+          );
+        })}
+        <div ref={chatEndRef} />
+      </div>
+      <form
+        className="flex gap-2 flex-shrink-0 pt-3"
+        onSubmit={(e) => { e.preventDefault(); sendMessage(); }}
+      >
+        <Input
+          value={newMessage}
+          onChange={(e) => setNewMessage(e.target.value)}
+          placeholder={iAmDead ? 'Les morts se taisent…' : 'Chuchotez vos secrets…'}
+          aria-label="Message"
+          className="flex-1 bg-black/50 border-amber-900/60 text-amber-50 placeholder-amber-200/40"
+          maxLength={300}
+          disabled={isSending || iAmDead}
+        />
+        <Button
+          type="submit"
+          disabled={!newMessage.trim() || isSending || iAmDead}
+          className="px-4 bg-amber-600 hover:bg-amber-700 text-black"
+          style={{ minHeight: 44, minWidth: 44 }}
+          aria-label="Envoyer"
+        >
+          {isSending ? <div className="animate-spin h-4 w-4 border-2 border-black border-t-transparent rounded-full" /> : <Send className="h-4 w-4" />}
+        </Button>
+      </form>
+    </div>
+  );
+
+  const chronicle = (
+    <Chronicle
+      className="flex-1"
+      events={gameState.events || []}
+      investigations={gameState.my_investigations}
+      players={players}
+    />
+  );
+
+  const actions = (
+    <div>
+      {phase === 'NOMINATION' && (
+        <NominationPanel
+          meSeat={me?.seat}
+          regentSeat={gameState.regent_seat}
+          players={players}
+          prevGovernment={gameState.prev_government}
+          disgracedPlayerSeat={gameState.disgraced_player_seat}
+          markedPlayerSeat={gameState.marked_player_seat}
+          eligibleSeats={gameState.eligible_nominee_seats}
+          pending={pending}
+          onNominate={(seat) => act('NOMINATE', { nomineeSeat: seat })}
+        />
+      )}
+
+      {phase === 'VOTE' && (iAmDead ? <SpectatorNotice /> : (
+        <VotePanel
+          players={players}
+          regentSeat={gameState.regent_seat}
+          nomineeSeat={gameState.nominee_seat}
+          votesCast={gameState.votes_cast || []}
+          myVote={gameState.my_vote}
+          mySeat={me?.seat}
+          pending={pending}
+          onVote={(vote) => act('VOTE', { vote })}
+        />
+      ))}
+
+      {(phase === 'LEGIS_REGENT' || phase === 'LEGIS_CHAMBELLAN') && (
+        <LegislativePanel
+          phase={phase}
+          mySeat={me?.seat}
+          regentSeat={gameState.regent_seat}
+          chambellanSeat={gameState.nominee_seat}
+          players={players}
+          cards={gameState.legislative_cards || []}
+          pending={pending}
+          onDiscard={(cardId) => act('DISCARD', { cardId })}
+        />
+      )}
+
+      {phase === 'CONSEIL_ROYAUME' && (
+        <>
+          <ConseilReady gameState={gameState} me={me} pending={pending} onReady={() => act('CONSEIL_READY')} />
+          <ConseilRoyaumePanel
+            gameState={gameState}
+            roomCode={roomCode}
+            currentPlayerId={currentPlayerId}
+            onSpeakToggle={handleSpeakToggle}
+            speakingPlayers={gameState.speaking_players || []}
+          />
+        </>
+      )}
+
+      {phase === 'DEFIANCE' && (iAmDead ? <SpectatorNotice /> : (
+        <DefiancePanel
+          gameState={gameState}
+          currentPlayerId={currentPlayerId}
+          onVote={(targetSeat) => act('DEFIANCE_VOTE', { targetSeat })}
+        />
+      ))}
+
+      {phase === 'POWER' && (
+        <PowerPanel
+          gameState={gameState}
+          currentPlayerId={currentPlayerId}
+          onAction={(actionType, payload) => act(actionType, payload || {})}
+        />
+      )}
+
+      {phase === 'ENDGAME' && (
+        <EndgameBanner
+          gameState={gameState}
+          currentPlayerId={currentPlayerId}
+          isHost={isHost}
+          pending={pending}
+          onRestart={() => act('RESTART')}
+          onHome={() => { forgetRoom(); navigate('/'); }}
+        />
+      )}
+    </div>
+  );
+
+  const header = (
+    <div className="darkoath-header relative z-20 sticky top-0">
+      <div className="px-3 py-2 flex items-center justify-between max-w-7xl mx-auto gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <h1 className="hidden sm:block text-lg font-bold text-amber-400 shrink-0" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.15em' }}>DARK OATH</h1>
+          <Badge className="bg-amber-600 text-black shrink-0">{roomCode}</Badge>
+          <span className="px-2 py-1 rounded text-[11px] uppercase tracking-widest truncate" style={{
+            background: 'rgba(199, 168, 105, 0.15)',
+            border: '1px solid rgba(199, 168, 105, 0.4)',
+            color: '#e8d9a8',
+            fontFamily: "'Cinzel', serif",
+          }}>
+            T{gameState.turn_number} · {formatPhaseName(phase)}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {phase === 'CONSEIL_ROYAUME' && gameState.conseil_royaume_start_time && (
+            <ConseilCountdown startTime={gameState.conseil_royaume_start_time} duration={gameState.conseil_duration} />
+          )}
+          {isDesktop && gameState.regent_seat && (
+            <GovernmentBadge label="Roi" icon="👑" seat={gameState.regent_seat} players={players} color="#c7a869" />
+          )}
+          {isDesktop && gameState.nominee_seat && ['VOTE', 'LEGIS_REGENT', 'LEGIS_CHAMBELLAN'].includes(phase) && (
+            <GovernmentBadge label="Conseiller" icon="🗝️" seat={gameState.nominee_seat} players={players} color="#8a6d3a" />
+          )}
+          <button
+            type="button"
+            onClick={() => window.open('/?regles=1', '_blank', 'noopener')}
+            className="w-9 h-9 rounded-full border border-amber-700/60 text-amber-200 hover:bg-amber-900/40"
+            title="Règles du jeu"
+            aria-label="Règles du jeu"
+          >
+            ?
+          </button>
+          <MusicControl
+            enabled={musicEnabled}
+            volume={musicVolume}
+            onToggle={() => setMusicEnabled((v) => !v)}
+            onVolume={setMusicVolume}
+          />
+        </div>
+      </div>
+      {!isDesktop && <MiniTracks tracks={gameState.tracks} deckCount={gameState.deck_count} />}
+      <TurnHint gameState={gameState} me={me} />
+      {offline && (
+        <div className="px-3 py-1 text-center text-xs bg-red-950/90 text-red-200" role="alert">
+          Connexion perdue — reconnexion en cours…
+        </div>
+      )}
+    </div>
+  );
+
+  const panelTitle = (
+    <div className="flex items-center justify-between mb-3">
+      <span className="text-sm uppercase tracking-widest text-amber-200" style={{ fontFamily: "'Cinzel', serif" }}>
+        {formatPhaseName(phase)}
+      </span>
+      {me && (
+        <span className="text-xs text-amber-200/60">Siège {me.seat}{iAmDead ? ' · 💀' : ''}</span>
+      )}
+    </div>
+  );
+
   return (
-    <div className="min-h-screen darkoath-game text-gray-100 relative" style={{ minHeight: '100dvh' }}>
+    <div className="darkoath-game text-gray-100 relative flex flex-col" style={{ minHeight: '100dvh' }}>
+      <RevealOverlay gameState={gameState} />
+
       {/* Piste de Défiance banners */}
       {defianceBanner && (
         <div className="fixed inset-0 pointer-events-none flex items-center justify-center z-40">
@@ -899,25 +1112,17 @@ const GameInterface = ({ roomCode }) => {
           >
             {defianceBanner === 'opening' && (
               <>
-                <p
-                  className="text-xl md:text-2xl"
-                  style={{ color: '#e8d9a8', fontFamily: "'Cinzel', serif", letterSpacing: '0.12em' }}
-                >
+                <p className="text-xl md:text-2xl" style={{ color: '#e8d9a8', fontFamily: "'Cinzel', serif", letterSpacing: '0.12em' }}>
                   🕯️ Le Conseil s'achève
                 </p>
                 <p className="text-sm text-amber-100/70 italic mt-1">Désignez un suspect — le peuple observe…</p>
               </>
             )}
             {defianceBanner === 'marked' && (() => {
-              const markedPlayer = (gameState?.players || []).find(
-                (p) => p.seat === gameState?.marked_player_seat
-              );
+              const markedPlayer = players.find((p) => p.seat === gameState?.marked_player_seat);
               return (
                 <>
-                  <p
-                    className="text-xl md:text-2xl"
-                    style={{ color: '#fecaca', fontFamily: "'Cinzel', serif", letterSpacing: '0.12em' }}
-                  >
+                  <p className="text-xl md:text-2xl" style={{ color: '#fecaca', fontFamily: "'Cinzel', serif", letterSpacing: '0.12em' }}>
                     ⚠ Un joueur est marqué
                   </p>
                   <p className="text-sm text-red-200 mt-1">
@@ -934,22 +1139,8 @@ const GameInterface = ({ roomCode }) => {
       {/* Execution banner — seen by everyone */}
       {executionBanner && (
         <div className="fixed inset-0 pointer-events-none flex items-center justify-center z-40">
-          <div
-            className="px-6 py-5 rounded-lg text-center"
-            style={{
-              background: 'rgba(20, 0, 0, 0.94)',
-              border: '2px solid #dc2626',
-              boxShadow: '0 0 40px rgba(220, 38, 38, 0.55)',
-              maxWidth: '90vw',
-              animation: 'fadeIn 0.3s ease-out',
-            }}
-          >
-            <p
-              className="text-2xl md:text-3xl"
-              style={{ color: '#fecaca', fontFamily: "'Cinzel', serif", letterSpacing: '0.15em' }}
-            >
-              💀 Exécution
-            </p>
+          <div className="px-6 py-5 rounded-lg text-center" style={{ background: 'rgba(20, 0, 0, 0.94)', border: '2px solid #dc2626', boxShadow: '0 0 40px rgba(220, 38, 38, 0.55)', maxWidth: '90vw', animation: 'fadeIn 0.3s ease-out' }}>
+            <p className="text-2xl md:text-3xl" style={{ color: '#fecaca', fontFamily: "'Cinzel', serif", letterSpacing: '0.15em' }}>💀 Exécution</p>
             <p className="text-base text-red-200 mt-2">
               <strong>{executionBanner.name}</strong> <span className="text-red-300/70">· siège {executionBanner.seat}</span>
             </p>
@@ -960,641 +1151,109 @@ const GameInterface = ({ roomCode }) => {
         </div>
       )}
 
-      {/* Colère du Peuple Message */}
+      {/* Colère du Peuple */}
       {showPeoplesAnger && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-          <Card className="bg-red-900 border-red-700 shadow-2xl max-w-md mx-4">
-            <CardHeader className="text-center">
-              <CardTitle className="text-2xl text-red-100 flex items-center justify-center space-x-2">
-                <Zap className="h-8 w-8 text-yellow-400" />
-                <span>Colère du Peuple</span>
-                <Zap className="h-8 w-8 text-yellow-400" />
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="text-center">
-              <p className="text-red-200 text-lg mb-4">
-                ⚡ Un décret est imposé et le Roi est désavoué !
-              </p>
-              <p className="text-red-300 text-sm">
-                Le Roi désavoué ne peut plus être élu au tour suivant.
-              </p>
-              <Button 
-                onClick={() => setShowPeoplesAnger(false)}
-                className="mt-4 bg-red-600 hover:bg-red-700 text-white"
-              >
-                Compris
-              </Button>
-            </CardContent>
-          </Card>
+        <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="colere-title">
+          <div className="max-w-md w-full rounded-lg p-6 text-center" style={{ background: 'rgba(60,8,8,0.97)', border: '2px solid #dc2626' }}>
+            <h2 id="colere-title" className="text-2xl text-red-100 flex items-center justify-center gap-2" style={{ fontFamily: "'Cinzel', serif" }}>
+              <Zap className="h-7 w-7 text-yellow-400" /> Colère du Peuple <Zap className="h-7 w-7 text-yellow-400" />
+            </h2>
+            <p className="text-red-200 text-lg my-4">⚡ Trois gouvernements rejetés : un décret est imposé et le Roi est désavoué !</p>
+            <p className="text-red-300 text-sm">Le Roi désavoué ne peut être ni Roi ni Conseiller au tour suivant.</p>
+            <Button autoFocus onClick={() => setShowPeoplesAnger(false)} className="mt-5 bg-red-600 hover:bg-red-700 text-white">Compris</Button>
+          </div>
         </div>
       )}
-      
-      {/* Header Bar */}
-      <div className="darkoath-header px-4 py-3 relative z-10">
-        <div className="flex items-center justify-between max-w-7xl mx-auto gap-3 flex-wrap">
-          <div className="flex items-center space-x-3">
-            <h1 className="text-xl font-bold text-amber-400" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.15em' }}>DARK OATH</h1>
-            <Badge className="bg-amber-600 text-black">{roomCode}</Badge>
-            <span className="px-3 py-1 rounded text-xs uppercase tracking-widest" style={{
-              background: 'rgba(199, 168, 105, 0.15)',
-              border: '1px solid rgba(199, 168, 105, 0.4)',
-              color: '#e8d9a8',
-              fontFamily: "'Cinzel', serif",
-            }}>
-              {formatPhaseName(gameState.phase)}
-            </span>
+
+      {header}
+
+      {isDesktop ? (
+        <div className="flex flex-1 min-h-0" style={{ height: 'calc(100dvh - 90px)' }}>
+          {/* Left column — role + tracks */}
+          <div className="w-80 p-4 space-y-4 darkoath-sidebar border-r relative z-10 overflow-y-auto">
+            {playerRole && <RoleCard role={playerRole} teammates={gameState.teammates || []} players={players} />}
+            {tracks}
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            {gameState.phase === 'CONSEIL_ROYAUME' && gameState.conseil_royaume_start_time && (
-              <ConseilCountdown startTime={gameState.conseil_royaume_start_time} />
-            )}
-            {gameState.regent_seat && (
-              <GovernmentBadge
-                label="Roi"
-                icon="👑"
-                seat={gameState.regent_seat}
-                players={gameState.players || []}
-                color="#c7a869"
-              />
-            )}
-            {gameState.nominee_seat && (gameState.phase === 'VOTE' || gameState.phase === 'LEGIS_CHAMBELLAN') && (
-              <GovernmentBadge
-                label="Conseiller"
-                icon="🗝️"
-                seat={gameState.nominee_seat}
-                players={gameState.players || []}
-                color="#8a6d3a"
-              />
-            )}
-
-            <MusicControl
-              enabled={musicEnabled}
-              volume={musicVolume}
-              onToggle={() => setMusicEnabled(v => !v)}
-              onVolume={setMusicVolume}
-            />
+          {/* Center — table + actions */}
+          <div className="flex-1 flex flex-col items-center p-4 darkoath-table-stage relative z-10 overflow-y-auto">
+            <div className="w-full max-w-xl darkoath-panel rounded-lg p-4">
+              {panelTitle}
+              {actions}
+            </div>
+            <div className="w-full max-w-sm mt-3">{table(340)}</div>
           </div>
-        </div>
-      </div>
 
-      {/* DESKTOP LAYOUT (≥1024px) */}
-      <div className="hidden lg:flex h-full" style={{ height: 'calc(100dvh - 73px)' }}>
-        
-        {/* Left Column — Your Role + Tracks */}
-        <div className="w-80 p-4 space-y-4 darkoath-sidebar border-r relative z-10 overflow-y-auto">
-          {playerRole && (
-            <RoleCard
-              role={playerRole}
-              teammates={gameState.teammates || []}
-              players={gameState.players || []}
-            />
-          )}
-
-          <div className="space-y-3">
-            <TrackComponent
-              title="Fidèles"
-              current={gameState.tracks?.loyal || 0}
-              max={5}
-              variant="fidele"
-            />
-            <TrackComponent
-              title="Trahison"
-              current={gameState.tracks?.conjure || 0}
-              max={6}
-              variant="traitre"
-            />
-            <TrackComponent
-              title="Crise"
-              current={gameState.tracks?.crisis || 0}
-              max={3}
-              variant="crise"
-            />
-          </div>
-        </div>
-
-        {/* Center Column - Table */}
-        <div className="flex-1 flex flex-col items-center justify-center p-4 darkoath-table-stage relative z-10">
-          <div className="w-full max-w-md">
-            <MedievalTable
-              players={gameState.players?.map(player => ({
-                id: player.id,
-                seat: player.seat,
-                name: player.name + (player.id === currentPlayerId ? ' (Vous)' : ''),
-                alive: player.alive,
-              })) || []}
-              size={360}
-              disgracedPlayerSeat={gameState.disgraced_player_seat}
-              speakingPlayers={gameState.speaking_players || []}
-              regentSeat={gameState.regent_seat}
-              nomineeSeat={gameState.nominee_seat}
-              votedPlayerIds={Object.keys(gameState.votes || {})}
-              phase={gameState.phase}
-            />
-          </div>
-        </div>
-
-        {/* Right Column - Chat + Actions */}
-        <div className="w-80 p-4 flex flex-col space-y-4 darkoath-sidebar border-l relative z-10">
-          
-          {/* Chat */}
-          <Card className="bg-gray-800 border-gray-700 flex-1 flex flex-col min-h-0">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center space-x-2 text-gray-100">
-                <MessageCircle className="h-5 w-5" />
-                <span>Conspirations</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="flex-1 flex flex-col space-y-3 p-3 min-h-0">
-              {/* Messages Area */}
-              <ScrollArea className="flex-1 pr-2 chat-scroll-area min-h-0">
-                <div className="space-y-2">
-                  {messages.map((msg) => (
-                    <div key={msg.id} className={`p-3 rounded-lg text-sm transition-all ${
-                      msg.type === 'system' 
-                        ? 'bg-purple-900 text-purple-100 border border-purple-700' 
-                        : msg.player_name === currentPlayerName
-                        ? 'bg-amber-900 text-amber-100 border border-amber-700'
-                        : 'bg-gray-700 text-gray-100 border border-gray-600'
-                    }`}>
-                      <div className="font-semibold text-xs mb-1 opacity-75">
-                        {msg.player_name}
-                        <span className="text-xs opacity-60 ml-2">
-                          {new Date(msg.timestamp).toLocaleTimeString('fr-FR', { 
-                            hour: '2-digit', 
-                            minute: '2-digit' 
-                          })}
-                        </span>
-                      </div>
-                      <div className="break-words">{msg.message}</div>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-              
-              {/* Input Area */}
-              <div className="flex space-x-2 flex-shrink-0">
-                <Input
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Chuchotez vos secrets..."
-                  className="flex-1 bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400"
-                  maxLength={200}
-                  disabled={isSending}
-                />
-                <Button 
-                  onClick={sendMessage}
-                  disabled={!newMessage.trim() || isSending}
-                  size="sm"
-                  className="px-4 bg-amber-600 hover:bg-amber-700 text-black"
+          {/* Right column — chat / chronicle */}
+          <div className="w-80 p-4 flex flex-col darkoath-sidebar border-l relative z-10 min-h-0">
+            <div className="grid grid-cols-2 gap-1 mb-3" role="tablist">
+              {[['chat', `💬 Chat${unread && sideTab !== 'chat' ? ` (${unread})` : ''}`], ['log', '📜 Chronique']].map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={sideTab === key}
+                  onClick={() => setSideTab(key)}
+                  className={`py-2 rounded text-sm ${sideTab === key ? 'bg-amber-700 text-black font-bold' : 'bg-black/40 text-amber-100 hover:bg-amber-950/60'}`}
                 >
-                  {isSending ? (
-                    <div className="animate-spin h-4 w-4 border-2 border-black border-t-transparent rounded-full" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Actions Panel */}
-          <Card className="bg-gray-800 border-gray-700 flex-shrink-0">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg text-gray-100">Actions - {
-                formatPhaseName(gameState.phase)
-              }</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {/* Phase-specific actions */}
-              {gameState.phase === 'NOMINATION' && (
-                <NominationPanel
-                  meSeat={gameState.players?.find(p => p.id === currentPlayerId)?.seat}
-                  regentSeat={gameState.regent_seat}
-                  players={gameState.players || []}
-                  prevGovernment={gameState.prev_government}
-                  disgracedPlayerSeat={gameState.disgraced_player_seat}
-                  markedPlayerSeat={gameState.marked_player_seat}
-                  onNominate={async (seat) => {
-                    console.log('Nominating seat:', seat);
-                    try {
-                      await axios.post(`${API}/rooms/${roomCode}/action`, {
-                        action_type: 'NOMINATE',
-                        payload: { nomineeSeat: seat },
-                      });
-                      console.log('Nomination successful');
-                    } catch (error) {
-                      console.error('Nomination failed:', error);
-                      alert('Erreur lors de la nomination: ' + (error.response?.data?.detail || error.message));
-                    }
-                  }}
-                />
-              )}
-
-              {gameState.phase === 'DEFIANCE' && (
-                <DefiancePanel
-                  gameState={gameState}
-                  currentPlayerId={currentPlayerId}
-                  onVote={async (targetSeat) => {
-                    try {
-                      await axios.post(`${API}/rooms/${roomCode}/action`, {
-                        action_type: 'DEFIANCE_VOTE',
-                        payload: { targetSeat },
-                      });
-                    } catch (error) {
-                      alert('Erreur lors du vote de défiance: ' + (error.response?.data?.detail || error.message));
-                    }
-                  }}
-                />
-              )}
-
-              {gameState.phase === 'POWER' && (
-                <PowerPanel
-                  gameState={gameState}
-                  currentPlayerId={currentPlayerId}
-                  onAction={async (actionType, payload) => {
-                    try {
-                      await axios.post(`${API}/rooms/${roomCode}/action`, {
-                        action_type: actionType,
-                        payload: payload || {},
-                      });
-                    } catch (error) {
-                      alert('Erreur pouvoir du Roi : ' + (error.response?.data?.detail || error.message));
-                    }
-                  }}
-                />
-              )}
-
-              {gameState.phase === 'VOTE' && (
-                <VotePanel
-                  players={gameState.players || []}
-                  regentSeat={gameState.regent_seat}
-                  nomineeSeat={gameState.nominee_seat}
-                  votes={gameState.votes || {}}
-                  myVote={gameState.votes?.[currentPlayerId]}
-                  mySeat={gameState.players?.find(p => p.id === currentPlayerId)?.seat}
-                  onVote={async (vote) => {
-                    console.log('Voting:', vote);
-                    try {
-                      await axios.post(`${API}/rooms/${roomCode}/action`, {
-                        action_type: 'VOTE',
-                        payload: { vote },
-                      });
-                      console.log('Vote successful');
-                    } catch (error) {
-                      console.error('Vote failed:', error);
-                      alert('Erreur lors du vote: ' + (error.response?.data?.detail || error.message));
-                    }
-                  }}
-                />
-              )}
-
-              {gameState.phase === 'CONSEIL_ROYAUME' && (
-                <ConseilRoyaumePanel
-                  gameState={gameState}
-                  roomCode={roomCode}
-                  currentPlayerId={currentPlayerId}
-                  onSpeakToggle={handleSpeakToggle}
-                  speakingPlayers={gameState.speaking_players || []}
-                />
-              )}
-
-              {(gameState.phase === 'LEGIS_REGENT' || gameState.phase === 'LEGIS_CHAMBELLAN') && (
-                <LegislativePanel
-                  phase={gameState.phase}
-                  mySeat={gameState.players?.find(p => p.id === currentPlayerId)?.seat}
-                  regentSeat={gameState.regent_seat}
-                  chambellanSeat={gameState.nominee_seat}
-                  players={gameState.players || []}
-                  cards={gameState.legislative_cards || []}
-                  onDiscard={async (cardId) => {
-                    console.log('Discarding card:', cardId);
-                    try {
-                      await axios.post(`${API}/rooms/${roomCode}/action`, {
-                        action_type: 'DISCARD',
-                        payload: { cardId },
-                      });
-                      console.log('Discard successful');
-                    } catch (error) {
-                      console.error('Discard failed:', error);
-                      alert('Erreur lors de la défausse: ' + (error.response?.data?.detail || error.message));
-                    }
-                  }}
-                />
-              )}
-
-              {gameState.phase === 'ENDGAME' && (
-                <EndgameBanner gameState={gameState} currentPlayerId={currentPlayerId} />
-              )}
-
-              {!['NOMINATION', 'VOTE', 'LEGIS_REGENT', 'LEGIS_CHAMBELLAN', 'CONSEIL_ROYAUME', 'ENDGAME', 'POWER', 'DEFIANCE'].includes(gameState.phase) && (
-                <div className="text-center p-4">
-                  <Clock className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-gray-300 text-sm">
-                    En attente des actions...
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      {/* MOBILE LAYOUT */}
-      <div className="lg:hidden flex flex-col h-full" style={{ height: 'calc(100dvh - 73px)' }}>
-        
-        {/* Mobile Content Area */}
-        <div className="flex-1 p-4" style={{ paddingBottom: 'calc(60px + env(safe-area-inset-bottom))' }}>
-          
-          {/* Table Tab */}
-          {mobileTab === 'table' && (
-            <div className="h-full flex flex-col items-center justify-start space-y-4">
-              
-              {/* Actions Panel - Above table on mobile */}
-              <Card className="bg-gray-800 border-gray-700 w-full">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg text-gray-100">Actions - {
-                    formatPhaseName(gameState.phase)
-                  }</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {gameState.phase === 'NOMINATION' && (
-                    <NominationPanel
-                      meSeat={gameState.players?.find(p => p.id === currentPlayerId)?.seat}
-                      regentSeat={gameState.regent_seat}
-                      players={gameState.players || []}
-                      prevGovernment={gameState.prev_government}
-                      disgracedPlayerSeat={gameState.disgraced_player_seat}
-                      markedPlayerSeat={gameState.marked_player_seat}
-                      onNominate={async (seat) => {
-                        console.log('Nominating seat:', seat);
-                        try {
-                          await axios.post(`${API}/rooms/${roomCode}/action`, {
-                            action_type: 'NOMINATE',
-                            payload: { nomineeSeat: seat },
-                          });
-                          console.log('Nomination successful');
-                        } catch (error) {
-                          console.error('Nomination failed:', error);
-                          alert('Erreur lors de la nomination: ' + (error.response?.data?.detail || error.message));
-                        }
-                      }}
-                    />
-                  )}
-
-                  {gameState.phase === 'DEFIANCE' && (
-                    <DefiancePanel
-                      gameState={gameState}
-                      currentPlayerId={currentPlayerId}
-                      onVote={async (targetSeat) => {
-                        try {
-                          await axios.post(`${API}/rooms/${roomCode}/action`, {
-                            action_type: 'DEFIANCE_VOTE',
-                            payload: { targetSeat },
-                          });
-                        } catch (error) {
-                          alert('Erreur lors du vote de défiance: ' + (error.response?.data?.detail || error.message));
-                        }
-                      }}
-                    />
-                  )}
-
-                  {gameState.phase === 'POWER' && (
-                    <PowerPanel
-                      gameState={gameState}
-                      currentPlayerId={currentPlayerId}
-                      onAction={async (actionType, payload) => {
-                        try {
-                          await axios.post(`${API}/rooms/${roomCode}/action`, {
-                            action_type: actionType,
-                            payload: payload || {},
-                          });
-                        } catch (error) {
-                          alert('Erreur pouvoir du Roi : ' + (error.response?.data?.detail || error.message));
-                        }
-                      }}
-                    />
-                  )}
-
-                  {gameState.phase === 'VOTE' && (
-                    <VotePanel
-                      players={gameState.players || []}
-                      regentSeat={gameState.regent_seat}
-                      nomineeSeat={gameState.nominee_seat}
-                      votes={gameState.votes || {}}
-                      myVote={gameState.votes?.[currentPlayerId]}
-                      mySeat={gameState.players?.find(p => p.id === currentPlayerId)?.seat}
-                      onVote={async (vote) => {
-                        console.log('Voting:', vote);
-                        try {
-                          await axios.post(`${API}/rooms/${roomCode}/action`, {
-                            action_type: 'VOTE',
-                            payload: { vote },
-                          });
-                          console.log('Vote successful');
-                        } catch (error) {
-                          console.error('Vote failed:', error);
-                          alert('Erreur lors du vote: ' + (error.response?.data?.detail || error.message));
-                        }
-                      }}
-                    />
-                  )}
-
-                  {gameState.phase === 'CONSEIL_ROYAUME' && (
-                    <ConseilRoyaumePanel
-                      gameState={gameState}
-                      roomCode={roomCode}
-                      currentPlayerId={currentPlayerId}
-                      onSpeakToggle={handleSpeakToggle}
-                      speakingPlayers={gameState.speaking_players || []}
-                    />
-                  )}
-
-                  {(gameState.phase === 'LEGIS_REGENT' || gameState.phase === 'LEGIS_CHAMBELLAN') && (
-                    <LegislativePanel
-                      phase={gameState.phase}
-                      mySeat={gameState.players?.find(p => p.id === currentPlayerId)?.seat}
-                      regentSeat={gameState.regent_seat}
-                      chambellanSeat={gameState.nominee_seat}
-                      players={gameState.players || []}
-                      cards={gameState.legislative_cards || []}
-                      onDiscard={async (cardId) => {
-                        console.log('Discarding card:', cardId);
-                        try {
-                          await axios.post(`${API}/rooms/${roomCode}/action`, {
-                            action_type: 'DISCARD',
-                            payload: { cardId },
-                          });
-                          console.log('Discard successful');
-                        } catch (error) {
-                          console.error('Discard failed:', error);
-                          alert('Erreur lors de la défausse: ' + (error.response?.data?.detail || error.message));
-                        }
-                      }}
-                    />
-                  )}
-
-                  {gameState.phase === 'ENDGAME' && (
-                    <EndgameBanner gameState={gameState} currentPlayerId={currentPlayerId} />
-                  )}
-
-                  {!['NOMINATION', 'VOTE', 'LEGIS_REGENT', 'LEGIS_CHAMBELLAN', 'CONSEIL_ROYAUME', 'ENDGAME', 'POWER', 'DEFIANCE'].includes(gameState.phase) && (
-                    <div className="text-center p-4">
-                      <Clock className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                      <p className="text-gray-300 text-sm">
-                        En attente des actions...
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Compact Table */}
-              <div className="w-full max-w-xs">
-                <MedievalTable
-                  players={gameState.players?.map(player => ({
-                    id: player.id,
-                    seat: player.seat,
-                    name: player.name.length > 8 ? player.name.substring(0, 8) + '...' : player.name,
-                    alive: player.alive,
-                  })) || []}
-                  size={240}
-                  disgracedPlayerSeat={gameState.disgraced_player_seat}
-                  speakingPlayers={gameState.speaking_players || []}
-                  regentSeat={gameState.regent_seat}
-                  nomineeSeat={gameState.nominee_seat}
-                  votedPlayerIds={Object.keys(gameState.votes || {})}
-                  phase={gameState.phase}
-                />
-              </div>
+                  {label}
+                </button>
+              ))}
             </div>
-          )}
-
-          {/* Tracks Tab */}
-          {mobileTab === 'tracks' && (
-            <div className="space-y-4">
-              {playerRole && (
-                <RoleCard
-                  role={playerRole}
-                  teammates={gameState.teammates || []}
-                  players={gameState.players || []}
-                />
-              )}
-              <TrackComponent title="Fidèles"  current={gameState.tracks?.loyal   || 0} max={5} variant="fidele" />
-              <TrackComponent title="Trahison" current={gameState.tracks?.conjure || 0} max={6} variant="traitre" />
-              <TrackComponent title="Crise"    current={gameState.tracks?.crisis  || 0} max={3} variant="crise" />
-            </div>
-          )}
-
-          {/* Chat Tab */}
-          {mobileTab === 'chat' && (
-            <Card className="bg-gray-800 border-gray-700 h-full flex flex-col">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center space-x-2 text-gray-100">
-                  <MessageCircle className="h-5 w-5" />
-                  <span>Conspirations</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex-1 flex flex-col p-3 min-h-0">
-                {/* Messages Area */}
-                <ScrollArea className="flex-1 pr-2 chat-scroll-area min-h-0 mb-4">
-                  <div className="space-y-2">
-                    {messages.map((msg) => (
-                      <div key={msg.id} className={`p-3 rounded-lg text-sm transition-all ${
-                        msg.type === 'system' 
-                          ? 'bg-purple-900 text-purple-100 border border-purple-700' 
-                          : msg.player_name === currentPlayerName
-                          ? 'bg-amber-900 text-amber-100 border border-amber-700'
-                          : 'bg-gray-700 text-gray-100 border border-gray-600'
-                      }`}>
-                        <div className="font-semibold text-xs mb-1 opacity-75">
-                          {msg.player_name}
-                          <span className="text-xs opacity-60 ml-2">
-                            {new Date(msg.timestamp).toLocaleTimeString('fr-FR', { 
-                              hour: '2-digit', 
-                              minute: '2-digit' 
-                            })}
-                          </span>
-                        </div>
-                        <div className="break-words">{msg.message}</div>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-                
-                {/* Input Area - Mobile keyboard friendly */}
-                <div className="flex space-x-2 flex-shrink-0 border-t border-gray-700 pt-3">
-                  <Input
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder="Chuchotez vos secrets..."
-                    className="flex-1 bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400"
-                    maxLength={200}
-                    disabled={isSending}
-                  />
-                  <Button 
-                    onClick={sendMessage}
-                    disabled={!newMessage.trim() || isSending}
-                    size="sm"
-                    className="px-4 bg-amber-600 hover:bg-amber-700 text-black"
-                    style={{ minHeight: '44px', minWidth: '44px' }}
-                  >
-                    {isSending ? (
-                      <div className="animate-spin h-4 w-4 border-2 border-black border-t-transparent rounded-full" />
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        {/* Mobile Tabs Navigation - Fixed at bottom with safe area */}
-        <div 
-          className="fixed bottom-0 left-0 right-0 bg-gray-800 border-t border-gray-700 z-30"
-          style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
-        >
-          <div className="flex">
-            <button 
-              onClick={() => setMobileTab('table')}
-              className={`flex-1 p-3 text-center font-medium transition-all ${
-                mobileTab === 'table' 
-                  ? 'bg-amber-600 text-black' 
-                  : 'text-gray-300 hover:bg-gray-700'
-              }`}
-              style={{ minHeight: '44px' }}
-            >
-              🏰 Table
-            </button>
-            <button 
-              onClick={() => setMobileTab('tracks')}
-              className={`flex-1 p-3 text-center font-medium border-l border-gray-700 transition-all ${
-                mobileTab === 'tracks' 
-                  ? 'bg-amber-600 text-black' 
-                  : 'text-gray-300 hover:bg-gray-700'
-              }`}
-              style={{ minHeight: '44px' }}
-            >
-              🎭 Rôle
-            </button>
-            <button 
-              onClick={() => setMobileTab('chat')}
-              className={`flex-1 p-3 text-center font-medium border-l border-gray-700 transition-all ${
-                mobileTab === 'chat' 
-                  ? 'bg-amber-600 text-black' 
-                  : 'text-gray-300 hover:bg-gray-700'
-              }`}
-              style={{ minHeight: '44px' }}
-            >
-              💬 Chat
-            </button>
+            {sideTab === 'chat' ? chat : chronicle}
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex flex-col flex-1 min-h-0">
+          <div className="flex-1 p-3 overflow-y-auto" style={{ paddingBottom: 'calc(64px + env(safe-area-inset-bottom))' }}>
+            {mobileTab === 'table' && (
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-full darkoath-panel rounded-lg p-3">
+                  {panelTitle}
+                  {actions}
+                </div>
+                <div className="w-full max-w-xs">{table(300)}</div>
+              </div>
+            )}
+            {mobileTab === 'tracks' && (
+              <div className="space-y-4">
+                {playerRole && <RoleCard role={playerRole} teammates={gameState.teammates || []} players={players} />}
+                {tracks}
+              </div>
+            )}
+            {mobileTab === 'chat' && (
+              <div className="flex flex-col" style={{ height: 'calc(100dvh - 210px)' }}>{chat}</div>
+            )}
+            {mobileTab === 'log' && (
+              <div className="flex flex-col" style={{ height: 'calc(100dvh - 210px)' }}>{chronicle}</div>
+            )}
+          </div>
+
+          {/* Bottom tabs */}
+          <nav className="fixed bottom-0 left-0 right-0 bg-stone-950/95 border-t border-amber-900/50 z-30" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+            <div className="flex">
+              {[
+                ['table', '🏰', 'Table'],
+                ['tracks', '🎭', 'Rôle'],
+                ['chat', '💬', unread ? `Chat (${unread})` : 'Chat'],
+                ['log', '📜', 'Chronique'],
+              ].map(([key, icon, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setMobileTab(key)}
+                  className={`flex-1 py-2 text-center text-xs transition-all ${mobileTab === key ? 'bg-amber-600 text-black font-bold' : 'text-amber-100/80'} ${key === 'chat' && unread ? 'animate-pulse' : ''}`}
+                  style={{ minHeight: 52 }}
+                  aria-current={mobileTab === key ? 'page' : undefined}
+                >
+                  <div className="text-lg leading-none">{icon}</div>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </nav>
+        </div>
+      )}
     </div>
   );
 };

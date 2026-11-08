@@ -4,21 +4,19 @@ import { Button } from './ui/button';
 
 const titleFont = { fontFamily: "'Cinzel', serif", letterSpacing: '0.05em' };
 
-const VotePanel = ({ players, regentSeat, nomineeSeat, votes, myVote, mySeat, onVote }) => {
+const VotePanel = ({ players, regentSeat, nomineeSeat, votesCast = [], myVote, mySeat, onVote, pending = false }) => {
   const regent = players.find(p => p.seat === regentSeat);
   const nominee = players.find(p => p.seat === nomineeSeat);
 
-  // Le gouvernement proposé ne peut pas voter
-  const canIVote = mySeat !== regentSeat && mySeat !== nomineeSeat;
+  // Livret : tous les joueurs vivants votent (Roi et Conseiller compris)
+  const me = players.find(p => p.seat === mySeat);
+  const canIVote = !!me && me.alive !== false;
 
   const alivePlayers = players.filter(p => p.alive);
-  const eligibleVoters = alivePlayers.filter(p => p.seat !== regentSeat && p.seat !== nomineeSeat);
-  const totalVotes = Object.keys(votes).length;
-  const votesNeeded = eligibleVoters.length;
+  const totalVotes = votesCast.length;
+  const votesNeeded = alivePlayers.length;
   const progressPct = votesNeeded > 0 ? (totalVotes / votesNeeded) * 100 : 0;
-
-  const yesVotes = Object.values(votes).filter(v => v === 'oui').length;
-  const noVotes = Object.values(votes).filter(v => v === 'non').length;
+  const waitingFor = alivePlayers.filter(p => !votesCast.includes(p.id));
 
   return (
     <div className="space-y-4">
@@ -120,13 +118,11 @@ const VotePanel = ({ players, regentSeat, nomineeSeat, votes, myVote, mySeat, on
             }}
           />
         </div>
-        <div className="flex justify-between text-xs pt-1">
-          <span className="flex items-center gap-1" style={{ color: '#86efac' }}>
-            <ThumbsUp className="h-3 w-3" /> OUI : {yesVotes}
-          </span>
-          <span className="flex items-center gap-1" style={{ color: '#fca5a5' }}>
-            <ThumbsDown className="h-3 w-3" /> NON : {noVotes}
-          </span>
+        <div className="text-xs pt-1 text-amber-100/70 italic">
+          Bulletins secrets — révélés quand tout le monde a voté.
+          {waitingFor.length > 0 && waitingFor.length <= 4 && (
+            <span className="block not-italic mt-1">En attente de : {waitingFor.map(p => p.name).join(', ')}</span>
+          )}
         </div>
       </div>
 
@@ -141,10 +137,10 @@ const VotePanel = ({ players, regentSeat, nomineeSeat, votes, myVote, mySeat, on
         >
           <Hourglass className="h-8 w-8 mx-auto mb-2 text-amber-400/80 animate-pulse" />
           <p className="text-amber-200 font-medium text-sm mb-1" style={titleFont}>
-            Vous ne pouvez pas voter
+            Vous ne votez pas
           </p>
           <p className="text-amber-100/70 text-xs">
-            Les membres du gouvernement proposé ne participent pas au scrutin.
+            Les morts observent en silence. Vous êtes spectateur.
           </p>
         </div>
       ) : !myVote ? (
@@ -155,6 +151,7 @@ const VotePanel = ({ players, regentSeat, nomineeSeat, votes, myVote, mySeat, on
           <div className="grid grid-cols-2 gap-3">
             <Button
               onClick={() => onVote('oui')}
+              disabled={pending}
               className="h-12 transition-all"
               style={{
                 background: 'rgba(22, 101, 52, 0.6)',
@@ -180,6 +177,7 @@ const VotePanel = ({ players, regentSeat, nomineeSeat, votes, myVote, mySeat, on
             </Button>
             <Button
               onClick={() => onVote('non')}
+              disabled={pending}
               className="h-12 transition-all"
               style={{
                 background: 'rgba(127, 29, 29, 0.6)',
