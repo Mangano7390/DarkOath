@@ -13,7 +13,7 @@ import LegislativePanel from './LegislativePanel';
 import ConseilRoyaumePanel from './ConseilRoyaumePanel';
 import DefiancePanel from './DefiancePanel';
 import PowerPanel from './PowerPanel';
-import MedievalTable from './MedievalTable.js';
+import { IdentityBar, TurnSteps, CourtTable, useMedia } from './ThroneRoom';
 import { RevealOverlay, Chronicle, TurnHint, MiniTracks, ConseilReady, SpectatorNotice, useIsDesktop, playCue } from './GameExtras';
 import { errorMessage, rememberRoom, forgetRoom, syncServerClock, serverNow, powerMarks, powerLegend } from '../lib/game';
 
@@ -487,6 +487,7 @@ const MusicControl = ({ enabled, volume, onToggle, onVolume }) => {
 const GameInterface = ({ roomCode }) => {
   const navigate = useNavigate();
   const isDesktop = useIsDesktop();
+  const isWide = useMedia('(min-width: 1440px)');
   const [gameState, setGameState] = useState(null);
   const [playerRole, setPlayerRole] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -848,25 +849,34 @@ const GameInterface = ({ roomCode }) => {
   // ------------------------------------------------------------------
   // Shared pieces (rendered once, in either the desktop or the mobile layout)
   // ------------------------------------------------------------------
-  const table = (size) => (
-    <MedievalTable
-      players={players.map((player) => ({
-        id: player.id,
-        seat: player.seat,
-        name: (player.is_bot ? '🤖 ' : '') + player.name + (player.id === currentPlayerId ? ' (vous)' : ''),
-        alive: player.alive,
-        connected: player.connected,
-      }))}
-      size={size}
-      disgracedPlayerSeat={gameState.disgraced_player_seat}
-      markedPlayerSeat={gameState.marked_player_seat}
-      prevGovernment={gameState.prev_government}
-      speakingPlayers={gameState.speaking_players || []}
-      regentSeat={gameState.regent_seat}
-      nomineeSeat={gameState.nominee_seat}
-      votedPlayerIds={gameState.votes_cast || []}
-      mySeat={me?.seat}
-      phase={phase}
+  // Clicking a player on the table: nomination and the King's powers
+  const iAmKing = me?.seat === gameState.regent_seat && me?.alive !== false;
+  let selectableSeats = [];
+  let selectHint = null;
+  if (iAmKing && phase === 'NOMINATION') {
+    selectableSeats = gameState.eligible_nominee_seats || [];
+    selectHint = 'Cliquez sur votre futur Conseiller';
+  } else if (iAmKing && phase === 'POWER' && ['INVESTIGATE', 'EXECUTE', 'SPECIAL_ELECTION'].includes(gameState.active_power)
+    && !(gameState.active_power === 'INVESTIGATE' && gameState.power_result)) {
+    const done = gameState.investigated_seats || [];
+    selectableSeats = players.filter((p) => p.alive && p.seat !== me.seat
+      && !(gameState.active_power === 'INVESTIGATE' && done.includes(p.seat))).map((p) => p.seat);
+    selectHint = ({ INVESTIGATE: 'Cliquez sur le joueur à sonder', EXECUTE: 'Cliquez sur le joueur à exécuter', SPECIAL_ELECTION: 'Cliquez sur le prochain Roi' })[gameState.active_power];
+  }
+  const onSeatSelect = (seat) => {
+    const name = players.find((p) => p.seat === seat)?.name || `siège ${seat}`;
+    if (phase === 'NOMINATION') { act('NOMINATE', { nomineeSeat: seat }); return; }
+    if (gameState.active_power === 'EXECUTE' && !window.confirm(`Exécuter ${name} ? Cette action est irréversible.`)) return;
+    act(gameState.active_power, { targetSeat: seat });
+  };
+  const table = (layout) => (
+    <CourtTable
+      gameState={gameState}
+      me={me}
+      layout={layout}
+      selectableSeats={pending ? [] : selectableSeats}
+      onSelect={onSeatSelect}
+      selectHint={selectHint}
     />
   );
 
@@ -1036,7 +1046,7 @@ const GameInterface = ({ roomCode }) => {
   );
 
   const header = (
-    <div className="darkoath-header relative z-20 sticky top-0">
+    <div className="darkoath-header relative z-20 sticky top-0 shrink-0">
       <div className="px-3 py-2 flex items-center justify-between max-w-7xl mx-auto gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <h1 className="hidden sm:block text-lg font-bold text-amber-400 shrink-0" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.15em' }}>DARK OATH</h1>
@@ -1077,13 +1087,30 @@ const GameInterface = ({ roomCode }) => {
           />
         </div>
       </div>
-      {!isDesktop && <MiniTracks tracks={gameState.tracks} deckCount={gameState.deck_count} powerBoard={gameState.power_board} />}
       <TurnHint gameState={gameState} me={me} />
+      {!isDesktop && mobileTab !== 'table' && <MiniTracks tracks={gameState.tracks} deckCount={gameState.deck_count} powerBoard={gameState.power_board} />}
       {offline && (
         <div className="px-3 py-1 text-center text-xs bg-red-950/90 text-red-200" role="alert">
           Connexion perdue — reconnexion en cours…
         </div>
       )}
+    </div>
+  );
+
+  const sideTabs = (
+    <div className="grid grid-cols-2 gap-1 mb-3 shrink-0" role="tablist">
+      {[['chat', `💬 Chat${unread && sideTab !== 'chat' ? ` (${unread})` : ''}`], ['log', '📜 Chronique']].map(([key, label]) => (
+        <button
+          key={key}
+          type="button"
+          role="tab"
+          aria-selected={sideTab === key}
+          onClick={() => setSideTab(key)}
+          className={`py-2 rounded text-sm ${sideTab === key ? 'bg-amber-700 text-black font-bold' : 'bg-black/40 text-amber-100 hover:bg-amber-950/60'}`}
+        >
+          {label}
+        </button>
+      ))}
     </div>
   );
 
@@ -1099,7 +1126,7 @@ const GameInterface = ({ roomCode }) => {
   );
 
   return (
-    <div className="darkoath-game text-gray-100 relative flex flex-col" style={{ minHeight: '100dvh' }}>
+    <div className="darkoath-game text-gray-100 relative flex flex-col" style={isDesktop ? { height: '100dvh', overflow: 'hidden' } : { minHeight: '100dvh' }}>
       <RevealOverlay gameState={gameState} />
 
       {/* Piste de Défiance banners */}
@@ -1163,50 +1190,47 @@ const GameInterface = ({ roomCode }) => {
             <h2 id="colere-title" className="text-2xl text-red-100 flex items-center justify-center gap-2" style={{ fontFamily: "'Cinzel', serif" }}>
               <Zap className="h-7 w-7 text-yellow-400" /> Colère du Peuple <Zap className="h-7 w-7 text-yellow-400" />
             </h2>
-            <p className="text-red-200 text-lg my-4">⚡ Trois gouvernements rejetés : un décret est imposé et le Roi est désavoué !</p>
-            <p className="text-red-300 text-sm">Le Roi désavoué ne peut être ni Roi ni Conseiller au tour suivant.</p>
+            <p className="text-red-200 text-lg my-4">⚡ Trois gouvernements ratés : le peuple impose le décret du dessus de la pioche !</p>
+            <p className="text-red-300 text-sm">Aucun pouvoir n'est déclenché, et les limites de mandat sont levées.</p>
             <Button autoFocus onClick={() => setShowPeoplesAnger(false)} className="mt-5 bg-red-600 hover:bg-red-700 text-white">Compris</Button>
           </div>
         </div>
       )}
 
       {header}
+      <div className="shrink-0 relative z-10">
+        <IdentityBar me={me} role={playerRole} teammates={gameState.teammates || []} compact={!isDesktop} />
+        <TurnSteps gameState={gameState} me={me} role={playerRole} compact={!isDesktop} />
+      </div>
 
       {isDesktop ? (
-        <div className="flex flex-1 min-h-0" style={{ height: 'calc(100dvh - 90px)' }}>
-          {/* Left column — role + tracks */}
-          <div className="w-80 p-4 space-y-4 darkoath-sidebar border-r relative z-10 overflow-y-auto">
-            {playerRole && <RoleCard role={playerRole} teammates={gameState.teammates || []} players={players} />}
-            {tracks}
+        <div className="flex flex-1 min-h-0">
+          {/* Center — the throne room table */}
+          <div className="flex-1 min-w-0 flex flex-col items-center justify-center p-4 darkoath-table-stage relative z-10 overflow-y-auto">
+            {table('ring')}
           </div>
 
-          {/* Center — table + actions */}
-          <div className="flex-1 flex flex-col items-center p-4 darkoath-table-stage relative z-10 overflow-y-auto">
-            <div className="w-full max-w-xl darkoath-panel rounded-lg p-4">
+          {/* Actions — what to do now */}
+          <div className="w-[400px] shrink-0 p-4 darkoath-sidebar border-l relative z-10 overflow-y-auto flex flex-col gap-3">
+            <div className="darkoath-panel rounded-lg p-4">
               {panelTitle}
               {actions}
             </div>
-            <div className="w-full max-w-sm mt-3">{table(340)}</div>
+            {!isWide && (
+              <div className="darkoath-panel rounded-lg p-3 flex flex-col" style={{ height: 380 }}>
+                {sideTabs}
+                {sideTab === 'chat' ? chat : chronicle}
+              </div>
+            )}
           </div>
 
-          {/* Right column — chat / chronicle */}
-          <div className="w-80 p-4 flex flex-col darkoath-sidebar border-l relative z-10 min-h-0">
-            <div className="grid grid-cols-2 gap-1 mb-3" role="tablist">
-              {[['chat', `💬 Chat${unread && sideTab !== 'chat' ? ` (${unread})` : ''}`], ['log', '📜 Chronique']].map(([key, label]) => (
-                <button
-                  key={key}
-                  type="button"
-                  role="tab"
-                  aria-selected={sideTab === key}
-                  onClick={() => setSideTab(key)}
-                  className={`py-2 rounded text-sm ${sideTab === key ? 'bg-amber-700 text-black font-bold' : 'bg-black/40 text-amber-100 hover:bg-amber-950/60'}`}
-                >
-                  {label}
-                </button>
-              ))}
+          {/* Right column — chat / chronicle (wide screens) */}
+          {isWide && (
+            <div className="w-80 shrink-0 p-4 flex flex-col darkoath-sidebar border-l relative z-10 min-h-0">
+              {sideTabs}
+              {sideTab === 'chat' ? chat : chronicle}
             </div>
-            {sideTab === 'chat' ? chat : chronicle}
-          </div>
+          )}
         </div>
       ) : (
         <div className="flex flex-col flex-1 min-h-0">
@@ -1217,7 +1241,7 @@ const GameInterface = ({ roomCode }) => {
                   {panelTitle}
                   {actions}
                 </div>
-                <div className="w-full max-w-xs">{table(300)}</div>
+                <div className="w-full">{table('grid')}</div>
               </div>
             )}
             {mobileTab === 'tracks' && (
@@ -1239,7 +1263,7 @@ const GameInterface = ({ roomCode }) => {
             <div className="flex">
               {[
                 ['table', '🏰', 'Table'],
-                ['tracks', '🎭', 'Rôle'],
+                ['tracks', '🎭', 'Rôle & pistes'],
                 ['chat', '💬', unread ? `Chat (${unread})` : 'Chat'],
                 ['log', '📜', 'Chronique'],
               ].map(([key, icon, label]) => (

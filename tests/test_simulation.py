@@ -229,6 +229,24 @@ def test_who_question_is_not_an_accusation():
     assert not server.bots.table(gs)["accused"].get(str(bot.seat))
 
 
+def test_bot_explains_its_vote_and_never_says_just_oui():
+    gs, clock = _room("CHAT3", 1, 6)
+    t = gs.turn
+    human = gs.players[0]
+    t.regent_seat, t.nominee_seat = 2, 3
+    t.phase = server.Phase.VOTE
+    bot = next(p for p in gs.players if p.is_bot and p.seat not in (2, 3))
+    first = bot.name.split()[-1]
+    for msg in (f"{first} tu votes quoi ?", f"{first} t'en dis quoi", f"{first} ça va ?"):
+        gs.bot_chat_queue = []
+        server.bots.on_human_chat(gs, human, msg, clock())
+        line = next(q["text"] for q in gs.bot_chat_queue if q["player_id"] == bot.id)
+        assert line.strip().lower() not in ("oui ?", "oui", "quoi ?", "hmm ?"), (msg, line)
+        if "vote" in msg:
+            assert ("oui" in line.lower() or "non" in line.lower()), line
+            assert ("non" in line.lower()) == (server.bots._vote(gs, bot) == "non"), line
+
+
 if __name__ == "__main__":
     n = int(sys.argv[1]) if len(sys.argv) > 1 else 300
     stats, reasons, turns, afk, chat = run(n)

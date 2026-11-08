@@ -318,8 +318,16 @@ def _nominate(gs, player, seats: List[int]) -> Optional[int]:
     return _least_suspect(gs, player, seats)
 
 
-def _vote(gs, player) -> str:
+def _vote_rng(gs, player) -> random.Random:
     t = gs.turn
+    return random.Random(f"vote-{player.id}-{t.turn_number}-{t.regent_seat}-{t.nominee_seat}-{gs.tracks.crisis}")
+
+
+def _vote(gs, player) -> str:
+    """Same answer every time for a given government, so what a bot says
+    in the chat ("je vote non") matches its ballot."""
+    t = gs.turn
+    rng = _vote_rng(gs, player)
     r, c = t.regent_seat, t.nominee_seat
     if player.seat in (r, c):
         return "oui"
@@ -329,20 +337,42 @@ def _vote(gs, player) -> str:
         if gs.tracks.conjure >= 3 and c == ty:
             return "oui"
         if r in friends or c in friends:
-            return "oui" if random.random() < 0.9 else "non"
-        # Blend in: vote like a cautious Fidèle most of the time
-        return "oui" if random.random() < 0.55 else "non"
+            return "oui" if rng.random() < 0.85 else "non"
+        # Blend in, but push the table towards the Colère du Peuple sometimes
+        return "oui" if rng.random() < 0.5 else "non"
 
     s = suspicion(gs, player)
     score = max(s.get(r, 0.0), 0) * 0.8 + max(s.get(c, 0.0), 0) * 1.2
-    threshold = 1.6
+    pers = persona(gs, player)
+    threshold = 1.7 - pers["aggr"] * 0.6        # suspicious bots say no more easily
     if gs.tracks.conjure >= 3:
-        threshold = 1.0  # the Tyran could win as Conseiller: be strict
+        threshold -= 0.6  # the Tyran could win as Conseiller: be strict
     if gs.tracks.crisis >= 2:
-        threshold += 1.0  # avoid the Colère du Peuple
+        threshold += 1.2  # avoid the Colère du Peuple
     if friends and (r in friends or c in friends):
         threshold += 0.8  # the Tyran quietly helps the Traître he knows
-    return "oui" if score < threshold else "non"
+    if score >= threshold:
+        return "non"
+    # No hard evidence: most people still approve, a few test the King
+    doubt = 0.1 + pers["aggr"] * 0.15 if t.turn_number > 1 and gs.tracks.crisis < 2 else 0.04
+    return "non" if rng.random() < doubt else "oui"
+
+
+def _vote_reason(gs, player, ballot: str) -> str:
+    t = gs.turn
+    r, c = t.regent_seat, t.nominee_seat
+    if ballot == "oui":
+        if gs.tracks.crisis >= 2:
+            return _pick(gs, player, ["Je vote oui : on ne peut pas se permettre une Colère du Peuple."],
+                         ["oui, la crise est à 2 on peut pas rater"])
+        why = _reason_for(gs, c) or _reason_for(gs, r)
+        return _pick(gs, player, [f"Je vote oui. {why}" if why else f"Je vote oui, {_name(gs, c)} ne m'a rien fait de suspect."],
+                     [f"oui pour moi. {why}" if why else f"oui, {_name(gs, c)} me paraît ok"])
+    why = _reason_against(gs, c) or _reason_against(gs, r)
+    if gs.tracks.conjure >= 3:
+        why = why or f"Avec 3 Trahisons, je ne prends aucun risque avec {_name(gs, c)}."
+    return _pick(gs, player, [f"Je vote non. {why}" if why else f"Je vote non, je ne sens pas {_name(gs, c)} en Conseiller."],
+                 [f"non. {why}" if why else f"non, {_name(gs, c)} je le sens pas"])
 
 
 def _remember_cards(gs, player, role: str, cards: List[str], passed: List[str]) -> None:
@@ -642,11 +672,11 @@ def _suspect_for_talk(gs, player, exclude: Tuple[int, ...] = ()) -> Optional[int
 ACCUSE_RE = re.compile(r"traitr|menteu|\bmen[st]\b|mentir|suspect|louche|conjur|tyran|\bsus\b|bizarre|fasciste"
                        r"|mechant|coupable|\bvire|execut|mefie|pas confiance|rouge")
 DEFEND_RE = re.compile(r"fidele|confiance|clean|innocent|liberal|\bsafe\b|\bok\b")
-CARDS_RE = re.compile(r"carte|pioch|recu|\bpasse|donne|eu quoi|t'?as eu|tu as eu|defauss|t'?avais quoi")
-VOTE_RE = re.compile(r"\bvot")
-WHO_RE = re.compile(r"\bqui\b|soupcon|tu penses|vous pensez|avis")
+CARDS_RE = re.compile(r"carte|pioch|recu|\bpasse|donne|eu quoi|t'?\s?as eu|tu as eu|defauss|t'?avais quoi|annonce|claim")
+VOTE_RE = re.compile(r"\bvot|\boui ou non\b|tu (dis|mets) (oui|non)")
+WHO_RE = re.compile(r"\bqui\b|soupcon|tu penses|vous pensez|avis|suspect|t'?en penses|tu crois|vous croyez")
 GREET_RE = re.compile(r"^(salut|bonjour|coucou|yo|hello|bonsoir|wesh|slt|cc)\b")
-ROLE_RE = re.compile(r"t'?es quoi|tu es quoi|ton role|t'?es (fidele|traitre)|tu es (fidele|traitre)|t'?es (gentil|mechant)")
+ROLE_RE = re.compile(r"(?<![a-z])(t'?es|tu es) (quoi|fidele|traitre|gentil|mechant|tyran)|ton role|(?<![a-z])t'?es qui")
 TWO_BAD_RE = re.compile(r"(2|deux|3|trois|que des?|que du) ?(trahison|rouge|fascist)|aucun loyal|pas de loyal|0 loyal")
 
 
@@ -817,6 +847,23 @@ def _catch_lie(gs, bot, speaker, n: str) -> Optional[str]:
     return None
 
 
+def _contextual_answer(gs, bot, question: bool) -> str:
+    """Something relevant to say when the message wasn't understood precisely."""
+    t = gs.turn
+    phase = _val(t.phase)
+    if phase == "VOTE" and t.nominee_seat and bot.seat not in (t.regent_seat, t.nominee_seat):
+        return _vote_reason(gs, bot, t.votes.get(bot.id) or _vote(gs, bot))
+    d = _last_gov_with(gs, bot.seat)
+    if d and d.get("turn") == t.turn_number and str(d.get("turn")) in memory(gs, bot)["claims"]:
+        return _answer_cards(gs, bot)
+    if phase == "NOMINATION" and t.regent_seat != bot.seat:
+        target = _suspect_for_talk(gs, bot)
+        if target is not None and _reason_against(gs, target):
+            return _pick(gs, bot, [f"Que le Roi évite {_name(gs, target)}. {_reason_against(gs, target)}"],
+                         [f"le roi devrait pas prendre {_name(gs, target)}. {_reason_against(gs, target)}"])
+    return _answer_who(gs, bot)
+
+
 def on_human_chat(gs, speaker, text: str, now: float) -> None:
     """Schedule bot reactions to a message written by a human."""
     if speaker.is_bot or gs.status != "in_progress":
@@ -860,7 +907,11 @@ def on_human_chat(gs, speaker, text: str, now: float) -> None:
         elif CARDS_RE.search(n):
             line = _answer_cards(gs, b)
         elif VOTE_RE.search(n):
-            line = _answer_vote(gs, b)
+            t = gs.turn
+            if _val(t.phase) == "VOTE" and b.seat not in (t.regent_seat, t.nominee_seat):
+                line = _vote_reason(gs, b, t.votes.get(b.id) or _vote(gs, b))
+            else:
+                line = _answer_vote(gs, b)
         elif ROLE_RE.search(n):
             line = _pick(gs, b, ["Fidèle, évidemment.", "Fidèle à la Couronne. Comme tout le monde ici, paraît-il."],
                          ["fidèle bien sûr", "fidèle, et toi ?"])
@@ -868,11 +919,8 @@ def on_human_chat(gs, speaker, text: str, now: float) -> None:
             line = _answer_who(gs, b)
         elif defending:
             line = _pick(gs, b, ["Merci de ta confiance.", "Enfin quelqu'un de lucide."], ["merci", "enfin quelqu'un qui réfléchit"])
-        elif question:
-            line = _pick(gs, b, ["Bonne question… je réfléchis.", "Je n'ai rien à cacher, demandez."],
-                         ["hmm bonne question", "demande ce que tu veux"])
         else:
-            line = _pick(gs, b, ["Oui ?", "Je t'écoute."], ["oui ?", "quoi ?", "hmm ?"])
+            line = _contextual_answer(gs, b, question)
         replies.append((b, line))
 
     # 3. nobody addressed: one or two bots may join in

@@ -39,93 +39,6 @@ const VotePanel = ({ players, regentSeat, nomineeSeat, votesCast = [], myVote, m
         </div>
       </div>
 
-      {/* Government Info */}
-      <div
-        className="p-4 rounded-lg"
-        style={{
-          background: 'rgba(20, 14, 8, 0.6)',
-          border: '1px solid rgba(199, 168, 105, 0.35)',
-        }}
-      >
-        <div className="text-xs uppercase tracking-widest mb-3" style={{ color: 'rgba(232, 217, 168, 0.7)', ...titleFont }}>
-          Gouvernement proposé
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          {/* Roi */}
-          <div
-            className="p-3 rounded text-center"
-            style={{
-              background: 'rgba(120, 53, 15, 0.3)',
-              border: '1px solid rgba(199, 168, 105, 0.4)',
-            }}
-          >
-            <Crown className="h-5 w-5 mx-auto mb-1 text-amber-400" />
-            <div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: 'rgba(232, 217, 168, 0.7)', ...titleFont }}>
-              Roi
-            </div>
-            <div className="font-medium text-amber-100 truncate" style={titleFont}>
-              {regent?.name}
-            </div>
-            <div className="text-[11px] text-amber-100/60">Siège {regentSeat}</div>
-          </div>
-          {/* Conseiller */}
-          <div
-            className="p-3 rounded text-center"
-            style={{
-              background: 'rgba(120, 53, 15, 0.3)',
-              border: '1px solid rgba(199, 168, 105, 0.4)',
-            }}
-          >
-            <ScrollText className="h-5 w-5 mx-auto mb-1 text-amber-400" />
-            <div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: 'rgba(232, 217, 168, 0.7)', ...titleFont }}>
-              Conseiller
-            </div>
-            <div className="font-medium text-amber-100 truncate" style={titleFont}>
-              {nominee?.name}
-            </div>
-            <div className="text-[11px] text-amber-100/60">Siège {nomineeSeat}</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Vote Progress */}
-      <div
-        className="p-3 rounded-lg space-y-2"
-        style={{
-          background: 'rgba(20, 14, 8, 0.5)',
-          border: '1px solid rgba(199, 168, 105, 0.25)',
-        }}
-      >
-        <div className="flex justify-between items-center">
-          <span className="text-xs uppercase tracking-widest" style={{ color: 'rgba(232, 217, 168, 0.7)', ...titleFont }}>
-            Progression
-          </span>
-          <span className="text-xs text-amber-100/80" style={titleFont}>
-            {totalVotes}/{votesNeeded}
-          </span>
-        </div>
-        {/* Custom progress bar */}
-        <div
-          className="h-2 rounded-full overflow-hidden"
-          style={{ background: 'rgba(40, 28, 18, 0.8)', border: '1px solid rgba(199, 168, 105, 0.2)' }}
-        >
-          <div
-            className="h-full transition-all duration-300"
-            style={{
-              width: `${progressPct}%`,
-              background: 'linear-gradient(90deg, #c7a869, #e8d9a8)',
-              boxShadow: '0 0 8px rgba(199, 168, 105, 0.5)',
-            }}
-          />
-        </div>
-        <div className="text-xs pt-1 text-amber-100/70 italic">
-          Bulletins secrets — révélés quand tout le monde a voté.
-          {waitingFor.length > 0 && waitingFor.length <= 4 && (
-            <span className="block not-italic mt-1">En attente de : {waitingFor.map(p => p.name).join(', ')}</span>
-          )}
-        </div>
-      </div>
-
       {/* Voting Buttons */}
       {!canIVote ? (
         <div
@@ -219,6 +132,93 @@ const VotePanel = ({ players, regentSeat, nomineeSeat, votesCast = [], myVote, m
           </p>
         </div>
       )}
+
+      {/* Government Info */}
+      <div
+        className="p-4 rounded-lg"
+        style={{
+          background: 'rgba(20, 14, 8, 0.6)',
+          border: '1px solid rgba(199, 168, 105, 0.35)',
+        }}
+      >
+        <div className="text-xs uppercase tracking-widest mb-3" style={{ color: 'rgba(232, 217, 168, 0.7)', ...titleFont }}>
+          Gouvernement proposé
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          {/* Roi */}
+          <div
+            className="p-3 rounded text-center"
+            style={{
+              background: 'rgba(120, 53, 15, 0.3)',
+              border: '1px solid rgba(199, 168, 105, 0.4)',
+            }}
+          >
+            <Crown className="h-5 w-5 mx-auto mb-1 text-amber-400" />
+            <div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: 'rgba(232, 217, 168, 0.7)', ...titleFont }}>
+              Roi
+            </div>
+            <div className="font-medium text-amber-100 truncate" style={titleFont}>
+              {regent?.name}
+            </div>
+            <div className="text-[11px] text-amber-100/60">Siège {regentSeat}</div>
+          </div>
+          {/* Conseiller */}
+          <div
+            className="p-3 rounded text-center"
+            style={{
+              background: 'rgba(120, 53, 15, 0.3)',
+              border: '1px solid rgba(199, 168, 105, 0.4)',
+            }}
+          >
+            <ScrollText className="h-5 w-5 mx-auto mb-1 text-amber-400" />
+            <div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: 'rgba(232, 217, 168, 0.7)', ...titleFont }}>
+              Conseiller
+            </div>
+            <div className="font-medium text-amber-100 truncate" style={titleFont}>
+              {nominee?.name}
+            </div>
+            <div className="text-[11px] text-amber-100/60">Siège {nomineeSeat}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Vote Progress */}
+      <div
+        className="p-3 rounded-lg space-y-2"
+        style={{
+          background: 'rgba(20, 14, 8, 0.5)',
+          border: '1px solid rgba(199, 168, 105, 0.25)',
+        }}
+      >
+        <div className="flex justify-between items-center">
+          <span className="text-xs uppercase tracking-widest" style={{ color: 'rgba(232, 217, 168, 0.7)', ...titleFont }}>
+            Progression
+          </span>
+          <span className="text-xs text-amber-100/80" style={titleFont}>
+            {totalVotes}/{votesNeeded}
+          </span>
+        </div>
+        {/* Custom progress bar */}
+        <div
+          className="h-2 rounded-full overflow-hidden"
+          style={{ background: 'rgba(40, 28, 18, 0.8)', border: '1px solid rgba(199, 168, 105, 0.2)' }}
+        >
+          <div
+            className="h-full transition-all duration-300"
+            style={{
+              width: `${progressPct}%`,
+              background: 'linear-gradient(90deg, #c7a869, #e8d9a8)',
+              boxShadow: '0 0 8px rgba(199, 168, 105, 0.5)',
+            }}
+          />
+        </div>
+        <div className="text-xs pt-1 text-amber-100/70 italic">
+          Bulletins secrets — révélés quand tout le monde a voté.
+          {waitingFor.length > 0 && waitingFor.length <= 4 && (
+            <span className="block not-italic mt-1">En attente de : {waitingFor.map(p => p.name).join(', ')}</span>
+          )}
+        </div>
+      </div>
 
       {/* Vote Status */}
       <div
