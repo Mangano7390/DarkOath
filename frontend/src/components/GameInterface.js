@@ -13,10 +13,11 @@ import LegislativePanel from './LegislativePanel';
 import ConseilRoyaumePanel from './ConseilRoyaumePanel';
 import DefiancePanel from './DefiancePanel';
 import PowerPanel from './PowerPanel';
+import TeamPowerPanel from './TeamPowerPanel';
 import { IdentityBar, TurnSteps, CourtTable, useMedia } from './ThroneRoom';
 import Tutorial from './Tutorial';
 import { RevealOverlay, Chronicle, TurnHint, MiniTracks, ConseilReady, SpectatorNotice, useIsDesktop, playCue } from './GameExtras';
-import { errorMessage, rememberRoom, forgetRoom, syncServerClock, serverNow, powerMarks, powerLegend } from '../lib/game';
+import { errorMessage, rememberRoom, forgetRoom, syncServerClock, serverNow, powerMarks, powerLegend, plotMark } from '../lib/game';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -67,6 +68,10 @@ const formatPhaseName = (phase) => {
       return 'Piste de Défiance';
     case 'POWER':
       return 'Pouvoir du Roi';
+    case 'JUGEMENT':
+      return 'Flèche du Peuple';
+    case 'COMPLOT':
+      return 'Complot';
     case 'ENDGAME':
       return 'Fin de partie';
     default:
@@ -83,7 +88,7 @@ const TrackComponent = ({ title, current, max, variant, powerBoard }) => {
   };
   const v = variants[variant];
   // Powers shown on empty slots (they depend on the number of players)
-  const slotMarks = variant === 'traitre' ? powerMarks(powerBoard) : variant === 'fidele' ? { 5: '🏆' } : variant === 'crise' ? { 3: '⚡' } : {};
+  const slotMarks = variant === 'traitre' ? { ...powerMarks(powerBoard), ...plotMark(powerBoard) } : variant === 'fidele' ? { 3: '🏹', 5: '🏆' } : variant === 'crise' ? { 3: '⚡' } : {};
 
   return (
     <div className="darkoath-panel rounded-lg p-4">
@@ -116,7 +121,8 @@ const TrackComponent = ({ title, current, max, variant, powerBoard }) => {
         })}
       </div>
       <div className="text-xs text-center" style={{ color: 'rgba(232, 217, 168, 0.6)', fontFamily: "'IM Fell English', serif", fontStyle: 'italic' }}>
-        {variant === 'traitre' ? `${powerLegend(powerBoard)} · dès 3 : Tyran élu Conseiller = victoire des Traîtres · 5 : veto` : `→ ${v.goal}`}
+        {variant === 'traitre' ? `2 : 🗡️ Complot des Traîtres · ${powerLegend(powerBoard)} · dès 3 : Tyran élu Conseiller = victoire · 5 : veto`
+          : variant === 'fidele' ? '3 : 🏹 Flèche du Peuple (viser le Tyran) · 5 : victoire' : `→ ${v.goal}`}
       </div>
     </div>
   );
@@ -125,9 +131,9 @@ const TrackComponent = ({ title, current, max, variant, powerBoard }) => {
 // Player's role card — prominent display with team info
 const RoleCard = ({ role, teammates = [], players = [] }) => {
   const info = {
-    LOYAL:       { name: 'Fidèle',  icon: '🛡️', color: '#3b82f6', glow: 'rgba(59, 130, 246, 0.5)', bg: 'rgba(30, 58, 138, 0.3)', tagline: 'Défendre la Couronne', desc: 'Démasquez les Traîtres et exécutez le Tyran.' },
-    CONJURE:     { name: 'Traître', icon: '⚔️', color: '#dc2626', glow: 'rgba(220, 38, 38, 0.5)',  bg: 'rgba(127, 29, 29, 0.3)', tagline: 'Conspirer dans l\'ombre', desc: 'Sabotez la Couronne et installez le Tyran au pouvoir.' },
-    USURPATEUR:  { name: 'Tyran',   icon: '👑', color: '#a855f7', glow: 'rgba(168, 85, 247, 0.5)', bg: 'rgba(88, 28, 135, 0.3)', tagline: 'Régner par le chaos', desc: 'Faites-vous élire Conseiller après 3 Décrets de Trahison.' },
+    LOYAL:       { name: 'Fidèle',  icon: '🛡️', color: '#3b82f6', glow: 'rgba(59, 130, 246, 0.5)', bg: 'rgba(30, 58, 138, 0.3)', tagline: 'Défendre la Couronne', desc: 'Démasquez le Tyran : exécutez-le ou transpercez-le avec la Flèche du Peuple (3e Décret Loyal).' },
+    CONJURE:     { name: 'Traître', icon: '⚔️', color: '#dc2626', glow: 'rgba(220, 38, 38, 0.5)',  bg: 'rgba(127, 29, 29, 0.3)', tagline: 'Conspirer dans l\'ombre', desc: 'Protégez le Tyran, sabotez la Couronne et faites-le élire. Au 2e Décret de Trahison, vous assassinez un Fidèle.' },
+    USURPATEUR:  { name: 'Tyran',   icon: '👑', color: '#a855f7', glow: 'rgba(168, 85, 247, 0.5)', bg: 'rgba(88, 28, 135, 0.3)', tagline: 'Régner par le chaos', desc: 'Restez caché : si on vous démasque, vous mourez. Faites-vous élire Conseiller après 3 Décrets de Trahison.' },
   }[role] || null;
 
   if (!info) return null;
@@ -194,7 +200,7 @@ const RoleCard = ({ role, teammates = [], players = [] }) => {
             lineHeight: 1.5,
           }}>
             Vous ignorez l'identité de vos alliés comme de vos ennemis.<br/>
-            Les Traîtres vous connaissent — à eux de vous faire élire Conseiller.
+            Les Traîtres, eux, vous connaissent : ils vous protègent et veulent vous faire élire Conseiller.
           </div>
         </div>
       )}
@@ -219,6 +225,8 @@ const EndgameBanner = ({ gameState, currentPlayerId, isHost = false, pending = f
         return 'Cinq Décrets Loyaux ont été promulgués. La Couronne tient bon.';
       case 'tyran_executed':
         return 'Le Tyran a été démasqué et exécuté. Son règne prend fin.';
+      case 'tyran_arrow':
+        return 'La Flèche du Peuple a transpercé le Tyran : la table l\'avait démasqué !';
       case '6_conjure':
         return 'Six Décrets de Trahison ont corrompu le royaume. Les ombres ont triomphé.';
       case 'tyran_elected':
@@ -864,10 +872,25 @@ const GameInterface = ({ roomCode }) => {
     selectableSeats = players.filter((p) => p.alive && p.seat !== me.seat
       && !(gameState.active_power === 'INVESTIGATE' && done.includes(p.seat))).map((p) => p.seat);
     selectHint = ({ INVESTIGATE: 'Cliquez sur le joueur à sonder', EXECUTE: 'Cliquez sur le joueur à exécuter', SPECIAL_ELECTION: 'Cliquez sur le prochain Roi' })[gameState.active_power];
+  } else if (phase === 'JUGEMENT' && me && me.alive !== false && !gameState.arrow_my_target) {
+    selectableSeats = players.filter((p) => p.alive && p.seat !== me.seat).map((p) => p.seat);
+    selectHint = '🏹 Cliquez sur celui que vous croyez être le Tyran';
+  } else if (phase === 'COMPLOT' && gameState.your_role === 'CONJURE' && me?.alive !== false && !gameState.plot_has_voted) {
+    const allies = (gameState.teammates || []).map((t) => t.seat);
+    selectableSeats = players.filter((p) => p.alive && p.seat !== me.seat && !allies.includes(p.seat)).map((p) => p.seat);
+    selectHint = '🗡️ Cliquez sur le Fidèle à abattre';
   }
   const onSeatSelect = (seat) => {
     const name = players.find((p) => p.seat === seat)?.name || `siège ${seat}`;
     if (phase === 'NOMINATION') { act('NOMINATE', { nomineeSeat: seat }); return; }
+    if (phase === 'JUGEMENT') {
+      if (window.confirm(`Viser ${name} avec la Flèche du Peuple ? Votre choix est définitif.`)) act('ARROW_VOTE', { targetSeat: seat });
+      return;
+    }
+    if (phase === 'COMPLOT') {
+      if (window.confirm(`Abattre ${name} cette nuit ?`)) act('PLOT_VOTE', { targetSeat: seat });
+      return;
+    }
     if (gameState.active_power === 'EXECUTE' && !window.confirm(`Exécuter ${name} ? Cette action est irréversible.`)) return;
     act(gameState.active_power, { targetSeat: seat });
   };
@@ -1030,6 +1053,15 @@ const GameInterface = ({ roomCode }) => {
         <PowerPanel
           gameState={gameState}
           currentPlayerId={currentPlayerId}
+          onAction={(actionType, payload) => act(actionType, payload || {})}
+        />
+      )}
+
+      {(phase === 'JUGEMENT' || phase === 'COMPLOT') && (
+        <TeamPowerPanel
+          gameState={gameState}
+          me={me}
+          pending={pending}
           onAction={(actionType, payload) => act(actionType, payload || {})}
         />
       )}

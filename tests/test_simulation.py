@@ -93,6 +93,7 @@ def test_bot_games_always_finish():
     # both camps must be able to win, and the Tyran-elected rule must fire
     assert stats["FIDELES"] > 0 and stats["CONJURES"] > 0
     assert reasons["tyran_elected"] > 0
+    assert reasons["tyran_arrow"] > 0, "the Flèche du Peuple should sometimes hit the Tyran"
     assert afk > 0, "the absent human host should have been replaced"
     assert chat > 0, "bots should talk"
 
@@ -265,3 +266,109 @@ if __name__ == "__main__":
     print("reasons:", dict(reasons))
     print(f"turns: avg {sum(turns)/len(turns):.1f}, max {max(turns)}")
     print("afk takeovers:", afk, " bot chat lines:", chat)
+
+
+# ----------------------------------------------------------------------
+# Dark Oath : Tyran aveugle, Flèche du Peuple, Complot
+# ----------------------------------------------------------------------
+def _tyran(gs):
+    return next(p for p in gs.players if p.role == server.Role.USURPATEUR)
+
+
+def test_tyran_knows_nobody_even_at_five():
+    gs, _ = _room("BLIND1", 5)
+    ty = _tyran(gs)
+    assert server.bots.allies(gs, ty) == set()
+    traitor = next(p for p in gs.players if p.role == server.Role.CONJURE)
+    assert ty.seat in server.bots.allies(gs, traitor)
+
+
+def _enter_arrow(gs):
+    gs.tracks.loyal = server.ARROW_AT
+    server.manager.grant_team_powers(gs)
+    server.manager._flow_to_next_turn_phase(gs)
+    assert gs.turn.phase == server.Phase.JUGEMENT
+
+
+def test_arrow_on_the_tyran_wins():
+    gs, _ = _room("ARROW1", 6)
+    _enter_arrow(gs)
+    ty = _tyran(gs)
+    other = next(p for p in gs.players if p.seat != ty.seat)
+
+    async def go():
+        for p in gs.players:
+            target = ty.seat if p.seat != ty.seat else other.seat
+            await server.perform_action("ARROW1", gs, p, "ARROW_VOTE", {"targetSeat": target})
+    asyncio.run(go())
+    assert gs.winner == "FIDELES" and gs.winner_reason == "tyran_arrow"
+    assert gs.turn.last_arrow["hit"] is True
+
+
+def test_arrow_miss_clears_target_and_game_goes_on():
+    gs, _ = _room("ARROW2", 6)
+    _enter_arrow(gs)
+    loyal = next(p for p in gs.players if p.role == server.Role.LOYAL)
+    other = next(p for p in gs.players if p.seat != loyal.seat)
+
+    async def go():
+        for p in gs.players:
+            target = loyal.seat if p.seat != loyal.seat else other.seat
+            await server.perform_action("ARROW2", gs, p, "ARROW_VOTE", {"targetSeat": target})
+            if p is not gs.players[-1]:
+                assert gs.turn.phase == server.Phase.JUGEMENT  # secret until everyone chose
+    asyncio.run(go())
+    assert gs.winner is None and loyal.alive
+    assert gs.turn.phase == server.Phase.NOMINATION
+    assert any(e.get("not_tyran") and e.get("seat") == loyal.seat for e in gs.events)
+    # one arrow per game
+    gs.tracks.loyal = 4
+    server.manager.grant_team_powers(gs)
+    assert gs.turn.pending_team_powers == []
+
+
+def test_plot_only_traitors_kill_a_fidele_in_secret():
+    gs, _ = _room("PLOT1", 7)
+    gs.tracks.conjure = server.PLOT_AT
+    server.manager.grant_team_powers(gs)
+    server.manager._flow_to_next_turn_phase(gs)
+    assert gs.turn.phase == server.Phase.COMPLOT
+    traitors = [p for p in gs.players if p.role == server.Role.CONJURE]
+    loyal = [p for p in gs.players if p.role == server.Role.LOYAL]
+    assert set(server.manager.pending_actor_ids(gs)) == {p.id for p in traitors}
+
+    async def go():
+        for bad in (loyal[0], _tyran(gs)):  # Fidèles and the Tyran can't plot
+            try:
+                await server.perform_action("PLOT1", gs, bad, "PLOT_VOTE", {"targetSeat": loyal[1].seat})
+                raise AssertionError("only Traîtres plot")
+            except server.HTTPException:
+                pass
+        try:  # can't stab the Tyran
+            await server.perform_action("PLOT1", gs, traitors[0], "PLOT_VOTE", {"targetSeat": _tyran(gs).seat})
+            raise AssertionError("the Tyran is protected")
+        except server.HTTPException:
+            pass
+        for p in traitors:
+            await server.perform_action("PLOT1", gs, p, "PLOT_VOTE", {"targetSeat": loyal[1].seat})
+    asyncio.run(go())
+    assert not loyal[1].alive
+    assert gs.turn.phase == server.Phase.NOMINATION
+    plot_log = [e for e in gs.events if e["kind"] == "plot"]
+    assert len(plot_log) == 1 and not any(t.name in plot_log[0]["text"] for t in traitors)
+
+
+def test_nobody_left_to_vote_installs_the_government():
+    gs, _ = _room("LAST2", 5)
+    t = gs.turn
+    alive = [p for p in gs.players][:2]
+    for p in gs.players[2:]:
+        p.alive = False
+    if not any(p.role == server.Role.USURPATEUR and p.alive for p in gs.players):
+        _tyran(gs).alive = True
+        alive[1].alive = False
+    king, nominee = [p for p in gs.players if p.alive]
+    t.regent_seat = king.seat
+    t.prev_government = None
+    asyncio.run(server.perform_action("LAST2", gs, king, "NOMINATE", {"nomineeSeat": nominee.seat}))
+    assert t.phase in (server.Phase.LEGIS_REGENT, server.Phase.ENDGAME)

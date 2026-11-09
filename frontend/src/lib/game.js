@@ -54,6 +54,13 @@ export const powerMarks = (board) => {
   return marks;
 };
 
+// Complot des Traîtres au 2e Décret de Trahison (ajouté à l'icône du Roi s'il y en a une)
+export const PLOT_SLOT = 2;
+export const plotMark = (board) => {
+  const king = (board || {})[String(PLOT_SLOT)];
+  return { [PLOT_SLOT]: king ? `${POWER_ICONS[king] || ''}🗡️` : '🗡️' };
+};
+
 export const powerLegend = (board) => {
   const seen = [];
   Object.values(board || {}).forEach((p) => { if (!seen.includes(p)) seen.push(p); });

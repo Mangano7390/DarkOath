@@ -7,7 +7,7 @@ the current phase, and applies it through the same code path as a human
 action, so bots can never break the rules.
 
 The AI is heuristic and role-aware:
-  * Fidèles (and the Tyran, who usually knows nobody) build a suspicion score
+  * Fidèles (and the Tyran, who knows nobody) build a suspicion score
     from public facts: who sat in governments that enacted Trahison decrees,
     contradictions with their own cards, votes, what the table says in the
     chat, and private investigation / peek results.
@@ -96,14 +96,12 @@ def _name(gs, seat) -> str:
 def allies(gs, player) -> set:
     """Seats this player *knows* to be on the evil side.
 
-    Traîtres know every Traître and the Tyran. In 5-6 player games the
-    Tyran also knows his Traître (Secret Hitler rule).
+    Traîtres know every Traître and the Tyran. The Tyran knows nobody
+    (Dark Oath rule, whatever the number of players).
     """
     r = _role(player)
     if r == CONJURE:
         return {p.seat for p in gs.players if _role(p) in (CONJURE, USURPATEUR) and p.seat != player.seat}
-    if r == USURPATEUR and len(gs.players) <= 6:
-        return {p.seat for p in gs.players if _role(p) == CONJURE}
     return set()
 
 
@@ -299,6 +297,14 @@ def decide(gs, player, eligible_nominees: List[int]) -> Optional[Action]:
     if phase == "CONSEIL_ROYAUME" and player.id not in t.conseil_ready:
         return ("CONSEIL_READY", {})
 
+    if phase == "JUGEMENT" and player.id not in t.arrow_votes:
+        target = _arrow_target(gs, player)
+        return ("ARROW_VOTE", {"targetSeat": target}) if target else None
+
+    if phase == "COMPLOT" and _role(player) == CONJURE and player.id not in t.plot_votes:
+        target = _plot_target(gs, player)
+        return ("PLOT_VOTE", {"targetSeat": target}) if target else None
+
     return None
 
 
@@ -480,6 +486,68 @@ def _defiance_target(gs, player) -> Optional[int]:
     s = suspicion(gs, player)
     target = max(seats, key=lambda x: s.get(x, 0.0))
     return target if s.get(target, 0.0) >= 1.2 else None
+
+
+def not_tyran_seats(gs) -> set:
+    """Seats publicly cleared ("n'est pas le Tyran")."""
+    return {e.get("seat") for e in gs.events if e.get("not_tyran") and e.get("seat")}
+
+
+def _public_arrow_counts(gs) -> Dict[int, int]:
+    """Arrow votes the table can know about: bots announce theirs in the chat."""
+    bots_ids = {p.id for p in gs.players if p.is_bot}
+    counts: Dict[int, int] = {}
+    for pid, seat in gs.turn.arrow_votes.items():
+        if pid in bots_ids:
+            counts[seat] = counts.get(seat, 0) + 1
+    return counts
+
+
+def _arrow_target(gs, player) -> Optional[int]:
+    """Flèche du Peuple: who do I point at as the Tyran?"""
+    seats = _targets(gs, player)
+    cleared = not_tyran_seats(gs)
+    seats = [s for s in seats if s not in cleared] or seats
+    if not seats:
+        return None
+    counts = _public_arrow_counts(gs)
+    if _role(player) == CONJURE:
+        # Protect the Tyran: pile onto the Fidèle the table already suspects,
+        # so the arrow misses (or the vote splits).
+        foes = [s for s in seats if s not in allies(gs, player)] or seats
+        s = suspicion(gs, player)
+        return max(foes, key=lambda x: counts.get(x, 0) * 1.5 + s.get(x, 0.0))
+    s = suspicion(gs, player)
+    return max(seats, key=lambda x: s.get(x, 0.0) + counts.get(x, 0) * 0.7)
+
+
+def _plot_target(gs, player) -> Optional[int]:
+    """Complot: the Traîtres kill the Fidèle who is the most dangerous for them."""
+    t = gs.turn
+    foes = [p.seat for p in _alive(gs) if _role(p) == LOYAL]
+    if not foes:
+        return None
+    picked = [s for s in t.plot_votes.values() if s in foes]
+    if picked:  # follow the accomplice who already chose
+        return max(set(picked), key=picked.count)
+    # Whoever investigated one of us, else the Fidèle the table trusts most
+    mine = allies(gs, player) | {player.seat}
+    for e in reversed(_events(gs, "investigate")):
+        if e.get("regent_seat") in foes and e.get("target_seat") in mine:
+            return e.get("regent_seat")
+    return _least_suspect(gs, player, foes)
+
+
+def arrow_claim(gs, player, target_seat: int) -> str:
+    n = _name(gs, target_seat)
+    why = _reason_against(gs, target_seat)
+    return _pick(gs, player,
+                 [f"Ma flèche vise {n}. {why}" if why else f"Je désigne {n} comme Tyran.",
+                  f"Je tire sur {n}." + (f" {why}" if why else ""),
+                  f"Pour moi, le Tyran c'est {n}."],
+                 [f"je vise {n}. {why}" if why else f"je vise {n}",
+                  f"flèche sur {n}, je le sens pas du tout",
+                  f"pour moi c'est {n} le Tyran"])
 
 
 # ----------------------------------------------------------------------

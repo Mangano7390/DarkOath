@@ -138,9 +138,9 @@ const RolesDemo = () => {
     { icon: '🛡️', name: 'Fidèle', color: BLUE, bg: 'rgba(30,58,138,0.35)', count: loyal,
       knows: 'Ne connaît personne.', goal: 'Protéger la Couronne.' },
     { icon: '⚔️', name: 'Traître', color: RED, bg: 'rgba(127,29,29,0.4)', count: traitors,
-      knows: 'Connaît les autres Traîtres et le Tyran.', goal: 'Faire tomber la Couronne.' },
+      knows: 'Connaît les autres Traîtres et le Tyran.', goal: 'Protéger le Tyran, faire tomber la Couronne.' },
     { icon: '👑', name: 'Tyran', color: PURPLE, bg: 'rgba(88,28,135,0.4)', count: 1,
-      knows: n <= 6 ? 'À 5-6 joueurs : connaît son Traître.' : 'À 7+ joueurs : ne connaît personne.', goal: 'Joue avec les Traîtres.' },
+      knows: 'Ne connaît personne, pas même ses alliés.', goal: 'Rester caché : démasqué, il meurt.' },
   ];
   return (
     <div>
@@ -281,6 +281,12 @@ const QUIZ = [
     ok: 1,
     why: 'Avec 11 Trahisons sur 17 cartes, un gouvernement honnête peut recevoir que du rouge. Comparez leurs annonces avant d\'accuser.',
   },
+  {
+    q: 'La Flèche du Peuple vise Godfroy, qui n\'est pas le Tyran. Que se passe-t-il ?',
+    a: ['Les Traîtres gagnent', 'Godfroy est innocenté et la partie continue', 'On tire une deuxième flèche'],
+    ok: 1,
+    why: 'Une flèche ratée innocente sa cible (« n\'est pas le Tyran »). Il n\'y a qu\'une flèche par partie : visez juste !',
+  },
 ];
 
 const Quiz = ({ answers, setAnswers }) => (
@@ -356,7 +362,7 @@ const buildSteps = ({ answers, setAnswers }) => [
       <>
         <P>Au début de la partie, chaque joueur reçoit un rôle, <B>gardé secret</B> jusqu'à la fin. Il est rappelé en permanence dans le bandeau « Vous êtes … » en haut de l'écran.</P>
         <RolesDemo />
-        <KeyPoints items={['Les Fidèles sont toujours les plus nombreux, mais ils jouent à l\'aveugle.', 'Les Traîtres se connaissent et savent qui est le Tyran : ils jouent en équipe.', 'Le Tyran doit paraître Fidèle pour être nommé Conseiller au bon moment.']} />
+        <KeyPoints items={['Les Fidèles sont toujours les plus nombreux, mais ils jouent à l\'aveugle.', 'Les Traîtres se connaissent et savent qui est le Tyran : leur mission est de le protéger.', 'Le Tyran, lui, ne connaît personne. Il doit paraître Fidèle : s\'il est démasqué, il meurt.']} />
       </>
     ),
   },
@@ -366,20 +372,20 @@ const buildSteps = ({ answers, setAnswers }) => [
       <>
         <P>Chaque décret adopté remplit une piste. Le premier camp qui complète la sienne gagne.</P>
         <Panel className="space-y-3">
-          <Track label="Piste des Fidèles" color={BLUE} total={5} filled={2} last="🏆" />
-          <Track label="Piste des Traîtres" color={RED} total={6} filled={3} last="☠️" icons={{ 3: '👁️', 4: '🪓', 5: '🪓' }} />
+          <Track label="Piste des Fidèles" color={BLUE} total={5} filled={2} last="🏆" icons={{ 3: '🏹' }} />
+          <Track label="Piste des Traîtres" color={RED} total={6} filled={1} last="☠️" icons={{ 2: '🗡️', 3: '👁️', 4: '🪓', 5: '🪓' }} />
         </Panel>
         <div className="grid sm:grid-cols-2 gap-2 mt-3">
           <div className="rounded-lg p-3" style={{ background: 'rgba(30,58,138,0.3)', border: `1px solid ${BLUE}` }}>
             <div className="font-bold text-base mb-1" style={{ color: BLUE, fontFamily: CINZEL }}>🛡️ Les Fidèles gagnent si…</div>
-            <div className="text-base" style={{ color: PARCH }}>5 décrets Loyaux sont adoptés,<br /><b>ou</b> le Tyran est exécuté.</div>
+            <div className="text-base" style={{ color: PARCH }}>5 décrets Loyaux sont adoptés,<br /><b>ou</b> le Tyran est tué (Exécution ou Flèche du Peuple).</div>
           </div>
           <div className="rounded-lg p-3" style={{ background: 'rgba(127,29,29,0.35)', border: `1px solid ${RED}` }}>
             <div className="font-bold text-base mb-1" style={{ color: RED, fontFamily: CINZEL }}>⚔️ Les Traîtres gagnent si…</div>
             <div className="text-base" style={{ color: PARCH }}>6 décrets de Trahison sont adoptés,<br /><b>ou</b> le Tyran est élu Conseiller après 3 Trahisons.</div>
           </div>
         </div>
-        <KeyPoints items={['Dès 3 Trahisons, chaque vote devient dangereux : le Tyran pourrait être élu.']} />
+        <KeyPoints items={['🏹 et 🗡️ sur les pistes : les pouvoirs de camp (Flèche du Peuple, Complot), expliqués plus loin.', 'Dès 3 Trahisons, chaque vote devient dangereux : le Tyran pourrait être élu.']} />
       </>
     ),
   },
@@ -481,6 +487,40 @@ const buildSteps = ({ answers, setAnswers }) => [
     ),
   },
   {
+    chapter: 1, icon: '🏹', title: 'Étape 6 — Flèche et Complot',
+    body: (
+      <>
+        <P>Chaque camp gagne aussi <B>un pouvoir unique</B> dans la partie, quel que soit le nombre de joueurs.</P>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <div className="rounded-lg p-4" style={{ background: 'rgba(30,58,138,0.3)', border: `1px solid ${BLUE}` }}>
+            <div className="font-bold text-lg mb-1" style={{ color: BLUE, fontFamily: CINZEL }}>🏹 La Flèche du Peuple</div>
+            <div className="text-sm uppercase tracking-widest mb-2" style={{ color: 'rgba(232,217,168,0.7)', fontFamily: CINZEL }}>Au 3ᵉ Décret Loyal</div>
+            <div className="text-base leading-snug" style={{ color: PARCH }}>
+              Tous les joueurs vivants désignent celui qu'ils croient être le <B c={PURPLE}>Tyran</B>. Le plus désigné est visé :
+              <span className="block mt-1">✔️ c'est le Tyran → <B c={BLUE}>les Fidèles gagnent</B> ;</span>
+              <span className="block">✖️ ce n'est pas lui → il est <B>innocenté</B> devant tous ;</span>
+              <span className="block">⚖️ égalité → la flèche se perd.</span>
+            </div>
+          </div>
+          <div className="rounded-lg p-4" style={{ background: 'rgba(127,29,29,0.35)', border: `1px solid ${RED}` }}>
+            <div className="font-bold text-lg mb-1" style={{ color: RED, fontFamily: CINZEL }}>🗡️ Le Complot</div>
+            <div className="text-sm uppercase tracking-widest mb-2" style={{ color: 'rgba(232,217,168,0.7)', fontFamily: CINZEL }}>Au 2ᵉ Décret de Trahison</div>
+            <div className="text-base leading-snug" style={{ color: PARCH }}>
+              La nuit tombe : les <B c={RED}>Traîtres</B> choisissent en secret un <B c={BLUE}>Fidèle</B> à assassiner. Au matin, tout le monde découvre la victime… mais personne ne sait qui a frappé.
+              <span className="block mt-1">Le Tyran ne participe pas et ne peut pas être visé.</span>
+            </div>
+          </div>
+        </div>
+        <Panel className="space-y-2 mt-3">
+          <Bubble who="Perceval" color={PARCH}>La Flèche arrive. Godfroy a fait passer 2 Trahisons : je le vise.</Bubble>
+          <Bubble who="Isolde" color={PARCH} right>D'accord, tous sur Godfroy, sinon on gâche le tir !</Bubble>
+          <Bubble who="Anselme" color={PARCH}>Non, visez plutôt Mahaut, elle est bien trop discrète…</Bubble>
+        </Panel>
+        <KeyPoints items={['Fidèles : mettez-vous d\'accord sur une seule cible, sinon la flèche se perd.', 'Traîtres : détournez la flèche du Tyran (Anselme essaie peut-être de le sauver…).', 'Les choix de chacun sont révélés après le tir : ils trahissent souvent les Traîtres.']} />
+      </>
+    ),
+  },
+  {
     chapter: 2, icon: '🖥️', title: 'Lire l\'écran de jeu',
     body: (
       <>
@@ -496,6 +536,7 @@ const buildSteps = ({ answers, setAnswers }) => [
             <li><Chip color={RED}>Allié</Chip> : visible seulement par les Traîtres et le Tyran.</li>
             <li><Chip color="#86efac">✓ a voté</Chip> puis <Chip color="#86efac" bg="rgba(22,101,52,0.6)">Oui</Chip> / <Chip color="#fca5a5" bg="rgba(127,29,29,0.6)">Non</Chip> : son dernier vote.</li>
             <li><Chip color="rgba(232,217,168,0.7)">🔒 Exclu</Chip> <Chip color="#94a3b8">Bot</Chip> <Chip color="#a3a3a3">Mort</Chip> : ne peut pas être nommé, joueur ordinateur, éliminé.</li>
+            <li><Chip color="#93c5fd">Pas le Tyran</Chip> : innocenté publiquement (Flèche ratée ou Conseiller élu après 3 Trahisons).</li>
           </ul>
         </div>
         <Panel className="mt-4 !p-3">
@@ -515,9 +556,9 @@ const buildSteps = ({ answers, setAnswers }) => [
     body: (
       <div className="grid sm:grid-cols-3 gap-2">
         {[
-          { c: BLUE, bg: 'rgba(30,58,138,0.3)', t: '🛡️ Fidèle', tips: ['Notez qui vote pour quels gouvernements.', 'Demandez ses cartes à chaque gouvernement.', 'Dès 3 Trahisons, votez NON au moindre doute sur le Conseiller.'] },
-          { c: RED, bg: 'rgba(127,29,29,0.35)', t: '⚔️ Traître', tips: ['Passez parfois du Loyal pour gagner la confiance.', 'Accusez un Fidèle pour semer le doute.', 'Ne votez pas toujours comme vos alliés : ça se voit.'] },
-          { c: PURPLE, bg: 'rgba(88,28,135,0.35)', t: '👑 Tyran', tips: ['Jouez le Fidèle modèle, sans excès.', 'Ne mentez pas pour rien : votre réputation est votre arme.', 'Après 3 Trahisons, faites-vous nommer Conseiller.'] },
+          { c: BLUE, bg: 'rgba(30,58,138,0.3)', t: '🛡️ Fidèle', tips: ['Notez qui vote pour quels gouvernements.', 'Demandez ses cartes à chaque gouvernement.', 'Avant la Flèche, accordez-vous sur une seule cible.'] },
+          { c: RED, bg: 'rgba(127,29,29,0.35)', t: '⚔️ Traître', tips: ['Protégez le Tyran : détournez les soupçons et la Flèche.', 'Passez parfois du Loyal pour gagner la confiance.', 'Au Complot, abattez le Fidèle le plus dangereux.'] },
+          { c: PURPLE, bg: 'rgba(88,28,135,0.35)', t: '👑 Tyran', tips: ['Vous ne connaissez pas vos alliés : ne vous fiez à personne.', 'Jouez le Fidèle modèle, sans excès.', 'Après 3 Trahisons, faites-vous nommer Conseiller.'] },
         ].map((r) => (
           <div key={r.t} className="rounded-lg p-3" style={{ background: r.bg, border: `1px solid ${r.c}` }}>
             <div className="font-bold mb-2" style={{ color: r.c, fontFamily: CINZEL }}>{r.t}</div>
@@ -533,7 +574,7 @@ const buildSteps = ({ answers, setAnswers }) => [
     chapter: 3, icon: '❓', title: 'Avez-vous tout compris ?',
     body: (
       <>
-        <P>4 questions rapides pour vérifier. Cliquez sur une réponse : l'explication s'affiche aussitôt.</P>
+        <P>5 questions rapides pour vérifier. Cliquez sur une réponse : l'explication s'affiche aussitôt.</P>
         <Quiz answers={answers} setAnswers={setAnswers} />
       </>
     ),
@@ -545,10 +586,10 @@ const buildSteps = ({ answers, setAnswers }) => [
         <P>Le jeu en 5 phrases :</P>
         <ol className="space-y-2">
           {[
-            <>Chacun reçoit un rôle secret : <B c={BLUE}>Fidèle</B>, <B c={RED}>Traître</B> ou <B c={PURPLE}>Tyran</B>.</>,
+            <>Chacun reçoit un rôle secret : <B c={BLUE}>Fidèle</B>, <B c={RED}>Traître</B> ou <B c={PURPLE}>Tyran</B>. Les Traîtres connaissent le Tyran et le protègent.</>,
             <>À chaque tour, le <B>Roi</B> nomme un <B>Conseiller</B> et les autres votent.</>,
             <>Le gouvernement élu adopte un décret en secret, puis la table débat.</>,
-            <><B c={BLUE}>5 Loyaux</B> ou le Tyran exécuté : victoire des Fidèles.</>,
+            <><B c={BLUE}>5 Loyaux</B> ou le Tyran tué (Exécution ou Flèche du Peuple) : victoire des Fidèles.</>,
             <><B c={RED}>6 Trahisons</B> ou le Tyran Conseiller après 3 Trahisons : victoire des Traîtres.</>,
           ].map((t, i) => (
             <li key={i} className="flex gap-3 items-start text-[17px]" style={{ color: PARCH }}>

@@ -98,6 +98,14 @@ export const pendingInfo = (gs, me) => {
         : { mine: false, label: 'Défiance en cours…' };
     case 'CONSEIL_ROYAUME':
       return { mine: false, label: 'Conseil du Royaume : débattez !' };
+    case 'JUGEMENT':
+      return alive && !gs.arrow_my_target
+        ? { mine: true, label: 'À vous : désignez celui que vous croyez être le Tyran 🏹' }
+        : { mine: false, label: `Flèche du Peuple : ${(gs.arrow_voted_ids || []).length}/${players.filter((p) => p.alive).length} ont désigné…` };
+    case 'COMPLOT':
+      return alive && gs.your_role === 'CONJURE' && !gs.plot_has_voted
+        ? { mine: true, label: 'À vous : choisissez le Fidèle à abattre 🗡️' }
+        : { mine: false, label: 'La nuit tombe… Les Traîtres complotent 🌙' };
     default:
       return { mine: false, label: '' };
   }
@@ -109,7 +117,7 @@ export const ActionTimer = ({ gameState }) => {
   const started = gameState?.phase_started_at;
   const timeout = gameState?.afk_timeout || 45;
   const phase = gameState?.phase;
-  const relevant = ['NOMINATION', 'VOTE', 'LEGIS_REGENT', 'LEGIS_CHAMBELLAN', 'POWER'].includes(phase);
+  const relevant = ['NOMINATION', 'VOTE', 'LEGIS_REGENT', 'LEGIS_CHAMBELLAN', 'POWER', 'JUGEMENT', 'COMPLOT'].includes(phase);
   useEffect(() => {
     if (!started || !relevant) { setLeft(null); return undefined; }
     const tick = () => setLeft(Math.max(0, Math.ceil(timeout - (serverNow() - started))));
@@ -188,8 +196,8 @@ export const MiniTracks = ({ tracks = {}, deckCount, powerBoard }) => {
   );
   return (
     <div className="flex items-center justify-center gap-3 flex-wrap text-[11px] px-2 py-1.5" style={{ color: '#e8d9a8', background: 'rgba(10,6,4,0.75)', borderBottom: '1px solid rgba(199,168,105,0.2)' }}>
-      <span className="inline-flex items-center gap-1">🛡️ {pip(tracks.loyal || 0, 5, '#3b82f6')}</span>
-      <span className="inline-flex items-center gap-1">⚔️ {pip(tracks.conjure || 0, 6, '#dc2626', powerMarks(powerBoard))}</span>
+      <span className="inline-flex items-center gap-1">🛡️ {pip(tracks.loyal || 0, 5, '#3b82f6', { 3: '🏹' })}</span>
+      <span className="inline-flex items-center gap-1">⚔️ {pip(tracks.conjure || 0, 6, '#dc2626', { ...powerMarks(powerBoard), 2: '🗡️' })}</span>
       <span className="inline-flex items-center gap-1">⚡ {pip(tracks.crisis || 0, 3, '#f59e0b')}</span>
       {typeof deckCount === 'number' && <span className="opacity-70">📜 {deckCount}</span>}
     </div>
@@ -201,20 +209,34 @@ export const MiniTracks = ({ tracks = {}, deckCount, powerBoard }) => {
 // ---------------------------------------------------------------------
 export const RevealOverlay = ({ gameState }) => {
   const [reveal, setReveal] = useState(null);
-  const seen = useRef({ vote: null, decree: null, init: false });
+  const seen = useRef({ vote: null, decree: null, arrow: null, plot: null, init: false });
 
   useEffect(() => {
     const lv = gameState?.last_vote;
     const ld = gameState?.last_decree;
+    const la = gameState?.last_arrow;
+    const lp = gameState?.last_plot;
     const s = seen.current;
     if (!s.init) {
       // Don't replay old reveals when (re)opening the page
       s.vote = lv?.ts || null;
       s.decree = ld?.ts || null;
+      s.arrow = la?.ts || null;
+      s.plot = lp?.ts || null;
       s.init = true;
       return undefined;
     }
     let next = null;
+    if (lp && lp.ts !== s.plot) {
+      s.plot = lp.ts;
+      next = { kind: 'plot', data: lp };
+      playCue('death');
+    }
+    if (la && la.ts !== s.arrow) {
+      s.arrow = la.ts;
+      next = { kind: 'arrow', data: la, then: next };
+      playCue(la.hit ? 'loyal' : 'vote');
+    }
     if (ld && ld.ts !== s.decree) {
       s.decree = ld.ts;
       next = { kind: 'decree', data: ld };
@@ -228,17 +250,59 @@ export const RevealOverlay = ({ gameState }) => {
     }
     if (next) setReveal(next);
     return undefined;
-  }, [gameState?.last_vote, gameState?.last_decree]);
+  }, [gameState?.last_vote, gameState?.last_decree, gameState?.last_arrow, gameState?.last_plot]);
 
   useEffect(() => {
     if (!reveal) return undefined;
-    const t = setTimeout(() => setReveal(reveal.then || null), reveal.kind === 'vote' ? 4200 : 3200);
+    const t = setTimeout(() => setReveal(reveal.then || null), reveal.kind === 'vote' || reveal.kind === 'arrow' ? 5200 : 3600);
     return () => clearTimeout(t);
   }, [reveal]);
 
   if (!reveal) return null;
   const players = gameState?.players || [];
   const name = (seat) => players.find((p) => p.seat === seat)?.name || `Siège ${seat}`;
+
+  if (reveal.kind === 'plot') {
+    return (
+      <div className="fixed inset-0 z-40 flex items-center justify-center pointer-events-none p-4" aria-live="assertive">
+        <div className="px-6 py-5 rounded-lg text-center" style={{ background: 'rgba(10,6,4,0.95)', border: '2px solid #dc2626', boxShadow: '0 0 40px rgba(220,38,38,0.55)', animation: 'fadeIn .3s ease-out', maxWidth: 440 }}>
+          <div className="text-5xl mb-2">🗡️</div>
+          <div className="text-xl md:text-2xl font-bold" style={{ ...cinzel, color: '#fca5a5' }}>Un Fidèle est assassiné</div>
+          <div className="text-sm mt-2 italic" style={{ ...fell, color: 'rgba(232,217,168,0.9)' }}>
+            À l'aube, on découvre le corps de <b>{name(reveal.data.target_seat)}</b>. Les Traîtres ont frappé… mais qui tenait la lame ?
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (reveal.kind === 'arrow') {
+    const la = reveal.data;
+    const color = la.hit ? '#60a5fa' : '#c7a869';
+    const ballots = Object.entries(la.ballots || {}).map(([seat, target]) => ({ seat: Number(seat), target }));
+    return (
+      <div className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/40" onClick={() => setReveal(reveal.then || null)} aria-live="assertive">
+        <div className="w-full max-w-md px-5 py-4 rounded-lg" style={{ background: 'rgba(10,6,4,0.96)', border: `2px solid ${color}`, boxShadow: `0 0 40px ${color}66`, animation: 'fadeIn .3s ease-out' }}>
+          <div className="text-center mb-3">
+            <div className="text-4xl mb-1">🏹</div>
+            <div className="text-xs uppercase tracking-widest opacity-70" style={{ ...cinzel, color: '#e8d9a8' }}>Flèche du Peuple</div>
+            <div className="text-xl font-bold" style={{ ...cinzel, color: la.hit ? '#93c5fd' : '#fde68a' }}>
+              {la.tie ? 'La table est divisée : la flèche se perd' : la.hit ? `${name(la.target_seat)} était le Tyran !` : `${name(la.target_seat)} n'est pas le Tyran`}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            {ballots.map(({ seat, target }) => (
+              <div key={seat} className="flex items-center justify-between gap-1 px-2 py-1 rounded text-sm" style={{ background: 'rgba(30,20,10,0.7)', border: '1px solid rgba(199,168,105,0.3)', color: '#f5e9c8' }}>
+                <span className="truncate">{name(seat)}</span>
+                <span className="truncate font-bold" style={{ color: target === la.target_seat ? '#fde68a' : 'rgba(232,217,168,0.75)' }}>→ {name(target)}</span>
+              </div>
+            ))}
+          </div>
+          <div className="text-center text-[11px] mt-3 opacity-60" style={{ color: '#e8d9a8' }}>Touchez pour fermer</div>
+        </div>
+      </div>
+    );
+  }
 
   if (reveal.kind === 'decree') {
     const loyal = reveal.data.type === 'LOYAL';
@@ -297,6 +361,7 @@ export const RevealOverlay = ({ gameState }) => {
 const EVENT_ICON = {
   start: '📜', nomination: '👑', vote: '🗳️', decree: '⚖️', reshuffle: '🔄', marked: '🎯',
   investigate: '🔍', execute: '💀', endgame: '🏁', afk: '⏳', info: 'ℹ️',
+  arrow_start: '🏹', arrow: '🏹', plot_start: '🌙', plot: '🗡️',
 };
 
 export const Chronicle = ({ events = [], investigations = {}, players = [], className = '' }) => {
@@ -317,6 +382,8 @@ export const Chronicle = ({ events = [], investigations = {}, players = [], clas
           const color = e.kind === 'decree' ? (e.type === 'LOYAL' ? '#93c5fd' : '#fca5a5')
             : e.kind === 'endgame' ? '#fde68a'
             : e.kind === 'execute' ? '#fca5a5'
+            : e.kind === 'plot' || e.kind === 'plot_start' ? '#fca5a5'
+            : e.kind === 'arrow' || e.kind === 'arrow_start' ? '#93c5fd'
             : 'rgba(232,217,168,0.9)';
           return (
             <div key={e.id} className="flex gap-2 text-xs leading-snug" style={{ color }}>

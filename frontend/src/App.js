@@ -396,19 +396,19 @@ const LandingPage = () => {
                 <div className="space-y-4">
                   <div className="role-card role-card--fidele p-5">
                     <h4 className="font-bold text-blue-300 mb-2 text-lg" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.1em' }}>🛡️ FIDÈLE</h4>
-                    <p className="text-sm text-amber-100/90 mb-2 leading-relaxed"><strong>But&nbsp;:</strong> protéger la Couronne en adoptant 5 Décrets Loyaux, ou en faisant exécuter le Tyran.</p>
+                    <p className="text-sm text-amber-100/90 mb-2 leading-relaxed"><strong>But&nbsp;:</strong> protéger la Couronne en adoptant 5 Décrets Loyaux, ou en tuant le Tyran (Exécution ou Flèche du Peuple).</p>
                     <p className="text-sm text-amber-100/75 leading-relaxed"><strong>Ce que vous savez&nbsp;:</strong> uniquement votre propre rôle. Vous devez déduire qui sont les Traîtres à travers les votes, les décrets et les discussions.</p>
                   </div>
                   <div className="role-card role-card--traitre p-5">
                     <h4 className="font-bold text-red-300 mb-2 text-lg" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.1em' }}>⚔️ TRAÎTRE</h4>
                     <p className="text-sm text-amber-100/90 mb-2 leading-relaxed"><strong>But&nbsp;:</strong> saboter la Couronne en adoptant 6 Décrets de Trahison, ou en faisant élire le Tyran au poste de Conseiller après 3+ Décrets de Trahison.</p>
-                    <p className="text-sm text-amber-100/75 leading-relaxed"><strong>Ce que vous savez&nbsp;:</strong> l'identité des autres Traîtres <strong>et</strong> du Tyran. Votre mission&nbsp;: semer le doute sans vous faire démasquer.</p>
+                    <p className="text-sm text-amber-100/75 leading-relaxed"><strong>Ce que vous savez&nbsp;:</strong> l'identité des autres Traîtres <strong>et</strong> du Tyran. Votre mission&nbsp;: <strong>protéger le Tyran</strong> pour qu'il ne soit jamais démasqué ni tué, semer le doute, et assassiner un Fidèle lors du Complot.</p>
                   </div>
                   <div className="role-card role-card--tyran p-5">
                     <h4 className="font-bold text-purple-300 mb-2 text-lg" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.1em' }}>👑 TYRAN</h4>
                     <p className="text-sm text-amber-100/90 mb-2 leading-relaxed"><strong>But&nbsp;:</strong> être élu Conseiller après que 3 Décrets de Trahison ont été adoptés (victoire immédiate avec les Traîtres).</p>
                     <p className="text-sm text-amber-100/75 leading-relaxed"><strong>Ce que vous savez&nbsp;:</strong>
-                      {' '}à <strong>5 ou 6 joueurs</strong>, vous connaissez votre Traître (et il vous connaît). À <strong>7 joueurs et plus</strong>, vous ne savez <strong>rien</strong>&nbsp;: seuls les Traîtres savent qui vous êtes, c'est à eux de manœuvrer pour vous faire élire Conseiller. Agissez comme un Fidèle pour passer inaperçu jusqu'au bon moment.
+                      {' '}<strong>rien</strong>, quel que soit le nombre de joueurs&nbsp;: les Traîtres savent qui vous êtes, mais vous ne savez pas qui ils sont. À eux de vous protéger et de vous faire élire Conseiller. Si la table vous démasque, vous mourez&nbsp;: agissez comme un Fidèle jusqu'au bon moment.
                     </p>
                   </div>
                 </div>
@@ -459,7 +459,8 @@ const LandingPage = () => {
                     { num: '4', title: 'Législation — le Conseiller', text: "Le Conseiller défausse 1 décret en secret et révèle le dernier. Ce décret est appliqué et avance la piste correspondante (Fidèles ou Trahison)." },
                     { num: '5', title: 'Conseil du Royaume', text: "Après chaque décret révélé, jusqu'à 60 secondes de discussion (vocal et chat). Le Conseil se termine plus tôt si tous les joueurs cliquent « Prêt »." },
                     { num: '6', title: 'Pouvoir du Roi (si déclenché)', text: "Certaines cases de la piste Trahison donnent un pouvoir au Roi qui vient de l'adopter : Enquête, Regard sur la pioche, Élection spéciale ou Exécution, selon le nombre de joueurs (voir Pouvoirs du Roi). Le Roi doit l'utiliser." },
-                    { num: '7', title: 'Veto (après 5 Trahisons)', text: "Le Conseiller peut demander le veto des deux décrets reçus. Si le Roi accepte, les deux sont défaussés et la Piste de Crise avance. S'il refuse, le Conseiller doit en adopter un." },
+                    { num: '7', title: 'Pouvoirs de camp (Complot & Flèche)', text: "Au 2e Décret de Trahison, les Traîtres assassinent en secret un Fidèle (le Complot). Au 3e Décret Loyal, toute la table tire la Flèche du Peuple sur celui qu'elle croit être le Tyran. Chaque pouvoir ne sert qu'une fois par partie (voir Pouvoirs de camp)." },
+                    { num: '8', title: 'Veto (après 5 Trahisons)', text: "Le Conseiller peut demander le veto des deux décrets reçus. Si le Roi accepte, les deux sont défaussés et la Piste de Crise avance. S'il refuse, le Conseiller doit en adopter un." },
                   ].map((step) => (
                     <div key={step.num} className="flex gap-4 items-start p-4 rounded-lg" style={{
                       background: 'linear-gradient(180deg, rgba(30, 20, 12, 0.6), rgba(18, 12, 8, 0.7))',
@@ -494,7 +495,8 @@ const LandingPage = () => {
                     <h4 className="font-bold text-blue-300 mb-2" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' }}>🛡️ FIDÈLES gagnent si</h4>
                     <ul className="text-sm text-amber-100/85 leading-relaxed space-y-1 list-disc list-inside">
                       <li>5 Décrets Loyaux adoptés, <strong>ou</strong></li>
-                      <li>le Tyran est exécuté.</li>
+                      <li>le Tyran est exécuté, <strong>ou</strong></li>
+                      <li>la Flèche du Peuple touche le Tyran.</li>
                     </ul>
                   </div>
                   <div className="role-card role-card--traitre p-5">
@@ -542,12 +544,38 @@ const LandingPage = () => {
                   </table>
                 </div>
                 <ul className="space-y-2 text-sm text-amber-100/85">
+                  <li><strong>🗡️ Complot (2<sup>e</sup> Trahison, toutes tailles de table)&nbsp;:</strong> voir Pouvoirs de camp ci-dessous. Il s'ajoute au pouvoir du Roi s'il y en a un.</li>
                   <li><strong>🔍 Enquête&nbsp;:</strong> le Roi voit en secret le camp d'un joueur (le Tyran apparaît Traître). Personne ne peut être sondé deux fois.</li>
                   <li><strong>👁️ Regard sur la pioche&nbsp;:</strong> le Roi voit en secret les 3 prochains décrets.</li>
                   <li><strong>🗳️ Élection spéciale&nbsp;:</strong> le Roi choisit le prochain Roi. Ensuite, la couronne reprend son ordre normal.</li>
                   <li><strong>🪓 Exécution&nbsp;:</strong> le Roi élimine un joueur. Si c'était le Tyran, les Fidèles gagnent.</li>
                   <li><strong>Veto&nbsp;:</strong> débloqué à partir de 5 Décrets de Trahison.</li>
                 </ul>
+              </section>
+
+              {/* Pouvoirs de camp */}
+              <section className="oath-card p-6 md:p-8">
+                <h3 className="darkoath-title mb-3" style={{ fontSize: '1.6rem' }}>
+                  🏹 &nbsp;Pouvoirs de camp
+                </h3>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="role-card role-card--fidele p-5">
+                    <h4 className="font-bold text-blue-300 mb-2" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' }}>🏹 LA FLÈCHE DU PEUPLE</h4>
+                    <p className="text-sm text-amber-100/85 leading-relaxed">Au <strong>3<sup>e</sup> Décret Loyal</strong>, chaque joueur vivant désigne en secret celui qu'il croit être le Tyran. Le plus désigné est visé&nbsp;:</p>
+                    <ul className="text-sm text-amber-100/85 leading-relaxed space-y-1 list-disc list-inside mt-1">
+                      <li>c'est le Tyran&nbsp;: il meurt, <strong>les Fidèles gagnent</strong>&nbsp;;</li>
+                      <li>ce n'est pas lui&nbsp;: il est <strong>innocenté</strong> publiquement («&nbsp;n'est pas le Tyran&nbsp;»)&nbsp;;</li>
+                      <li>égalité&nbsp;: la flèche se perd.</li>
+                    </ul>
+                    <p className="text-xs text-amber-100/70 mt-2 italic">Une seule flèche par partie. Les choix de chacun sont révélés après le tir.</p>
+                  </div>
+                  <div className="role-card role-card--traitre p-5">
+                    <h4 className="font-bold text-red-300 mb-2" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' }}>🗡️ LE COMPLOT</h4>
+                    <p className="text-sm text-amber-100/85 leading-relaxed">Au <strong>2<sup>e</sup> Décret de Trahison</strong>, la nuit tombe&nbsp;: les Traîtres choisissent en secret un <strong>Fidèle à assassiner</strong>. S'ils sont plusieurs, la majorité l'emporte.</p>
+                    <p className="text-sm text-amber-100/85 leading-relaxed mt-1">Le Tyran ne participe pas (il ne connaît pas ses alliés) et ne peut pas être visé. Personne ne sait qui a frappé.</p>
+                    <p className="text-xs text-amber-100/70 mt-2 italic">Une seule fois par partie, même par la Colère du Peuple.</p>
+                  </div>
+                </div>
               </section>
 
               {/* Crise */}
@@ -600,6 +628,7 @@ const LandingPage = () => {
                       <li>Méfiez-vous des défausses trop commodes.</li>
                       <li>Utilisez vite l'Investigation — et communiquez ce que vous apprenez.</li>
                       <li>Au 4<sup>e</sup> Décret de Trahison, exécutez — mais choisissez bien votre cible.</li>
+                      <li>Avant la Flèche, mettez-vous d'accord dans le chat&nbsp;: des votes dispersés gâchent le tir.</li>
                     </ul>
                   </div>
                   <div className="role-card role-card--traitre p-5">
@@ -609,7 +638,8 @@ const LandingPage = () => {
                       <li>Jouez la normalité tant que votre camp ne domine pas la piste.</li>
                       <li>Accusez un Fidèle pour détourner les soupçons.</li>
                       <li>À 3 Trahison, faites élire le Tyran au poste de Conseiller.</li>
-                      <li><strong>Tyran&nbsp;:</strong> à 7 joueurs et plus, vous ignorez qui sont vos alliés. Agissez comme un Fidèle, laissez les Traîtres vous porter au pouvoir.</li>
+                      <li>Pendant la Flèche, détournez le tir du Tyran vers un Fidèle suspect.</li>
+                      <li><strong>Tyran&nbsp;:</strong> vous ignorez qui sont vos alliés. Agissez comme un Fidèle, laissez les Traîtres vous protéger et vous porter au pouvoir.</li>
                     </ul>
                   </div>
                 </div>
@@ -625,7 +655,7 @@ const LandingPage = () => {
                   <li>À chaque tour, un Roi nomme un Conseiller, la table vote, puis un décret est adopté.</li>
                   <li>5 Décrets Loyaux = Fidèles gagnent. 6 Décrets de Trahison = Traîtres gagnent.</li>
                   <li>Après 3 Trahison, élire le Tyran Conseiller fait gagner le camp du Mal <strong>immédiatement</strong>.</li>
-                  <li>Exécuter le Tyran fait gagner les Fidèles. Mentez, déduisez, survivez.</li>
+                  <li>Tuer le Tyran (Exécution ou Flèche du Peuple) fait gagner les Fidèles. Mentez, déduisez, survivez.</li>
                 </ol>
               </section>
 
@@ -753,7 +783,7 @@ const LandingPage = () => {
               <h3 className="darkoath-title text-2xl text-red-300 mb-2">Traîtres</h3>
               <div className="oath-divider w-full my-3">CONJURATION</div>
               <p className="text-gray-300 text-sm leading-relaxed font-serif italic">
-                Semez la discorde en secret. Faites tomber le royaume pièce par pièce.
+                Vous connaissez le Tyran : protégez-le à tout prix. Semez la discorde et frappez dans la nuit.
               </p>
             </div>
           </Card>
@@ -764,7 +794,7 @@ const LandingPage = () => {
               <h3 className="darkoath-title text-2xl text-purple-200 mb-2">Le Tyran</h3>
               <div className="oath-divider w-full my-3">USURPATION</div>
               <p className="text-gray-300 text-sm leading-relaxed font-serif italic">
-                L'ombre derrière le trône. Saisissez la couronne quand la nuit sera noire.
+                L'ombre derrière le trône. Seul, sans connaître ses alliés : s'il est démasqué, il meurt.
               </p>
             </div>
           </Card>

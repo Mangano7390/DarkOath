@@ -91,7 +91,10 @@ const STEPS = [
   { key: 'LEGIS', label: 'Décret', icon: '📜' },
   { key: 'CONSEIL_ROYAUME', label: 'Débat', icon: '🕯️' },
   { key: 'POWER', label: 'Pouvoir', icon: '⚜️' },
+  { key: 'COMPLOT', label: 'Complot', icon: '🗡️' },
+  { key: 'JUGEMENT', label: 'Flèche', icon: '🏹' },
 ];
+const OPTIONAL_STEPS = ['POWER', 'COMPLOT', 'JUGEMENT'];
 
 const stepOf = (phase) => (phase === 'LEGIS_REGENT' || phase === 'LEGIS_CHAMBELLAN' ? 'LEGIS' : phase);
 
@@ -140,6 +143,17 @@ export const narrate = (gs, me) => {
       return iAmKing
         ? { text: `Pouvoir du Roi : ${POWER_LABELS[gs.active_power] || ''}. ${gs.active_power === 'PEEK' ? 'Regardez la pioche.' : 'Cliquez sur un joueur autour de la table.'}`, mine: true }
         : { text: `${king} utilise son pouvoir : ${POWER_LABELS[gs.active_power] || ''} ${POWER_ICONS[gs.active_power] || ''}.` };
+    case 'JUGEMENT': {
+      const shot = (gs.arrow_voted_ids || []).length;
+      return {
+        text: `🏹 Flèche du Peuple : chacun désigne celui qu'il croit être le Tyran (${shot}/${alive.length}). Le plus désigné est visé : si c'est le Tyran, les Fidèles gagnent !`,
+        mine: me?.alive !== false && !gs.arrow_my_target,
+      };
+    }
+    case 'COMPLOT':
+      return gs.your_role === 'CONJURE' && me?.alive !== false
+        ? { text: '🗡️ Complot : choisissez en secret le Fidèle que vous voulez abattre cette nuit.', mine: !gs.plot_has_voted }
+        : { text: '🌙 La nuit tombe. Les Traîtres choisissent en secret un Fidèle à abattre…' };
     case 'ENDGAME':
       return { text: 'La partie est terminée. Les rôles sont révélés.' };
     default:
@@ -162,6 +176,10 @@ const tipFor = (gs, me, role) => {
       if ((gs.tracks?.crisis || 0) >= 2) return 'La Colère du Peuple est à 2 : un nouveau rejet impose le décret du dessus de la pioche.';
       return evil ? 'Astuce : soutenez les gouvernements de vos alliés, sans voter toujours comme eux.'
         : 'Astuce : votez NON si vous soupçonnez le Roi ou le Conseiller proposé.';
+    case 'JUGEMENT':
+      if (evil) return 'Astuce : détournez la flèche du Tyran. Poussez la table vers un Fidèle suspect, ou divisez les votes.';
+      if (role === 'USURPATEUR') return 'Astuce : restez calme et désignez un suspect crédible, comme un vrai Fidèle.';
+      return "Astuce : mettez-vous d'accord dans le chat. Si les votes se dispersent, la flèche se perd.";
     case 'CONSEIL_ROYAUME':
       return evil ? 'Astuce : si vous étiez au gouvernement, annoncez des cartes crédibles.'
         : 'Astuce : comparez les annonces du Roi et du Conseiller. S\'ils se contredisent, l\'un des deux ment.';
@@ -176,7 +194,7 @@ export const TurnSteps = ({ gameState, me, role, compact = false }) => {
   const current = stepOf(gs.phase);
   const n = narrate(gs, me);
   const tip = tipFor(gs, me, role);
-  const steps = STEPS.filter((s) => s.key !== 'POWER' || gs.phase === 'POWER');
+  const steps = STEPS.filter((s) => !OPTIONAL_STEPS.includes(s.key) || gs.phase === s.key);
   return (
     <div className="px-3 py-2" style={{ background: 'linear-gradient(180deg, rgba(30,20,12,0.92), rgba(15,10,6,0.92))', borderBottom: '1px solid rgba(199,168,105,0.25)' }}>
       <div className="max-w-7xl mx-auto">
@@ -248,7 +266,8 @@ export const DecreeBoard = ({ gameState, small = false }) => {
   );
   const tMarks = { 6: { icon: '☠️', title: '6 Trahisons : victoire des Traîtres' } };
   Object.entries(board).forEach(([slot, p]) => { tMarks[Number(slot)] = { icon: POWER_ICONS[p], title: POWER_LABELS[p] }; });
-  const lMarks = { 5: { icon: '🏆', title: '5 Loyaux : victoire des Fidèles' } };
+  const lMarks = { 5: { icon: '🏆', title: '5 Loyaux : victoire des Fidèles' }, 3: { icon: '🏹', title: '3 Loyaux : Flèche du Peuple (viser le Tyran)' } };
+  tMarks[2] = { icon: `${tMarks[2]?.icon || ''}🗡️`, title: `2 Trahisons : Complot des Traîtres${tMarks[2] ? ` + ${tMarks[2].title}` : ''}` };
   return (
     <div className="flex flex-col items-center gap-1.5">
       {row(t.loyal || 0, 5, '#3b82f6', lMarks, 'Loyaux', '#93c5fd')}
@@ -342,6 +361,8 @@ export const SeatCard = ({ p, gs, me, teammates, selectable, onSelect, width = 1
         {dead && <Chip color="#a3a3a3">Mort</Chip>}
         {!dead && p.connected === false && !p.is_bot && <Chip color="#a3a3a3" title="Absent : le destin jouera pour lui">Absent</Chip>}
         {gs.phase === 'VOTE' && p.alive && !isKing && !isNominee && (hasVoted ? <Chip color="#86efac">✓ a voté</Chip> : <Chip color="rgba(232,217,168,0.55)">vote…</Chip>)}
+        {gs.phase === 'JUGEMENT' && p.alive && ((gs.arrow_voted_ids || []).includes(p.id) ? <Chip color="#93c5fd">🏹 a tiré</Chip> : <Chip color="rgba(232,217,168,0.55)">vise…</Chip>)}
+        {!dead && (gs.not_tyran_seats || []).includes(p.seat) && <Chip color="#93c5fd" title="Innocenté publiquement : n'est pas le Tyran">Pas le Tyran</Chip>}
         {ballot && <Chip color={ballot === 'oui' ? '#86efac' : '#fca5a5'} bg={ballot === 'oui' ? 'rgba(22,101,52,0.6)' : 'rgba(127,29,29,0.6)'} title="Son vote pour le dernier gouvernement">{ballot === 'oui' ? 'Oui' : 'Non'}</Chip>}
         {ineligible && <Chip color="rgba(232,217,168,0.6)" title="Était au dernier gouvernement : ne peut pas être Conseiller">🔒 Exclu</Chip>}
         {(gs.investigated_seats || []).includes(p.seat) && !dead && <Chip color="#fbbf24" title="A déjà fait l'objet d'une enquête">🔍</Chip>}

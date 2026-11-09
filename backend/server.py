@@ -68,6 +68,8 @@ class Phase(str, Enum):
     CONSEIL_ROYAUME = "CONSEIL_ROYAUME"
     DEFIANCE = "DEFIANCE"
     POWER = "POWER"
+    JUGEMENT = "JUGEMENT"  # Flèche du Peuple : la table désigne le Tyran
+    COMPLOT = "COMPLOT"    # Les Traîtres assassinent un Fidèle en secret
     ENDGAME = "ENDGAME"
 
 # Piste de Défiance config (variante maison, désactivée : règles Secret Hitler)
@@ -84,6 +86,15 @@ POWER_BOARDS = {
     "large": {1: "INVESTIGATE", 2: "INVESTIGATE", 3: "SPECIAL_ELECTION", 4: "EXECUTE", 5: "EXECUTE"},  # 9-10
 }
 VETO_UNLOCK_AT = 5  # Trahisons adoptées avant que le veto soit possible
+
+# Pouvoirs de camp (règles Dark Oath, en plus du plateau du Roi) :
+#  - Flèche du Peuple : au 3e Décret Loyal, toute la table désigne le joueur
+#    qu'elle croit être le Tyran. Touché = victoire des Fidèles ; raté = la
+#    cible est innocentée ("n'est pas le Tyran"). Une seule flèche par partie.
+#  - Complot : au 2e Décret de Trahison, les Traîtres (pas le Tyran, qui ne
+#    les connaît pas) assassinent en secret un Fidèle.
+ARROW_AT = 3
+PLOT_AT = 2
 
 
 def power_board(player_count: int) -> Dict[int, str]:
@@ -160,6 +171,13 @@ class TurnState(BaseModel):
     last_decree: Optional[Dict[str, Any]] = None  # {turn, type, regent_seat, chambellan_seat, auto}
     # Server clock for the current phase (used for AFK timeouts + client countdowns)
     phase_started_at: Optional[float] = None
+    # Pouvoirs de camp (Flèche du Peuple / Complot)
+    pending_team_powers: List[str] = []           # "JUGEMENT" | "COMPLOT", joués dans l'ordre
+    team_resume_nomination: bool = False          # le Roi suivant est déjà désigné (gouvernement rejeté)
+    arrow_votes: Dict[str, int] = {}              # voter_id -> seat désigné (secret jusqu'au dépouillement)
+    plot_votes: Dict[str, int] = {}               # traître_id -> seat visé (jamais public)
+    last_arrow: Optional[Dict[str, Any]] = None   # {turn, ballots: {seat: seat}, target_seat, hit, tie, ts}
+    last_plot: Optional[Dict[str, Any]] = None    # {turn, target_seat, ts}
 
 class GameState(BaseModel):
     room_code: str
@@ -173,6 +191,10 @@ class GameState(BaseModel):
         "execution_unlocked": False,
         "execution_used": False,
         "executed_once": False,  # legacy flag, kept for compatibility
+        "arrow_granted": False,
+        "arrow_used": False,
+        "plot_granted": False,
+        "plot_used": False,
     }
     winner: Optional[str] = None
     winner_reason: Optional[str] = None  # Human-readable cause ("tyran_executed", "5_loyal", "6_conjure", ...)
@@ -400,6 +422,10 @@ class WebSocketManager:
             "execution_unlocked": False,
             "execution_used": False,
             "executed_once": False,
+            "arrow_granted": False,
+            "arrow_used": False,
+            "plot_granted": False,
+            "plot_used": False,
         }
         game_state.winner = None
         game_state.winner_reason = None
@@ -486,6 +512,7 @@ class WebSocketManager:
             "5_loyal": "Cinq Décrets Loyaux sont adoptés : les Fidèles sauvent la Couronne !",
             "6_conjure": "Six Décrets de Trahison sont adoptés : les Traîtres s'emparent du trône !",
             "tyran_executed": "Le Tyran a été exécuté : les Fidèles triomphent !",
+            "tyran_arrow": "La Flèche du Peuple transperce le Tyran : les Fidèles triomphent !",
             "tyran_elected": "Le Tyran est élu Conseiller après 3 Trahisons : les Traîtres triomphent !",
         }
         log_event(game_state, "endgame", texts.get(reason, "La partie est terminée."), winner=winner, reason=reason)
@@ -587,6 +614,7 @@ class WebSocketManager:
                       f"{'Loyal' if top_card == DecreeType.LOYAL else 'de Trahison'} (aucun pouvoir). "
                       "Les limites de mandat sont levées.",
                       type=top_card.value, auto=True, regent_seat=None, chambellan_seat=None)
+            self.grant_team_powers(game_state)
         game_state.tracks.crisis = 0
         t.prev_government = None
         t.peoples_anger_triggered = True
@@ -654,8 +682,117 @@ class WebSocketManager:
 
         self._flow_to_next_turn_phase(game_state)
 
+    # ------------------------------------------------------------------
+    # Pouvoirs de camp : Flèche du Peuple (Fidèles) et Complot (Traîtres)
+    # ------------------------------------------------------------------
+    def grant_team_powers(self, game_state: GameState) -> None:
+        """Called after every adopted decree (government or Colère du Peuple)."""
+        pw, t = game_state.powers, game_state.turn
+        if game_state.tracks.conjure >= PLOT_AT and not pw.get("plot_granted"):
+            pw["plot_granted"] = True
+            t.pending_team_powers.append("COMPLOT")
+        if game_state.tracks.loyal >= ARROW_AT and not pw.get("arrow_granted"):
+            pw["arrow_granted"] = True
+            t.pending_team_powers.append("JUGEMENT")
+
+    def start_team_power(self, game_state: GameState) -> bool:
+        """Enter the next pending camp power phase. Returns False if none."""
+        t = game_state.turn
+        while t.pending_team_powers:
+            power = t.pending_team_powers.pop(0)
+            if power == "COMPLOT":
+                if not any(p.alive and p.role == Role.CONJURE for p in game_state.players):
+                    game_state.powers["plot_used"] = True
+                    continue
+                t.phase = Phase.COMPLOT
+                t.plot_votes = {}
+                log_event(game_state, "plot_start",
+                          "🗡️ La nuit tombe sur le royaume… Les Traîtres choisissent en secret un Fidèle à abattre.")
+            else:
+                t.phase = Phase.JUGEMENT
+                t.arrow_votes = {}
+                log_event(game_state, "arrow_start",
+                          "🏹 Trois Décrets Loyaux : le peuple reçoit sa Flèche ! Chaque joueur désigne celui "
+                          "qu'il croit être le Tyran. Si la flèche le touche, les Fidèles gagnent.")
+            t.active_power = None
+            t.power_result = None
+            return True
+        return False
+
+    def after_team_power(self, game_state: GameState) -> None:
+        t = game_state.turn
+        if game_state.winner:
+            return
+        if self.start_team_power(game_state):
+            return
+        if t.team_resume_nomination:
+            # Gouvernement rejeté : le Roi suivant était déjà désigné.
+            t.team_resume_nomination = False
+            if not any(p.seat == t.regent_seat and p.alive for p in game_state.players):
+                t.regent_seat = self._next_regent_seat(game_state, t.regent_seat)
+            t.phase = Phase.NOMINATION
+            t.nominee_seat = None
+            t.votes = {}
+            return
+        self._flow_to_next_turn_phase(game_state)
+
+    def resolve_arrow(self, game_state: GameState) -> None:
+        t = game_state.turn
+        by_seat = {p.seat: p for p in game_state.players}
+        counts: Dict[int, int] = {}
+        for seat in t.arrow_votes.values():
+            counts[seat] = counts.get(seat, 0) + 1
+        id_to_seat = {p.id: p.seat for p in game_state.players}
+        ballots = {str(id_to_seat[pid]): target for pid, target in t.arrow_votes.items() if pid in id_to_seat}
+        top = max(counts.values()) if counts else 0
+        leaders = [s for s, c in counts.items() if c == top]
+        game_state.powers["arrow_used"] = True
+        t.arrow_votes = {}
+        if len(leaders) != 1:
+            t.last_arrow = {"turn": t.turn_number, "ballots": ballots, "target_seat": None,
+                            "hit": False, "tie": True, "ts": _now()}
+            log_event(game_state, "arrow",
+                      "🏹 La table est divisée : personne n'obtient la majorité, la Flèche se perd dans la foule.",
+                      ballots=ballots, target_seat=None, hit=False)
+            return
+        target = by_seat[leaders[0]]
+        hit = target.role == Role.USURPATEUR
+        t.last_arrow = {"turn": t.turn_number, "ballots": ballots, "target_seat": target.seat,
+                        "hit": hit, "tie": False, "ts": _now()}
+        if hit:
+            target.alive = False
+            log_event(game_state, "arrow", f"🏹 La Flèche du Peuple transperce {target.name}… C'était le Tyran !",
+                      ballots=ballots, target_seat=target.seat, hit=True)
+            self._set_winner(game_state, "FIDELES", "tyran_arrow")
+        else:
+            log_event(game_state, "arrow",
+                      f"🏹 La Flèche frappe le bouclier de {target.name} : {target.name} n'est pas le Tyran.",
+                      ballots=ballots, target_seat=target.seat, hit=False, not_tyran=True, seat=target.seat)
+
+    def resolve_plot(self, game_state: GameState) -> None:
+        t = game_state.turn
+        by_seat = {p.seat: p for p in game_state.players}
+        counts: Dict[int, int] = {}
+        for seat in t.plot_votes.values():
+            counts[seat] = counts.get(seat, 0) + 1
+        t.plot_votes = {}
+        game_state.powers["plot_used"] = True
+        if not counts:
+            return
+        top = max(counts.values())
+        target = by_seat[random.choice([s for s, c in counts.items() if c == top])]
+        target.alive = False
+        t.last_execution_seat = target.seat
+        t.speaking_players = [s for s in t.speaking_players if s != target.seat]
+        t.last_plot = {"turn": t.turn_number, "target_seat": target.seat, "ts": _now()}
+        log_event(game_state, "plot",
+                  f"🗡️ À l'aube, on découvre le corps de {target.name} : les Traîtres ont frappé. Mais qui tenait la lame ?",
+                  target_seat=target.seat)
+
     def _flow_to_next_turn_phase(self, game_state: GameState):
         """After decree resolution + Conseil + (optional) Power, enter Défiance or Nomination."""
+        if self.start_team_power(game_state):
+            return
         if ENABLE_DEFIANCE and game_state.turn.turn_number >= 2:
             self._enter_defiance_phase(game_state)
         else:
@@ -712,6 +849,10 @@ class WebSocketManager:
             return [p.id for p in alive if p.id not in t.defiance_votes]
         if t.phase == Phase.CONSEIL_ROYAUME:
             return [p.id for p in alive if p.id not in t.conseil_ready]
+        if t.phase == Phase.JUGEMENT:
+            return [p.id for p in alive if p.id not in t.arrow_votes]
+        if t.phase == Phase.COMPLOT:
+            return [p.id for p in alive if p.role == Role.CONJURE and p.id not in t.plot_votes]
         return []
 
 
@@ -932,6 +1073,73 @@ def _bad_request(detail: str):
     raise HTTPException(status_code=400, detail=detail)
 
 
+async def resolve_vote(room_code: str, game_state: GameState) -> None:
+    """Count the ballots (everyone outside the government has voted).
+
+    With nobody left to vote (only the King and his Conseiller alive), the
+    government is installed automatically."""
+    t = game_state.turn
+    by_seat = {p.seat: p for p in game_state.players}
+    alive_players = voters(game_state)
+    yes_votes = sum(1 for v in t.votes.values() if v == "oui")
+    no_votes = len(t.votes) - yes_votes
+    elected = yes_votes > no_votes or not alive_players
+    ballots = {str(p.seat): t.votes[p.id] for p in alive_players}
+    regent_seat, nominee_seat = t.regent_seat, t.nominee_seat
+    t.last_vote = {
+        "turn": t.turn_number, "regent_seat": regent_seat, "nominee_seat": nominee_seat,
+        "result": "elected" if elected else "rejected",
+        "yes": yes_votes, "no": no_votes, "ballots": ballots, "ts": _now(),
+    }
+    log_event(game_state, "vote",
+              f"Gouvernement {seat_name(game_state, regent_seat)} / {seat_name(game_state, nominee_seat)} "
+              f"{'élu' if elected else 'rejeté'} ({yes_votes} oui, {no_votes} non).",
+              result="elected" if elected else "rejected", ballots=ballots,
+              regent_seat=regent_seat, nominee_seat=nominee_seat)
+
+    if elected:
+        game_state.tracks.crisis = 0
+        t.disgraced_player_seat = None
+        t.peoples_anger_triggered = False
+        t.veto_requested = False
+        t.veto_refused = False
+        t.prev_government = {"regent": regent_seat, "chambellan": nominee_seat}
+        t.votes = {}
+        nominee = by_seat.get(nominee_seat)
+        # Victoire des Traîtres : Tyran élu Conseiller après 3+ Trahisons
+        if game_state.tracks.conjure >= 3 and nominee and nominee.role == Role.USURPATEUR:
+            manager._set_winner(game_state, "CONJURES", "tyran_elected")
+        else:
+            if game_state.tracks.conjure >= 3:
+                log_event(game_state, "info",
+                          f"{seat_name(game_state, nominee_seat)} n'est pas le Tyran.", seat=nominee_seat,
+                          not_tyran=True)
+            manager._ensure_deck(game_state, 3)
+            t.legislative_cards = game_state.deck[:3]
+            game_state.deck = game_state.deck[3:]
+            t.deck_count = len(game_state.deck)
+            t.phase = Phase.LEGIS_REGENT
+    else:
+        game_state.tracks.crisis += 1
+        t.votes = {}
+        t.nominee_seat = None
+        if game_state.tracks.crisis >= 3:
+            manager.peoples_anger(game_state)
+        if not manager.check_win_conditions(game_state):
+            t.regent_seat = manager._rotate_regent(game_state)
+            if manager.start_team_power(game_state):
+                t.team_resume_nomination = True
+            else:
+                t.phase = Phase.NOMINATION
+    game_state.version += 1
+    await manager.broadcast_to_room(room_code, {
+        "type": "vote_result", "result": "elected" if elected else "rejected",
+        "yes_votes": yes_votes, "no_votes": no_votes, "new_phase": t.phase,
+        "tracks": game_state.tracks.model_dump(), "regent_seat": t.regent_seat,
+        "winner": game_state.winner, "version": game_state.version,
+    })
+
+
 async def perform_action(
     room_code: str,
     game_state: GameState,
@@ -1005,6 +1213,9 @@ async def perform_action(
         await manager.broadcast_to_room(room_code, {
             "type": "game_update", "phase": t.phase, "nominee_seat": nominee_seat, "version": game_state.version,
         })
+        if not voters(game_state):
+            log_event(game_state, "info", "Plus personne hors du gouvernement pour voter : il est installé d'office.")
+            await resolve_vote(room_code, game_state)
 
     elif action_type == "VOTE":
         # Règle de la maison : seuls les joueurs hors gouvernement votent.
@@ -1021,59 +1232,7 @@ async def perform_action(
 
         alive_players = voters(game_state)
         if all(p.id in t.votes for p in alive_players):
-            yes_votes = sum(1 for v in t.votes.values() if v == "oui")
-            no_votes = len(t.votes) - yes_votes
-            elected = yes_votes > no_votes
-            ballots = {str(p.seat): t.votes[p.id] for p in alive_players}
-            regent_seat, nominee_seat = t.regent_seat, t.nominee_seat
-            t.last_vote = {
-                "turn": t.turn_number, "regent_seat": regent_seat, "nominee_seat": nominee_seat,
-                "result": "elected" if elected else "rejected",
-                "yes": yes_votes, "no": no_votes, "ballots": ballots, "ts": _now(),
-            }
-            log_event(game_state, "vote",
-                      f"Gouvernement {seat_name(game_state, regent_seat)} / {seat_name(game_state, nominee_seat)} "
-                      f"{'élu' if elected else 'rejeté'} ({yes_votes} oui, {no_votes} non).",
-                      result="elected" if elected else "rejected", ballots=ballots,
-                      regent_seat=regent_seat, nominee_seat=nominee_seat)
-
-            if elected:
-                game_state.tracks.crisis = 0
-                t.disgraced_player_seat = None
-                t.peoples_anger_triggered = False
-                t.veto_requested = False
-                t.veto_refused = False
-                t.prev_government = {"regent": regent_seat, "chambellan": nominee_seat}
-                t.votes = {}
-                nominee = by_seat.get(nominee_seat)
-                # Victoire des Traîtres : Tyran élu Conseiller après 3+ Trahisons
-                if game_state.tracks.conjure >= 3 and nominee and nominee.role == Role.USURPATEUR:
-                    manager._set_winner(game_state, "CONJURES", "tyran_elected")
-                else:
-                    if game_state.tracks.conjure >= 3:
-                        log_event(game_state, "info",
-                                  f"{seat_name(game_state, nominee_seat)} n'est pas le Tyran.", seat=nominee_seat)
-                    manager._ensure_deck(game_state, 3)
-                    t.legislative_cards = game_state.deck[:3]
-                    game_state.deck = game_state.deck[3:]
-                    t.deck_count = len(game_state.deck)
-                    t.phase = Phase.LEGIS_REGENT
-            else:
-                game_state.tracks.crisis += 1
-                t.votes = {}
-                t.nominee_seat = None
-                if game_state.tracks.crisis >= 3:
-                    manager.peoples_anger(game_state)
-                if not manager.check_win_conditions(game_state):
-                    t.regent_seat = manager._rotate_regent(game_state)
-                    t.phase = Phase.NOMINATION
-            game_state.version += 1
-            await manager.broadcast_to_room(room_code, {
-                "type": "vote_result", "result": "elected" if elected else "rejected",
-                "yes_votes": yes_votes, "no_votes": no_votes, "new_phase": t.phase,
-                "tracks": game_state.tracks.model_dump(), "regent_seat": t.regent_seat,
-                "winner": game_state.winner, "version": game_state.version,
-            })
+            await resolve_vote(room_code, game_state)
         else:
             game_state.version += 1
             await manager.broadcast_to_room(room_code, {
@@ -1116,6 +1275,7 @@ async def perform_action(
             else:
                 game_state.tracks.conjure += 1
                 t.pending_power = power_board(len(game_state.players)).get(game_state.tracks.conjure)
+            manager.grant_team_powers(game_state)
             t.veto_requested = False
             t.veto_refused = False
             decree = {"turn": t.turn_number, "type": adopted_card.value, "auto": False,
@@ -1181,7 +1341,7 @@ async def perform_action(
                 manager.peoples_anger(game_state)
             if not manager.check_win_conditions(game_state):
                 manager._ensure_deck(game_state, 3)
-                manager._advance_to_next_nomination(game_state)
+                manager._flow_to_next_turn_phase(game_state)
         else:
             t.veto_refused = True
             log_event(game_state, "veto", f"{who} (Roi) refuse le veto : le Conseiller doit adopter un décret.",
@@ -1311,7 +1471,7 @@ async def perform_action(
         log_event(game_state, "execute", f"{who} (Roi) fait exécuter {target.name}.",
                   regent_seat=player.seat, target_seat=target_seat)
         if not manager.check_win_conditions(game_state):
-            log_event(game_state, "info", f"{target.name} n'était pas le Tyran.", seat=target_seat)
+            log_event(game_state, "info", f"{target.name} n'était pas le Tyran.", seat=target_seat, not_tyran=True)
             manager._advance_after_power(game_state)
         game_state.version += 1
         await manager.broadcast_to_room(room_code, {
@@ -1331,6 +1491,53 @@ async def perform_action(
         await manager.broadcast_to_room(room_code, {
             "type": "game_update", "data": "power_acknowledged", "version": game_state.version,
         })
+
+    elif action_type == "ARROW_VOTE":
+        # Flèche du Peuple : chaque vivant désigne celui qu'il croit être le Tyran.
+        if t.phase != Phase.JUGEMENT:
+            return {"success": True, "stale": True, "version": game_state.version}
+        if not player.alive:
+            _bad_request("Les morts ne tirent pas.")
+        if player_id in t.arrow_votes:
+            _bad_request("Vous avez déjà désigné votre cible.")
+        try:
+            target_seat = int(payload.get("targetSeat"))
+        except (TypeError, ValueError):
+            _bad_request("Cible invalide.")
+        target = by_seat.get(target_seat)
+        if not target or not target.alive or target_seat == player.seat:
+            _bad_request("Cible invalide.")
+        t.arrow_votes[player_id] = target_seat
+        if player.is_bot:
+            bots.queue_line(game_state, player, bots.arrow_claim(game_state, player, target_seat), _now(), quick=True)
+        if all(p.id in t.arrow_votes for p in game_state.players if p.alive):
+            manager.resolve_arrow(game_state)
+            manager.after_team_power(game_state)
+        game_state.version += 1
+        await manager.broadcast_to_room(room_code, {"type": "game_update", "data": "arrow_vote",
+                                                    "winner": game_state.winner, "version": game_state.version})
+
+    elif action_type == "PLOT_VOTE":
+        # Complot : seuls les Traîtres vivants choisissent, en secret, un Fidèle à abattre.
+        if t.phase != Phase.COMPLOT:
+            return {"success": True, "stale": True, "version": game_state.version}
+        if not player.alive or player.role != Role.CONJURE:
+            _bad_request("Seuls les Traîtres participent au complot.")
+        try:
+            target_seat = int(payload.get("targetSeat"))
+        except (TypeError, ValueError):
+            _bad_request("Cible invalide.")
+        target = by_seat.get(target_seat)
+        if not target or not target.alive or target.role in (Role.CONJURE, Role.USURPATEUR):
+            _bad_request("Cible invalide : choisissez un Fidèle vivant.")
+        t.plot_votes[player_id] = target_seat
+        if all(p.id in t.plot_votes for p in game_state.players if p.alive and p.role == Role.CONJURE):
+            manager.resolve_plot(game_state)
+            if not manager.check_win_conditions(game_state):
+                manager.after_team_power(game_state)
+        game_state.version += 1
+        await manager.broadcast_to_room(room_code, {"type": "game_update", "data": "plot",
+                                                    "version": game_state.version})
 
     elif action_type == "SPEAK_TOGGLE":
         if not player.alive:
@@ -1435,7 +1642,8 @@ async def tick_room(room_code: str, game_state: GameState) -> bool:
             continue
         action_type, payload = decision
         try:
-            if auto:
+            # Le Complot est secret : ne jamais révéler quel Traître a tardé.
+            if auto and t.phase != Phase.COMPLOT:
                 log_event(game_state, "afk", f"{player.name} tarde à agir : le destin choisit à sa place.",
                           seat=player.seat)
             await perform_action(room_code, game_state, player, action_type, payload, auto=auto)
@@ -1525,14 +1733,8 @@ async def get_game_state(
         legislative_cards = t.legislative_cards  # the King sees what he is asked to veto
 
     # Règle Dark Oath : les Traîtres connaissent les autres Traîtres et le Tyran ;
-    # le Tyran et les Fidèles ne connaissent personne.
+    # le Tyran et les Fidèles ne connaissent personne (quel que soit le nombre de joueurs).
     teammates = []
-    # Secret Hitler : à 5-6 joueurs, le Tyran connaît aussi son Traître.
-    if player.role == Role.USURPATEUR and len(game_state.players) <= 6:
-        teammates = [
-            {"seat": p.seat, "name": p.name, "role": p.role}
-            for p in game_state.players if p.role == Role.CONJURE
-        ]
     if player.role == Role.CONJURE:
         teammates = [
             {"seat": p.seat, "name": p.name, "role": p.role}
@@ -1602,6 +1804,20 @@ async def get_game_state(
         "my_investigations": bots.memory(game_state, player)["investigations"],
         "last_execution_seat": t.last_execution_seat,
         "powers": game_state.powers,
+        # Pouvoirs de camp
+        "arrow_at": ARROW_AT,
+        "plot_at": PLOT_AT,
+        "arrow_voted_ids": list(t.arrow_votes.keys()),
+        "arrow_my_target": t.arrow_votes.get(player_id),
+        "last_arrow": t.last_arrow,
+        "last_plot": t.last_plot,
+        "not_tyran_seats": sorted({e["seat"] for e in game_state.events if e.get("not_tyran") and e.get("seat")}),
+        # Complot : visible uniquement par les Traîtres (choix de chacun, pour se coordonner)
+        "plot_votes": (
+            {str(next((p.seat for p in game_state.players if p.id == pid), 0)): s for pid, s in t.plot_votes.items()}
+            if player.role == Role.CONJURE else {}
+        ),
+        "plot_has_voted": player_id in t.plot_votes,
         "events": game_state.events[-120:],
     }
 
