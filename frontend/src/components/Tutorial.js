@@ -1,6 +1,7 @@
 // Tutoriel pas à pas : 13 écrans courts, chacun avec un visuel,
 // une démonstration (tirage des décrets jouable) et un quiz final.
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const CINZEL = "'Cinzel', serif";
 const FELL = "'IM Fell English', serif";
@@ -606,23 +607,24 @@ const Tutorial = ({ open, onClose, onFinish }) => {
   const quizDone = Object.keys(answers).length;
   const quizScore = QUIZ.filter((q, k) => answers[k] === q.ok).length;
 
+  const BAR_BG = 'rgba(13,8,5,0.92)';
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center sm:p-4" style={{ background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(3px)' }}
-      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div role="dialog" aria-modal="true" aria-labelledby="tuto-title"
-        className="relative w-full h-full sm:h-auto sm:max-h-[92dvh] sm:max-w-4xl flex flex-col sm:rounded-2xl overflow-hidden"
-        style={{ background: 'linear-gradient(180deg, #1c130b, #0d0805)', border: '1px solid rgba(199,168,105,0.45)', boxShadow: '0 20px 60px rgba(0,0,0,0.7)' }}>
+    <div ref={bodyRef} role="main" aria-labelledby="tuto-title"
+      className="fixed inset-0 z-[100] overflow-y-auto flex flex-col"
+      style={{ background: 'radial-gradient(ellipse at top, rgba(199,168,105,0.13), transparent 60%), linear-gradient(180deg, #1c130b, #0a0604)' }}>
 
-        {/* Header */}
-        <div className="shrink-0 px-4 sm:px-6 pt-4 pb-3" style={{ borderBottom: '1px solid rgba(199,168,105,0.2)' }}>
+      {/* Header */}
+      <header className="sticky top-0 z-10" style={{ background: BAR_BG, backdropFilter: 'blur(6px)', borderBottom: '1px solid rgba(199,168,105,0.25)' }}>
+        <div className="max-w-4xl mx-auto px-4 sm:px-8 pt-4 pb-3">
           <div className="flex items-center justify-between gap-3 mb-3">
-            <span className="text-[13px] uppercase tracking-[0.2em]" style={{ color: GOLD, fontFamily: CINZEL }}>
+            <button type="button" onClick={onClose} aria-label="Quitter le tutoriel"
+              className="px-3 py-1.5 rounded-lg text-sm hover:bg-amber-900/40 whitespace-nowrap"
+              style={{ color: PARCH, border: '1px solid rgba(199,168,105,0.4)', fontFamily: CINZEL }}>
+              ← Quitter
+            </button>
+            <span className="text-[13px] uppercase tracking-[0.2em] text-right" style={{ color: GOLD, fontFamily: CINZEL }}>
               🎓 Tutoriel · {CHAPTERS[step.chapter]} · {i + 1}/{steps.length}
             </span>
-            <button type="button" onClick={onClose} aria-label="Fermer le tutoriel"
-              className="w-8 h-8 rounded-full text-xl leading-none hover:bg-amber-900/40" style={{ color: PARCH, border: '1px solid rgba(199,168,105,0.4)' }}>
-              ×
-            </button>
           </div>
           <div className="flex gap-1" aria-hidden="true">
             {steps.map((s, k) => (
@@ -631,18 +633,20 @@ const Tutorial = ({ open, onClose, onFinish }) => {
                 style={{ background: k < i ? GOLD : k === i ? '#fde68a' : 'rgba(199,168,105,0.18)' }} />
             ))}
           </div>
-          <h2 id="tuto-title" className="mt-3 text-2xl sm:text-3xl font-bold flex items-center gap-2" style={{ color: '#f5e6b8', fontFamily: CINZEL }}>
-            <span aria-hidden="true">{step.icon}</span>{step.title}
-          </h2>
         </div>
+      </header>
 
-        {/* Body */}
-        <div ref={bodyRef} className="flex-1 overflow-y-auto px-4 sm:px-6 py-4" style={{ fontFamily: FELL }}>
-          {step.body}
-        </div>
+      {/* Page */}
+      <div className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-8 py-6 sm:py-10" style={{ fontFamily: FELL }}>
+        <h1 id="tuto-title" className="mb-5 sm:mb-7 text-3xl sm:text-4xl font-bold flex items-center gap-3" style={{ color: '#f5e6b8', fontFamily: CINZEL }}>
+          <span aria-hidden="true">{step.icon}</span>{step.title}
+        </h1>
+        {step.body}
+      </div>
 
-        {/* Footer */}
-        <div className="shrink-0 px-4 sm:px-6 py-3 flex items-center gap-3" style={{ borderTop: '1px solid rgba(199,168,105,0.2)', background: 'rgba(0,0,0,0.35)' }}>
+      {/* Footer */}
+      <footer className="sticky bottom-0 z-10" style={{ background: BAR_BG, backdropFilter: 'blur(6px)', borderTop: '1px solid rgba(199,168,105,0.25)' }}>
+        <div className="max-w-4xl mx-auto px-4 sm:px-8 py-3 flex items-center gap-3">
           <button type="button" onClick={() => setI((v) => Math.max(v - 1, 0))} disabled={i === 0}
             className="px-4 py-2.5 rounded-lg text-base disabled:opacity-30"
             style={{ color: PARCH, border: '1px solid rgba(199,168,105,0.4)', fontFamily: CINZEL }}>
@@ -660,8 +664,25 @@ const Tutorial = ({ open, onClose, onFinish }) => {
             {last ? 'Jouer ⚔️' : i === 0 ? 'Commencer →' : 'Suivant →'}
           </button>
         </div>
-      </div>
+      </footer>
     </div>
+  );
+};
+
+/** Page dédiée /tutoriel (accueil) : le bouton retour du navigateur ramène à l'accueil. */
+export const TutorialPage = () => {
+  const navigate = useNavigate();
+  useEffect(() => {
+    const prev = document.title;
+    document.title = 'Tutoriel · Dark Oath';
+    return () => { document.title = prev; };
+  }, []);
+  return (
+    <Tutorial
+      open
+      onClose={() => navigate('/')}
+      onFinish={() => navigate('/', { state: { focusName: true } })}
+    />
   );
 };
 

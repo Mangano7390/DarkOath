@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BrowserRouter, Routes, Route, useNavigate, useParams } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Crown, Sword, Shield, Users, Globe, Music, Volume2, VolumeX, BookOpen } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
@@ -13,7 +13,7 @@ import './styles/medieval.css';
 import axios from 'axios';
 import GameInterface from './components/GameInterface';
 import DashAdmin from './components/DashAdmin';
-import Tutorial, { tutorialDone } from './components/Tutorial';
+import Tutorial, { tutorialDone, TutorialPage } from './components/Tutorial';
 import { Toaster, toast } from 'sonner';
 import { LAST_ROOM_KEY, rememberRoom, forgetRoom, errorMessage } from './lib/game';
 
@@ -146,10 +146,21 @@ const LandingPage = () => {
   const [showRules, setShowRules] = useState(() => {
     try { return new URLSearchParams(window.location.search).get('regles') === '1'; } catch { return false; }
   });
-  const [showTuto, setShowTuto] = useState(() => {
-    try { return new URLSearchParams(window.location.search).get('tuto') === '1'; } catch { return false; }
-  });
-  const [tutoDone, setTutoDone] = useState(() => tutorialDone());
+  const location = useLocation();
+  const [tutoDone] = useState(() => tutorialDone());
+  // Ancien lien ?tuto=1 → page dédiée ; retour du tutoriel → curseur sur le nom.
+  useEffect(() => {
+    try {
+      if (new URLSearchParams(window.location.search).get('tuto') === '1') {
+        navigate('/tutoriel', { replace: true });
+        return;
+      }
+    } catch {}
+    if (location.state?.focusName) {
+      setTimeout(() => document.getElementById('player-name')?.focus(), 50);
+      navigate('/', { replace: true, state: null });
+    }
+  }, []);
   const audioRef = useRef(null);
 
   // Track a site visit once per session
@@ -642,15 +653,6 @@ const LandingPage = () => {
 
   return (
     <div className="darkoath-landing">
-      <Tutorial
-        open={showTuto}
-        onClose={() => { setShowTuto(false); setTutoDone(tutorialDone()); }}
-        onFinish={() => {
-          setShowTuto(false);
-          setTutoDone(true);
-          setTimeout(() => document.getElementById('player-name')?.focus(), 50);
-        }}
-      />
       {/* Floating embers */}
       {embers.map((e, i) => (
         <span
@@ -708,7 +710,7 @@ const LandingPage = () => {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <Button
-              onClick={() => setShowTuto(true)}
+              onClick={() => navigate('/tutoriel')}
               className="oath-btn-primary px-6 py-5 text-base relative"
             >
               🎓&nbsp; Tutoriel <span className="font-normal ml-1 normal-case">· 3 min</span>
@@ -1294,6 +1296,7 @@ function App() {
       <Toaster theme="dark" position="top-center" richColors closeButton />
       <Routes>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/tutoriel" element={<TutorialPage />} />
         <Route path="/lobby/:roomCode" element={<LobbyWrapper />} />
         <Route path="/game/:roomCode" element={<GameWrapper />} />
         <Route path="/dashadmin" element={<DashAdmin />} />
