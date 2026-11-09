@@ -103,7 +103,7 @@ const MusicControl = ({ enabled, volume, onToggle, onVolume }) => {
       <button
         onClick={() => setExpanded((v) => !v)}
         className="text-[10px] uppercase tracking-widest opacity-70 hover:opacity-100"
-        style={{ color: '#e8d9a8', fontFamily: "'Cinzel', serif" }}
+        style={{ color: '#e8d9a8', fontFamily: "'Lora', Georgia, serif" }}
         aria-label="Régler le volume"
       >
         Musique
@@ -377,10 +377,10 @@ const LandingPage = () => {
                 <h3 className="darkoath-title mb-3" style={{ fontSize: '1.6rem' }}>
                   🎯 &nbsp;Le Jeu en un Coup d'Œil
                 </h3>
-                <p className="text-amber-100/90 leading-relaxed mb-3" style={{ fontFamily: "'IM Fell English', serif" }}>
+                <p className="text-amber-100/90 leading-relaxed mb-3" style={{ fontFamily: "'Lora', Georgia, serif" }}>
                   Dark Oath est un jeu de <strong>déduction sociale</strong> pour <strong>5 à 10 joueurs</strong>. Deux camps s'affrontent en secret&nbsp;: les <strong className="text-blue-300">Fidèles</strong> défendent la Couronne, les <strong className="text-red-400">Traîtres</strong> et leur <strong className="text-purple-300">Tyran</strong> la font tomber.
                 </p>
-                <p className="text-amber-100/85 leading-relaxed" style={{ fontFamily: "'IM Fell English', serif" }}>
+                <p className="text-amber-100/85 leading-relaxed" style={{ fontFamily: "'Lora', Georgia, serif" }}>
                   À chaque tour, un <strong>Roi</strong> choisit un <strong>Conseiller</strong>, la table vote pour les approuver, puis ils adoptent un décret. Les décrets remplissent deux pistes&nbsp;: l'une mène à la victoire des Fidèles, l'autre à celle des Traîtres. Mentir, démasquer, manipuler&nbsp;: tout est permis.
                 </p>
               </section>
@@ -390,22 +390,22 @@ const LandingPage = () => {
                 <h3 className="darkoath-title mb-5" style={{ fontSize: '1.6rem' }}>
                   🎭 &nbsp;Les Rôles
                 </h3>
-                <p className="text-amber-100/80 text-sm italic mb-5" style={{ fontFamily: "'IM Fell English', serif" }}>
+                <p className="text-amber-100/80 text-sm italic mb-5" style={{ fontFamily: "'Lora', Georgia, serif" }}>
                   Votre rôle est <strong>secret</strong>. Il vous est révélé au début de la partie et ne change jamais.
                 </p>
                 <div className="space-y-4">
                   <div className="role-card role-card--fidele p-5">
-                    <h4 className="font-bold text-blue-300 mb-2 text-lg" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.1em' }}>🛡️ FIDÈLE</h4>
+                    <h4 className="font-bold text-blue-300 mb-2 text-lg" style={{ fontFamily: "'Lora', Georgia, serif", letterSpacing: '0.1em' }}>🛡️ FIDÈLE</h4>
                     <p className="text-sm text-amber-100/90 mb-2 leading-relaxed"><strong>But&nbsp;:</strong> protéger la Couronne en adoptant 5 Décrets Loyaux, ou en tuant le Tyran (Exécution ou Flèche du Peuple).</p>
                     <p className="text-sm text-amber-100/75 leading-relaxed"><strong>Ce que vous savez&nbsp;:</strong> uniquement votre propre rôle. Vous devez déduire qui sont les Traîtres à travers les votes, les décrets et les discussions.</p>
                   </div>
                   <div className="role-card role-card--traitre p-5">
-                    <h4 className="font-bold text-red-300 mb-2 text-lg" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.1em' }}>⚔️ TRAÎTRE</h4>
+                    <h4 className="font-bold text-red-300 mb-2 text-lg" style={{ fontFamily: "'Lora', Georgia, serif", letterSpacing: '0.1em' }}>⚔️ TRAÎTRE</h4>
                     <p className="text-sm text-amber-100/90 mb-2 leading-relaxed"><strong>But&nbsp;:</strong> saboter la Couronne en adoptant 6 Décrets de Trahison, ou en faisant élire le Tyran au poste de Conseiller après 3+ Décrets de Trahison.</p>
                     <p className="text-sm text-amber-100/75 leading-relaxed"><strong>Ce que vous savez&nbsp;:</strong> l'identité des autres Traîtres <strong>et</strong> du Tyran. Votre mission&nbsp;: <strong>protéger le Tyran</strong> pour qu'il ne soit jamais démasqué ni tué, semer le doute, et assassiner un Fidèle lors du Complot.</p>
                   </div>
                   <div className="role-card role-card--tyran p-5">
-                    <h4 className="font-bold text-purple-300 mb-2 text-lg" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.1em' }}>👑 TYRAN</h4>
+                    <h4 className="font-bold text-purple-300 mb-2 text-lg" style={{ fontFamily: "'Lora', Georgia, serif", letterSpacing: '0.1em' }}>👑 TYRAN</h4>
                     <p className="text-sm text-amber-100/90 mb-2 leading-relaxed"><strong>But&nbsp;:</strong> être élu Conseiller après que 3 Décrets de Trahison ont été adoptés (victoire immédiate avec les Traîtres).</p>
                     <p className="text-sm text-amber-100/75 leading-relaxed"><strong>Ce que vous savez&nbsp;:</strong>
                       {' '}<strong>rien</strong>, quel que soit le nombre de joueurs&nbsp;: les Traîtres savent qui vous êtes, mais vous ne savez pas qui ils sont. À eux de vous protéger et de vous faire élire Conseiller. Si la table vous démasque, vous mourez&nbsp;: agissez comme un Fidèle jusqu'au bon moment.
@@ -422,7 +422,7 @@ const LandingPage = () => {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm" style={{ color: '#e8d9a8' }}>
                     <thead>
-                      <tr className="text-left border-b" style={{ borderColor: 'rgba(199, 168, 105, 0.3)', fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' }}>
+                      <tr className="text-left border-b" style={{ borderColor: 'rgba(199, 168, 105, 0.3)', fontFamily: "'Lora', Georgia, serif", letterSpacing: '0.08em' }}>
                         <th className="py-2 pr-3">Joueurs</th>
                         <th className="py-2 pr-3 text-blue-300">Fidèles</th>
                         <th className="py-2 pr-3 text-red-300">Traîtres</th>
@@ -469,12 +469,12 @@ const LandingPage = () => {
                       <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-amber-200 font-bold" style={{
                         background: 'radial-gradient(circle, rgba(199, 168, 105, 0.25), rgba(90, 60, 20, 0.4))',
                         border: '1px solid rgba(199, 168, 105, 0.5)',
-                        fontFamily: "'Cinzel', serif",
+                        fontFamily: "'Lora', Georgia, serif",
                       }}>
                         {step.num}
                       </div>
                       <div>
-                        <h4 className="font-bold text-amber-300 mb-1" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' }}>{step.title}</h4>
+                        <h4 className="font-bold text-amber-300 mb-1" style={{ fontFamily: "'Lora', Georgia, serif", letterSpacing: '0.08em' }}>{step.title}</h4>
                         <p className="text-sm text-amber-100/85 leading-relaxed">{step.text}</p>
                       </div>
                     </div>
@@ -487,12 +487,12 @@ const LandingPage = () => {
                 <h3 className="darkoath-title mb-5" style={{ fontSize: '1.6rem' }}>
                   🏆 &nbsp;Pistes & Conditions de Victoire
                 </h3>
-                <p className="text-amber-100/85 text-sm leading-relaxed mb-5" style={{ fontFamily: "'IM Fell English', serif" }}>
+                <p className="text-amber-100/85 text-sm leading-relaxed mb-5" style={{ fontFamily: "'Lora', Georgia, serif" }}>
                   Chaque décret adopté avance la piste de son camp. Le premier camp à remplir sa piste gagne. D'autres conditions peuvent aussi clore la partie immédiatement.
                 </p>
                 <div className="grid md:grid-cols-3 gap-4">
                   <div className="role-card role-card--fidele p-5">
-                    <h4 className="font-bold text-blue-300 mb-2" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' }}>🛡️ FIDÈLES gagnent si</h4>
+                    <h4 className="font-bold text-blue-300 mb-2" style={{ fontFamily: "'Lora', Georgia, serif", letterSpacing: '0.08em' }}>🛡️ FIDÈLES gagnent si</h4>
                     <ul className="text-sm text-amber-100/85 leading-relaxed space-y-1 list-disc list-inside">
                       <li>5 Décrets Loyaux adoptés, <strong>ou</strong></li>
                       <li>le Tyran est exécuté, <strong>ou</strong></li>
@@ -500,14 +500,14 @@ const LandingPage = () => {
                     </ul>
                   </div>
                   <div className="role-card role-card--traitre p-5">
-                    <h4 className="font-bold text-red-300 mb-2" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' }}>⚔️ TRAÎTRES gagnent si</h4>
+                    <h4 className="font-bold text-red-300 mb-2" style={{ fontFamily: "'Lora', Georgia, serif", letterSpacing: '0.08em' }}>⚔️ TRAÎTRES gagnent si</h4>
                     <ul className="text-sm text-amber-100/85 leading-relaxed space-y-1 list-disc list-inside">
                       <li>6 Décrets de Trahison adoptés, <strong>ou</strong></li>
                       <li>le Tyran est élu Conseiller après 3+ Trahison.</li>
                     </ul>
                   </div>
                   <div className="role-card role-card--tyran p-5">
-                    <h4 className="font-bold text-purple-300 mb-2" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' }}>👑 TYRAN gagne</h4>
+                    <h4 className="font-bold text-purple-300 mb-2" style={{ fontFamily: "'Lora', Georgia, serif", letterSpacing: '0.08em' }}>👑 TYRAN gagne</h4>
                     <p className="text-sm text-amber-100/85 leading-relaxed">avec les Traîtres — sa victoire personnelle est d'être élu Conseiller après 3 Décrets de Trahison.</p>
                   </div>
                 </div>
@@ -518,13 +518,13 @@ const LandingPage = () => {
                 <h3 className="darkoath-title mb-3" style={{ fontSize: '1.6rem' }}>
                   ⚜️ &nbsp;Pouvoirs du Roi
                 </h3>
-                <p className="text-amber-100/85 text-sm leading-relaxed mb-4" style={{ fontFamily: "'IM Fell English', serif" }}>
+                <p className="text-amber-100/85 text-sm leading-relaxed mb-4" style={{ fontFamily: "'Lora', Georgia, serif" }}>
                   Quand un gouvernement élu adopte un Décret de Trahison sur une case marquée, le Roi doit utiliser le pouvoir de cette case. Les cases dépendent du <strong>nombre de joueurs</strong>. Un décret imposé par la Colère du Peuple ne donne <strong>aucun</strong> pouvoir.
                 </p>
                 <div className="overflow-x-auto mb-4">
                   <table className="w-full text-sm" style={{ color: '#e8d9a8' }}>
                     <thead>
-                      <tr className="text-left border-b" style={{ borderColor: 'rgba(199, 168, 105, 0.3)', fontFamily: "'Cinzel', serif" }}>
+                      <tr className="text-left border-b" style={{ borderColor: 'rgba(199, 168, 105, 0.3)', fontFamily: "'Lora', Georgia, serif" }}>
                         <th className="py-2 pr-2">Joueurs</th>
                         {[1, 2, 3, 4, 5].map((n) => <th key={n} className="py-2 pr-2 text-red-300">{n}<sup>e</sup></th>)}
                       </tr>
@@ -560,7 +560,7 @@ const LandingPage = () => {
                 </h3>
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="role-card role-card--fidele p-5">
-                    <h4 className="font-bold text-blue-300 mb-2" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' }}>🏹 LA FLÈCHE DU PEUPLE</h4>
+                    <h4 className="font-bold text-blue-300 mb-2" style={{ fontFamily: "'Lora', Georgia, serif", letterSpacing: '0.08em' }}>🏹 LA FLÈCHE DU PEUPLE</h4>
                     <p className="text-sm text-amber-100/85 leading-relaxed">Au <strong>3<sup>e</sup> Décret Loyal</strong>, chaque joueur vivant désigne en secret celui qu'il croit être le Tyran. Le plus désigné est visé&nbsp;:</p>
                     <ul className="text-sm text-amber-100/85 leading-relaxed space-y-1 list-disc list-inside mt-1">
                       <li>c'est le Tyran&nbsp;: il meurt, <strong>les Fidèles gagnent</strong>&nbsp;;</li>
@@ -570,7 +570,7 @@ const LandingPage = () => {
                     <p className="text-xs text-amber-100/70 mt-2 italic">Une seule flèche par partie. Les choix de chacun sont révélés après le tir.</p>
                   </div>
                   <div className="role-card role-card--traitre p-5">
-                    <h4 className="font-bold text-red-300 mb-2" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' }}>🗡️ LE COMPLOT</h4>
+                    <h4 className="font-bold text-red-300 mb-2" style={{ fontFamily: "'Lora', Georgia, serif", letterSpacing: '0.08em' }}>🗡️ LE COMPLOT</h4>
                     <p className="text-sm text-amber-100/85 leading-relaxed">Au <strong>2<sup>e</sup> Décret de Trahison</strong>, la nuit tombe&nbsp;: les Traîtres choisissent en secret un <strong>Fidèle à assassiner</strong>. S'ils sont plusieurs, la majorité l'emporte.</p>
                     <p className="text-sm text-amber-100/85 leading-relaxed mt-1">Le Tyran ne participe pas (il ne connaît pas ses alliés) et ne peut pas être visé. Personne ne sait qui a frappé.</p>
                     <p className="text-xs text-amber-100/70 mt-2 italic">Une seule fois par partie, même par la Colère du Peuple.</p>
@@ -583,7 +583,7 @@ const LandingPage = () => {
                 <h3 className="darkoath-title mb-3" style={{ fontSize: '1.6rem' }}>
                   ⚡ &nbsp;Colère du Peuple (Piste de Crise)
                 </h3>
-                <p className="text-amber-100/90 leading-relaxed" style={{ fontFamily: "'IM Fell English', serif" }}>
+                <p className="text-amber-100/90 leading-relaxed" style={{ fontFamily: "'Lora', Georgia, serif" }}>
                   À chaque gouvernement rejeté, la Piste de Crise avance d'une case. Au <strong>3<sup>e</sup> rejet consécutif</strong>, le décret du dessus de la pioche est adopté <strong>automatiquement</strong>, sans pouvoir&nbsp;; les limites de mandat sont levées et la piste repart à zéro. Un gouvernement accepté remet également la piste à zéro.
                 </p>
               </section>
@@ -593,10 +593,10 @@ const LandingPage = () => {
                 <h3 className="darkoath-title mb-3" style={{ fontSize: '1.6rem' }}>
                   🕯️ &nbsp;Vocal & Chat
                 </h3>
-                <p className="text-amber-100/85 leading-relaxed text-sm mb-2" style={{ fontFamily: "'IM Fell English', serif" }}>
+                <p className="text-amber-100/85 leading-relaxed text-sm mb-2" style={{ fontFamily: "'Lora', Georgia, serif" }}>
                   Le <strong>micro s'active pendant le Conseil du Royaume</strong>, sur simple pression. Un chat écrit est disponible à tout moment pour chuchoter, accuser ou conspirer. Les bots y annoncent leurs cartes… et mentent s'ils sont Traîtres.
                 </p>
-                <p className="text-amber-100/75 leading-relaxed text-sm" style={{ fontFamily: "'IM Fell English', serif" }}>
+                <p className="text-amber-100/75 leading-relaxed text-sm" style={{ fontFamily: "'Lora', Georgia, serif" }}>
                   Un <strong>Conseil du Royaume</strong> de 60 secondes (ou moins si tout le monde est prêt) marque chaque révélation de décret&nbsp;: moment clé pour débattre avant le tour suivant.
                 </p>
               </section>
@@ -606,7 +606,7 @@ const LandingPage = () => {
                 <h3 className="darkoath-title mb-3" style={{ fontSize: '1.6rem' }}>
                   🤖 &nbsp;Bots & Joueurs absents
                 </h3>
-                <ul className="space-y-2 text-amber-100/85 text-sm" style={{ fontFamily: "'IM Fell English', serif" }}>
+                <ul className="space-y-2 text-amber-100/85 text-sm" style={{ fontFamily: "'Lora', Georgia, serif" }}>
                   <li>• L'hôte de la salle peut <strong>ajouter des bots</strong> pour compléter la table : on peut jouer dès <strong>1 humain</strong>.</li>
                   <li>• Les bots jouent selon leur rôle secret : un bot Traître ment, protège le Tyran et sabote les décrets.</li>
                   <li>• Ils lisent le chat : appelez-les par leur nom pour leur demander leurs cartes, leur vote ou leurs soupçons. Accusez-les et ils se défendront. Mentez sur vos cartes et votre partenaire de gouvernement vous démasquera.</li>
@@ -622,7 +622,7 @@ const LandingPage = () => {
                 </h3>
                 <div className="grid md:grid-cols-2 gap-5">
                   <div className="role-card role-card--fidele p-5">
-                    <h4 className="font-bold text-blue-300 mb-3" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' }}>POUR LES FIDÈLES</h4>
+                    <h4 className="font-bold text-blue-300 mb-3" style={{ fontFamily: "'Lora', Georgia, serif", letterSpacing: '0.08em' }}>POUR LES FIDÈLES</h4>
                     <ul className="text-sm space-y-2 list-disc list-inside text-amber-100/85">
                       <li>Surveillez qui vote pour quels gouvernements.</li>
                       <li>Méfiez-vous des défausses trop commodes.</li>
@@ -632,7 +632,7 @@ const LandingPage = () => {
                     </ul>
                   </div>
                   <div className="role-card role-card--traitre p-5">
-                    <h4 className="font-bold text-red-300 mb-3" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' }}>POUR LES TRAÎTRES & LE TYRAN</h4>
+                    <h4 className="font-bold text-red-300 mb-3" style={{ fontFamily: "'Lora', Georgia, serif", letterSpacing: '0.08em' }}>POUR LES TRAÎTRES & LE TYRAN</h4>
                     <ul className="text-sm space-y-2 list-disc list-inside text-amber-100/85">
                       <li><strong>Traîtres&nbsp;:</strong> vous connaissez l'identité du Tyran et des autres Traîtres. Protégez le Tyran sans vous trahir.</li>
                       <li>Jouez la normalité tant que votre camp ne domine pas la piste.</li>
@@ -650,7 +650,7 @@ const LandingPage = () => {
                 <h3 className="darkoath-title mb-3" style={{ fontSize: '1.6rem' }}>
                   📜 &nbsp;Résumé en 5 lignes
                 </h3>
-                <ol className="space-y-2 text-sm md:text-base text-amber-100/90 leading-relaxed list-decimal list-inside" style={{ fontFamily: "'IM Fell English', serif" }}>
+                <ol className="space-y-2 text-sm md:text-base text-amber-100/90 leading-relaxed list-decimal list-inside" style={{ fontFamily: "'Lora', Georgia, serif" }}>
                   <li>Chaque joueur reçoit un rôle secret&nbsp;: <strong className="text-blue-300">Fidèle</strong>, <strong className="text-red-300">Traître</strong>, ou <strong className="text-purple-300">Tyran</strong>.</li>
                   <li>À chaque tour, un Roi nomme un Conseiller, la table vote, puis un décret est adopté.</li>
                   <li>5 Décrets Loyaux = Fidèles gagnent. 6 Décrets de Trahison = Traîtres gagnent.</li>
@@ -1191,7 +1191,7 @@ const Lobby = ({ roomCode }) => {
                               taken
                                 ? 'bg-gradient-to-br from-amber-600 to-amber-900 text-amber-100 shadow-inner'
                                 : 'bg-black/60 text-amber-200/40 border border-amber-900/30'
-                            }`} style={{ fontFamily: 'Cinzel, serif' }}>
+                            }`} style={{ fontFamily: "'Lora', Georgia, serif" }}>
                               {taken && player.is_bot ? '🤖' : index + 1}
                             </div>
                             <span className={`flex-1 min-w-0 truncate font-serif ${taken ? 'text-amber-100' : 'text-amber-200/40 italic'}`}>

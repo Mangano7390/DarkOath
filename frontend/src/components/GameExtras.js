@@ -2,8 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Check, ScrollText, Timer, X } from 'lucide-react';
 import { serverNow, powerMarks } from '../lib/game';
 
-const cinzel = { fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' };
-const fell = { fontFamily: "'IM Fell English', serif" };
+const cinzel = { fontFamily: "'Lora', Georgia, serif", letterSpacing: '0.08em' };
+const fell = { fontFamily: "'Lora', Georgia, serif" };
 
 // ---------------------------------------------------------------------
 // Layout helper: render only one layout (avoids double-mounting the voice

@@ -2,7 +2,7 @@ import React from 'react';
 import { Gavel, FileText, Eye, Clock, Crown, ScrollText, Shield, Sword } from 'lucide-react';
 import { Button } from './ui/button';
 
-const titleFont = { fontFamily: "'Cinzel', serif", letterSpacing: '0.05em' };
+const titleFont = { fontFamily: "'Lora', Georgia, serif", letterSpacing: '0.05em' };
 
 const LegislativePanel = ({
   phase, mySeat, regentSeat, chambellanSeat, players, cards, onDiscard, pending = false,

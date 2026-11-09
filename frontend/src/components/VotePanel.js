@@ -2,7 +2,7 @@ import React from 'react';
 import { Vote, ThumbsUp, ThumbsDown, Clock, Users, Crown, ScrollText, Hourglass } from 'lucide-react';
 import { Button } from './ui/button';
 
-const titleFont = { fontFamily: "'Cinzel', serif", letterSpacing: '0.05em' };
+const titleFont = { fontFamily: "'Lora', Georgia, serif", letterSpacing: '0.05em' };
 
 const VotePanel = ({ players, regentSeat, nomineeSeat, votesCast = [], myVote, mySeat, onVote, pending = false }) => {
   const regent = players.find(p => p.seat === regentSeat);

@@ -3,7 +3,7 @@ import { Eye, Skull, Crown, Hourglass, Shield, Sword, Check } from 'lucide-react
 import { Button } from './ui/button';
 import { POWER_LABELS } from '../lib/game';
 
-const titleFont = { fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' };
+const titleFont = { fontFamily: "'Lora', Georgia, serif", letterSpacing: '0.08em' };
 
 const PowerPanel = ({ gameState, currentPlayerId, onAction }) => {
   const players = gameState?.players || [];
@@ -124,7 +124,7 @@ const PowerPanel = ({ gameState, currentPlayerId, onAction }) => {
           <div className="text-2xl font-bold" style={{ color: accent, ...titleFont, textShadow: `0 0 10px ${glow}` }}>
             {result.camp.toUpperCase()}
           </div>
-          <div className="text-xs italic mt-3" style={{ color: 'rgba(232, 217, 168, 0.65)', fontFamily: "'IM Fell English', serif" }}>
+          <div className="text-xs italic mt-3" style={{ color: 'rgba(232, 217, 168, 0.65)', fontFamily: "'Lora', Georgia, serif" }}>
             {isFidele
               ? 'Ce joueur sert la Couronne.'
               : 'Ce joueur conspire dans l\'ombre… ou EST le Tyran lui-même.'}

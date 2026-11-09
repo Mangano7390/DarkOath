@@ -6,8 +6,7 @@
 import React, { useEffect, useState } from 'react';
 import { POWER_ICONS, POWER_LABELS } from '../lib/game';
 
-const CINZEL = "'Cinzel', serif";
-const FELL = "'IM Fell English', serif";
+const FELL = "'Lora', Georgia, serif";
 const GOLD = '#c7a869';
 const PARCH = '#e8d9a8';
 
@@ -49,7 +48,7 @@ export const IdentityBar = ({ me, role, teammates = [], compact = false }) => {
         title="Mon rôle secret"
       >
         <span className="w-7 h-7 rounded-full flex items-center justify-center text-base" style={{ background: 'rgba(0,0,0,0.45)' }}>{r.icon}</span>
-        <span className="text-xs uppercase tracking-widest" style={{ fontFamily: CINZEL, color: PARCH }}>
+        <span className="text-xs uppercase tracking-widest" style={{ fontFamily: FELL, color: PARCH }}>
           Vous êtes <strong style={{ color: r.color }}>{r.name}</strong>
         </span>
       </button>
@@ -58,7 +57,7 @@ export const IdentityBar = ({ me, role, teammates = [], compact = false }) => {
       )}
       {teammates.length > 0 && (
         <span className="flex items-center gap-1.5 flex-wrap text-xs" style={{ color: 'rgba(232,217,168,0.8)' }}>
-          <span className="uppercase tracking-widest text-[10px]" style={{ fontFamily: CINZEL }}>Vos alliés :</span>
+          <span className="uppercase tracking-widest text-[10px]" style={{ fontFamily: FELL }}>Vos alliés :</span>
           {teammates.map((t) => (
             <span key={t.seat} className="px-2 py-0.5 rounded-full" style={{
               background: 'rgba(0,0,0,0.45)',
@@ -199,7 +198,7 @@ export const TurnSteps = ({ gameState, me, role, compact = false }) => {
     <div className="px-3 py-2" style={{ background: 'linear-gradient(180deg, rgba(30,20,12,0.92), rgba(15,10,6,0.92))', borderBottom: '1px solid rgba(199,168,105,0.25)' }}>
       <div className="max-w-7xl mx-auto">
         <ol className="flex items-center gap-1 overflow-x-auto" aria-label="Étapes du tour">
-          <li className="text-[10px] uppercase tracking-widest mr-2 shrink-0" style={{ fontFamily: CINZEL, color: 'rgba(232,217,168,0.6)' }}>
+          <li className="text-[10px] uppercase tracking-widest mr-2 shrink-0" style={{ fontFamily: FELL, color: 'rgba(232,217,168,0.6)' }}>
             Tour {gs.turn_number}
           </li>
           {steps.map((s, i) => {
@@ -210,7 +209,7 @@ export const TurnSteps = ({ gameState, me, role, compact = false }) => {
                 <span
                   className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] uppercase tracking-wider"
                   style={{
-                    fontFamily: CINZEL,
+                    fontFamily: FELL,
                     background: active ? 'rgba(199,168,105,0.95)' : done ? 'rgba(199,168,105,0.18)' : 'rgba(0,0,0,0.35)',
                     color: active ? '#1a1008' : done ? PARCH : 'rgba(232,217,168,0.45)',
                     border: `1px solid ${active ? GOLD : 'rgba(199,168,105,0.25)'}`,
@@ -245,7 +244,7 @@ export const DecreeBoard = ({ gameState, small = false }) => {
   const box = small ? 22 : 30;
   const row = (count, max, color, marks, label, labelColor) => (
     <div className="flex items-center gap-2">
-      <span className="text-[10px] uppercase tracking-widest w-16 text-right shrink-0 font-bold" style={{ fontFamily: CINZEL, color: labelColor }}>{label}</span>
+      <span className="text-[10px] uppercase tracking-widest w-16 text-right shrink-0 font-bold" style={{ fontFamily: FELL, color: labelColor }}>{label}</span>
       <div className="flex gap-1">
         {Array.from({ length: max }, (_, i) => {
           const filled = i < count;
@@ -293,7 +292,7 @@ export const DecreeBoard = ({ gameState, small = false }) => {
 // Player card
 // ---------------------------------------------------------------------
 const Chip = ({ children, color = PARCH, bg = 'rgba(0,0,0,0.55)', title }) => (
-  <span title={title} className="px-1.5 py-px rounded text-[9px] uppercase tracking-wider whitespace-nowrap" style={{ color, background: bg, border: `1px solid ${color}55`, fontFamily: CINZEL }}>
+  <span title={title} className="px-1.5 py-px rounded text-[9px] uppercase tracking-wider whitespace-nowrap" style={{ color, background: bg, border: `1px solid ${color}55`, fontFamily: FELL }}>
     {children}
   </span>
 );
@@ -337,7 +336,7 @@ export const SeatCard = ({ p, gs, me, teammates, selectable, onSelect, width = 1
       aria-label={`${p.name}${isMe ? ' (vous)' : ''}${isKing ? ', Roi' : ''}${isNominee ? ', Conseiller' : ''}${dead ? ', mort' : ''}`}
     >
       {role && (
-        <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2 py-px rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap" style={{ background: role.bg, color: role.color, fontFamily: CINZEL, boxShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
+        <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2 py-px rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap" style={{ background: role.bg, color: role.color, fontFamily: FELL, boxShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
           {role.text}
         </span>
       )}
@@ -345,12 +344,12 @@ export const SeatCard = ({ p, gs, me, teammates, selectable, onSelect, width = 1
         background: known ? known.bg : 'rgba(0,0,0,0.5)',
         border: `2px solid ${known ? known.color : 'rgba(199,168,105,0.4)'}`,
         color: known ? known.color : PARCH,
-        fontFamily: CINZEL,
+        fontFamily: FELL,
       }}>
         {dead ? '💀' : known ? known.icon : (p.name || '?').replace(/^(Sire|Dame|Frère|Baron|Comtesse|Messire|Abbesse|Chevalier)\s+/i, '').charAt(0).toUpperCase()}
         <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full text-[9px] flex items-center justify-center" style={{ background: '#1a1008', border: `1px solid ${GOLD}`, color: PARCH }}>{p.seat}</span>
       </span>
-      <span className="text-[12px] leading-tight font-semibold line-clamp-2 w-full" style={{ color: isMe ? '#fde68a' : PARCH, fontFamily: CINZEL }}>
+      <span className="text-[12px] leading-tight font-semibold line-clamp-2 w-full" style={{ color: isMe ? '#fde68a' : PARCH, fontFamily: FELL }}>
         {p.name}
       </span>
       <span className="flex flex-wrap justify-center gap-0.5 mt-1 min-h-[14px]">
@@ -368,7 +367,7 @@ export const SeatCard = ({ p, gs, me, teammates, selectable, onSelect, width = 1
         {(gs.investigated_seats || []).includes(p.seat) && !dead && <Chip color="#fbbf24" title="A déjà fait l'objet d'une enquête">🔍</Chip>}
       </span>
       {selectable && (
-        <span className="mt-1 text-[10px] uppercase tracking-widest font-bold" style={{ color: '#fde68a', fontFamily: CINZEL }}>Choisir</span>
+        <span className="mt-1 text-[10px] uppercase tracking-widest font-bold" style={{ color: '#fde68a', fontFamily: FELL }}>Choisir</span>
       )}
     </Tag>
   );
@@ -411,7 +410,7 @@ export const CourtTable = ({ gameState, me, selectableSeats = [], onSelect, layo
         boxShadow: 'inset 0 0 40px rgba(0,0,0,0.75), 0 0 0 2px rgba(199,168,105,0.35), 0 20px 40px rgba(0,0,0,0.6)',
       }}>
         <DecreeBoard gameState={gs} />
-        {selectHint && <p className="mt-2 text-sm font-semibold px-3 text-center animate-pulse" style={{ color: '#fde68a', fontFamily: CINZEL }}>{selectHint}</p>}
+        {selectHint && <p className="mt-2 text-sm font-semibold px-3 text-center animate-pulse" style={{ color: '#fde68a', fontFamily: FELL }}>{selectHint}</p>}
       </div>
       {/* the players, me always at the front */}
       {players.map((p, i) => {

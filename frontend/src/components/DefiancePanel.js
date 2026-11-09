@@ -63,7 +63,7 @@ const DefiancePanel = ({
         <div className="flex-1">
           <p
             className="text-sm font-semibold"
-            style={{ color: '#e8d9a8', fontFamily: "'Cinzel', serif", letterSpacing: '0.05em' }}
+            style={{ color: '#e8d9a8', fontFamily: "'Lora', Georgia, serif", letterSpacing: '0.05em' }}
           >
             Désignez un suspect
           </p>
@@ -91,7 +91,7 @@ const DefiancePanel = ({
             background: 'rgba(20, 14, 8, 0.6)',
             border: '1px solid rgba(199, 168, 105, 0.3)',
             color: '#e8d9a8',
-            fontFamily: "'IM Fell English', serif",
+            fontFamily: "'Lora', Georgia, serif",
           }}
         >
           <Check className="inline h-4 w-4 mr-1 text-emerald-400" />
@@ -127,13 +127,13 @@ const DefiancePanel = ({
                       style={{
                         background: 'rgba(199, 168, 105, 0.2)',
                         border: '1px solid rgba(199, 168, 105, 0.5)',
-                        fontFamily: "'Cinzel', serif",
+                        fontFamily: "'Lora', Georgia, serif",
                       }}
                     >
                       {p.seat}
                     </div>
                     <div className="flex-1 text-left min-w-0">
-                      <div className="font-medium text-base truncate" style={{ fontFamily: "'Cinzel', serif" }}>
+                      <div className="font-medium text-base truncate" style={{ fontFamily: "'Lora', Georgia, serif" }}>
                         {p.name}
                       </div>
                       <div
@@ -169,7 +169,7 @@ const DefiancePanel = ({
               background: 'rgba(40, 28, 18, 0.7)',
               border: '1px dashed rgba(199, 168, 105, 0.4)',
               color: '#c7a869',
-              fontFamily: "'Cinzel', serif",
+              fontFamily: "'Lora', Georgia, serif",
               letterSpacing: '0.1em',
               textTransform: 'uppercase',
               fontSize: '0.85rem',

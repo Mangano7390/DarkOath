@@ -93,7 +93,7 @@ const TrackComponent = ({ title, current, max, variant, powerBoard }) => {
   return (
     <div className="darkoath-panel rounded-lg p-4">
       <div className="flex items-center justify-between mb-3">
-        <span className="font-bold uppercase tracking-widest text-sm" style={{ fontFamily: "'Cinzel', serif", color: v.accent, textShadow: `0 0 8px ${v.glow}` }}>
+        <span className="font-bold uppercase tracking-widest text-sm" style={{ fontFamily: "'Lora', Georgia, serif", color: v.accent, textShadow: `0 0 8px ${v.glow}` }}>
           {v.icon} {title}
         </span>
         <span className="text-xs font-bold" style={{ color: v.accent }}>{current}/{max}</span>
@@ -120,7 +120,7 @@ const TrackComponent = ({ title, current, max, variant, powerBoard }) => {
           );
         })}
       </div>
-      <div className="text-xs text-center" style={{ color: 'rgba(232, 217, 168, 0.6)', fontFamily: "'IM Fell English', serif", fontStyle: 'italic' }}>
+      <div className="text-xs text-center" style={{ color: 'rgba(232, 217, 168, 0.6)', fontFamily: "'Lora', Georgia, serif", fontStyle: 'italic' }}>
         {variant === 'traitre' ? `2 : 🗡️ Complot des Traîtres · ${powerLegend(powerBoard)} · dès 3 : Tyran élu Conseiller = victoire · 5 : veto`
           : variant === 'fidele' ? '3 : 🏹 Flèche du Peuple (viser le Tyran) · 5 : victoire' : `→ ${v.goal}`}
       </div>
@@ -147,7 +147,7 @@ const RoleCard = ({ role, teammates = [], players = [] }) => {
       boxShadow: `0 0 20px ${info.glow}, inset 0 1px 0 rgba(255,255,255,0.08)`,
     }}>
       <div className="text-center mb-3">
-        <div className="text-xs uppercase tracking-widest mb-1" style={{ color: 'rgba(232, 217, 168, 0.7)', fontFamily: "'Cinzel', serif" }}>
+        <div className="text-xs uppercase tracking-widest mb-1" style={{ color: 'rgba(232, 217, 168, 0.7)', fontFamily: "'Lora', Georgia, serif" }}>
           Votre Rôle
         </div>
         <div className="text-5xl mb-1" style={{ filter: `drop-shadow(0 0 12px ${info.glow})` }}>
@@ -156,7 +156,7 @@ const RoleCard = ({ role, teammates = [], players = [] }) => {
         <div className="text-2xl font-bold" style={{ fontFamily: "'Cinzel', serif", color: info.color, letterSpacing: '0.15em', textShadow: `0 0 10px ${info.glow}` }}>
           {info.name.toUpperCase()}
         </div>
-        <div className="text-sm italic mt-1" style={{ color: 'rgba(232, 217, 168, 0.85)', fontFamily: "'IM Fell English', serif" }}>
+        <div className="text-sm italic mt-1" style={{ color: 'rgba(232, 217, 168, 0.85)', fontFamily: "'Lora', Georgia, serif" }}>
           {info.tagline}
         </div>
       </div>
@@ -166,7 +166,7 @@ const RoleCard = ({ role, teammates = [], players = [] }) => {
 
       {teammates.length > 0 && (
         <div className="pt-3 mt-2 border-t" style={{ borderColor: 'rgba(199, 168, 105, 0.25)' }}>
-          <div className="text-xs uppercase tracking-widest text-center mb-2" style={{ color: 'rgba(232, 217, 168, 0.75)', fontFamily: "'Cinzel', serif" }}>
+          <div className="text-xs uppercase tracking-widest text-center mb-2" style={{ color: 'rgba(232, 217, 168, 0.75)', fontFamily: "'Lora', Georgia, serif" }}>
             🗡️ Vos Complices
           </div>
           <div className="space-y-1.5">
@@ -189,14 +189,14 @@ const RoleCard = ({ role, teammates = [], players = [] }) => {
 
       {role === 'USURPATEUR' && teammates.length === 0 && (
         <div className="pt-3 mt-2 border-t" style={{ borderColor: 'rgba(168, 85, 247, 0.25)' }}>
-          <div className="text-xs uppercase tracking-widest text-center mb-2" style={{ color: 'rgba(232, 217, 168, 0.75)', fontFamily: "'Cinzel', serif" }}>
+          <div className="text-xs uppercase tracking-widest text-center mb-2" style={{ color: 'rgba(232, 217, 168, 0.75)', fontFamily: "'Lora', Georgia, serif" }}>
             🕯️ Dans l'ombre
           </div>
           <div className="text-xs text-center italic px-3 py-2 rounded" style={{
             background: 'rgba(0, 0, 0, 0.4)',
             border: '1px solid rgba(168, 85, 247, 0.35)',
             color: 'rgba(232, 217, 168, 0.8)',
-            fontFamily: "'IM Fell English', serif",
+            fontFamily: "'Lora', Georgia, serif",
             lineHeight: 1.5,
           }}>
             Vous ignorez l'identité de vos alliés comme de vos ennemis.<br/>
@@ -268,7 +268,7 @@ const EndgameBanner = ({ gameState, currentPlayerId, isHost = false, pending = f
           boxShadow: `0 0 28px ${camp.glow}`,
         }}
       >
-        <div className="text-[11px] uppercase tracking-widest mb-3" style={{ color: 'rgba(232, 217, 168, 0.7)', fontFamily: "'Cinzel', serif", letterSpacing: '0.2em' }}>
+        <div className="text-[11px] uppercase tracking-widest mb-3" style={{ color: 'rgba(232, 217, 168, 0.7)', fontFamily: "'Lora', Georgia, serif", letterSpacing: '0.2em' }}>
           ✦ Fin de la Partie ✦
         </div>
 
@@ -281,7 +281,7 @@ const EndgameBanner = ({ gameState, currentPlayerId, isHost = false, pending = f
           className="font-bold mb-1"
           style={{
             color: camp.color,
-            fontFamily: "'Cinzel', serif",
+            fontFamily: "'Lora', Georgia, serif",
             fontSize: 'clamp(1.8rem, 5vw, 2.75rem)',
             letterSpacing: '0.15em',
             textShadow: `0 0 14px ${camp.glow}`,
@@ -291,14 +291,14 @@ const EndgameBanner = ({ gameState, currentPlayerId, isHost = false, pending = f
         </div>
         <div
           className="uppercase tracking-widest text-sm mb-4"
-          style={{ color: '#e8d9a8', fontFamily: "'Cinzel', serif", letterSpacing: '0.2em' }}
+          style={{ color: '#e8d9a8', fontFamily: "'Lora', Georgia, serif", letterSpacing: '0.2em' }}
         >
           ont gagné
         </div>
 
         <p
           className="text-base md:text-lg mb-2 italic"
-          style={{ color: 'rgba(232, 217, 168, 0.9)', fontFamily: "'IM Fell English', serif" }}
+          style={{ color: 'rgba(232, 217, 168, 0.9)', fontFamily: "'Lora', Georgia, serif" }}
         >
           {reasonText}
         </p>
@@ -327,7 +327,7 @@ const EndgameBanner = ({ gameState, currentPlayerId, isHost = false, pending = f
           border: '1px solid rgba(199, 168, 105, 0.3)',
         }}
       >
-        <div className="text-[10px] uppercase tracking-widest mb-2 flex items-center gap-2" style={{ color: 'rgba(232, 217, 168, 0.7)', fontFamily: "'Cinzel', serif" }}>
+        <div className="text-[10px] uppercase tracking-widest mb-2 flex items-center gap-2" style={{ color: 'rgba(232, 217, 168, 0.7)', fontFamily: "'Lora', Georgia, serif" }}>
           <Eye className="h-3.5 w-3.5" /> Révélation des identités
         </div>
         <div className="space-y-1.5">
@@ -353,7 +353,7 @@ const EndgameBanner = ({ gameState, currentPlayerId, isHost = false, pending = f
                   background: rowBg,
                   border: `1px solid ${rowBorder}`,
                   color: rowColor,
-                  fontFamily: "'Cinzel', serif",
+                  fontFamily: "'Lora', Georgia, serif",
                 }}
               >
                 <div
@@ -425,7 +425,7 @@ const ConseilCountdown = ({ startTime, duration = CONSEIL_COUNTDOWN_DURATION }) 
       animation: urgent ? 'pulse 1s infinite' : 'none',
     }}>
       <Clock className="h-4 w-4" />
-      <span className="uppercase tracking-wider text-xs opacity-80" style={{ fontFamily: "'Cinzel', serif" }}>Conseil</span>
+      <span className="uppercase tracking-wider text-xs opacity-80" style={{ fontFamily: "'Lora', Georgia, serif" }}>Conseil</span>
       <span className="font-bold text-base tabular-nums">{timeLeft}s</span>
     </div>
   );
@@ -442,7 +442,7 @@ const GovernmentBadge = ({ label, icon, seat, players, color }) => {
       color: '#e8d9a8',
     }}>
       <span>{icon}</span>
-      <span className="uppercase tracking-wider text-xs opacity-80" style={{ fontFamily: "'Cinzel', serif" }}>{label}</span>
+      <span className="uppercase tracking-wider text-xs opacity-80" style={{ fontFamily: "'Lora', Georgia, serif" }}>{label}</span>
       <span className="font-semibold">{player.name}</span>
     </div>
   );
@@ -471,7 +471,7 @@ const MusicControl = ({ enabled, volume, onToggle, onVolume }) => {
       <button
         onClick={() => setExpanded(v => !v)}
         className="text-[10px] uppercase tracking-widest opacity-70 hover:opacity-100"
-        style={{ color: '#e8d9a8', fontFamily: "'Cinzel', serif" }}
+        style={{ color: '#e8d9a8', fontFamily: "'Lora', Georgia, serif" }}
         aria-label="Régler le volume"
       >
         Musique
@@ -833,7 +833,7 @@ const GameInterface = ({ roomCode }) => {
       <div className="min-h-screen darkoath-game flex items-center justify-center" style={{ minHeight: '100dvh' }}>
         <div className="text-center">
           <div className="animate-spin h-10 w-10 border-4 border-amber-600 border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-amber-100 text-lg" style={{ fontFamily: "'Cinzel', serif" }}>Le Conseil se réunit…</p>
+          <p className="text-amber-100 text-lg" style={{ fontFamily: "'Lora', Georgia, serif" }}>Le Conseil se réunit…</p>
           <p className="text-amber-200/60 text-sm mt-2 tracking-widest">{roomCode}</p>
         </div>
       </div>
@@ -844,7 +844,7 @@ const GameInterface = ({ roomCode }) => {
     return (
       <div className="min-h-screen darkoath-game flex items-center justify-center p-4" style={{ minHeight: '100dvh' }}>
         <div className="oath-card p-8 text-center max-w-md">
-          <p className="text-amber-100 text-xl mb-3" style={{ fontFamily: "'Cinzel', serif" }}>Partie introuvable</p>
+          <p className="text-amber-100 text-xl mb-3" style={{ fontFamily: "'Lora', Georgia, serif" }}>Partie introuvable</p>
           <p className="text-amber-200/70 text-sm mb-6">{error || 'Connexion impossible.'}</p>
           <Button onClick={() => navigate('/')} className="oath-btn-primary px-6">Retour à l'accueil</Button>
         </div>
@@ -1089,7 +1089,7 @@ const GameInterface = ({ roomCode }) => {
             background: 'rgba(199, 168, 105, 0.15)',
             border: '1px solid rgba(199, 168, 105, 0.4)',
             color: '#e8d9a8',
-            fontFamily: "'Cinzel', serif",
+            fontFamily: "'Lora', Georgia, serif",
           }}>
             T{gameState.turn_number} · {formatPhaseName(phase)}
           </span>
@@ -1111,7 +1111,7 @@ const GameInterface = ({ roomCode }) => {
             title="Tutoriel : comment jouer, pas à pas"
             aria-label="Ouvrir le tutoriel"
           >
-            🎓{isDesktop && <span className="ml-1" style={{ fontFamily: "'Cinzel', serif" }}>Tuto</span>}
+            🎓{isDesktop && <span className="ml-1" style={{ fontFamily: "'Lora', Georgia, serif" }}>Tuto</span>}
           </button>
           <button
             type="button"
@@ -1159,7 +1159,7 @@ const GameInterface = ({ roomCode }) => {
 
   const panelTitle = (
     <div className="flex items-center justify-between mb-3">
-      <span className="text-sm uppercase tracking-widest text-amber-200" style={{ fontFamily: "'Cinzel', serif" }}>
+      <span className="text-sm uppercase tracking-widest text-amber-200" style={{ fontFamily: "'Lora', Georgia, serif" }}>
         {formatPhaseName(phase)}
       </span>
       {me && (
@@ -1220,7 +1220,7 @@ const GameInterface = ({ roomCode }) => {
             <p className="text-base text-red-200 mt-2">
               <strong>{executionBanner.name}</strong> <span className="text-red-300/70">· siège {executionBanner.seat}</span>
             </p>
-            <p className="text-xs text-red-300/60 italic mt-2" style={{ fontFamily: "'IM Fell English', serif" }}>
+            <p className="text-xs text-red-300/60 italic mt-2" style={{ fontFamily: "'Lora', Georgia, serif" }}>
               Le Roi a tranché. Que son âme erre à jamais.
             </p>
           </div>

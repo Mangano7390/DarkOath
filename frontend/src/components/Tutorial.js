@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const CINZEL = "'Cinzel', serif";
-const FELL = "'IM Fell English', serif";
+const FELL = "'Lora', Georgia, serif";
 const GOLD = '#c7a869';
 const PARCH = '#e8d9a8';
 const BLUE = '#60a5fa';
@@ -27,7 +27,7 @@ const Panel = ({ children, className = '', style }) => (
 
 const Chip = ({ children, color = PARCH, bg = 'rgba(0,0,0,0.55)' }) => (
   <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold uppercase tracking-wider whitespace-nowrap"
-    style={{ color, background: bg, border: `1px solid ${color}55`, fontFamily: CINZEL }}>
+    style={{ color, background: bg, border: `1px solid ${color}55`, fontFamily: FELL }}>
     {children}
   </span>
 );
@@ -43,15 +43,15 @@ const Seat = ({ name, seat, badge, chips = [], glow, dim, ring = 'rgba(199,168,1
     }}>
     {badge && (
       <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-1.5 rounded text-[11px] font-bold whitespace-nowrap"
-        style={{ background: badge.bg || GOLD, color: '#1a1008', fontFamily: CINZEL }}>
+        style={{ background: badge.bg || GOLD, color: '#1a1008', fontFamily: FELL }}>
         {badge.text}
       </span>
     )}
     <span className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold mb-1"
-      style={{ background: 'rgba(199,168,105,0.18)', border: `1px solid ${GOLD}`, color: PARCH, fontFamily: CINZEL }}>
+      style={{ background: 'rgba(199,168,105,0.18)', border: `1px solid ${GOLD}`, color: PARCH, fontFamily: FELL }}>
       {seat}
     </span>
-    <span className="text-[13px] leading-tight mb-1 truncate w-full" style={{ color: PARCH, fontFamily: CINZEL }}>{name}</span>
+    <span className="text-[13px] leading-tight mb-1 truncate w-full" style={{ color: PARCH, fontFamily: FELL }}>{name}</span>
     <span className="flex flex-wrap justify-center gap-0.5">{chips}</span>
   </div>
 );
@@ -76,7 +76,7 @@ const Card = ({ kind, small, onClick, selected, faded, label }) => {
         opacity: faded ? 0.3 : 1,
       }}>
       <span style={{ fontSize: small ? 16 : 32 }}>{loyal ? '🛡️' : '🗡️'}</span>
-      {!small && <span className="text-[11px] mt-1 font-bold uppercase" style={{ color: '#fff', fontFamily: CINZEL }}>{loyal ? 'Loyal' : 'Trahison'}</span>}
+      {!small && <span className="text-[11px] mt-1 font-bold uppercase" style={{ color: '#fff', fontFamily: FELL }}>{loyal ? 'Loyal' : 'Trahison'}</span>}
     </Tag>
   );
 };
@@ -84,7 +84,7 @@ const Card = ({ kind, small, onClick, selected, faded, label }) => {
 const Track = ({ label, color, total, filled, icons = {}, last }) => (
   <div>
     <div className="flex items-center justify-between mb-1">
-      <span className="text-sm uppercase tracking-widest font-bold" style={{ color, fontFamily: CINZEL }}>{label}</span>
+      <span className="text-sm uppercase tracking-widest font-bold" style={{ color, fontFamily: FELL }}>{label}</span>
       <span className="text-sm" style={{ color: 'rgba(232,217,168,0.7)' }}>{filled}/{total}</span>
     </div>
     <div className="flex gap-1.5">
@@ -104,7 +104,7 @@ const Track = ({ label, color, total, filled, icons = {}, last }) => (
 const Bubble = ({ who, color = PARCH, children, right }) => (
   <div className={`flex ${right ? 'justify-end' : ''}`}>
     <div className="max-w-[85%] rounded-lg px-3 py-2 text-base" style={{ background: 'rgba(0,0,0,0.5)', border: `1px solid ${color}66` }}>
-      <div className="text-xs uppercase tracking-widest font-bold mb-0.5" style={{ color, fontFamily: CINZEL }}>{who}</div>
+      <div className="text-xs uppercase tracking-widest font-bold mb-0.5" style={{ color, fontFamily: FELL }}>{who}</div>
       <div style={{ color: PARCH }}>{children}</div>
     </div>
   </div>
@@ -112,7 +112,7 @@ const Bubble = ({ who, color = PARCH, children, right }) => (
 
 const KeyPoints = ({ items }) => (
   <div className="rounded-lg p-3 mt-4" style={{ background: 'rgba(199,168,105,0.08)', border: '1px solid rgba(199,168,105,0.35)' }}>
-    <div className="text-[13px] uppercase tracking-widest font-bold mb-1.5" style={{ color: GOLD, fontFamily: CINZEL }}>À retenir</div>
+    <div className="text-[13px] uppercase tracking-widest font-bold mb-1.5" style={{ color: GOLD, fontFamily: FELL }}>À retenir</div>
     <ul className="space-y-1">
       {items.map((t, i) => (
         <li key={i} className="flex gap-2 text-base leading-snug" style={{ color: PARCH }}>
@@ -145,11 +145,11 @@ const RolesDemo = () => {
   return (
     <div>
       <div className="flex items-center gap-2 mb-3 flex-wrap">
-        <span className="text-sm uppercase tracking-widest" style={{ color: GOLD, fontFamily: CINZEL }}>Joueurs à la table :</span>
+        <span className="text-sm uppercase tracking-widest" style={{ color: GOLD, fontFamily: FELL }}>Joueurs à la table :</span>
         {[5, 6, 7, 8, 9, 10].map((k) => (
           <button key={k} type="button" onClick={() => setN(k)} aria-pressed={n === k}
             className="w-10 h-10 rounded-full text-base font-bold transition-colors"
-            style={{ background: n === k ? GOLD : 'rgba(0,0,0,0.5)', color: n === k ? '#1a1008' : PARCH, border: `1px solid ${GOLD}`, fontFamily: CINZEL }}>
+            style={{ background: n === k ? GOLD : 'rgba(0,0,0,0.5)', color: n === k ? '#1a1008' : PARCH, border: `1px solid ${GOLD}`, fontFamily: FELL }}>
             {k}
           </button>
         ))}
@@ -158,8 +158,8 @@ const RolesDemo = () => {
         {roles.map((r) => (
           <div key={r.name} className="rounded-lg p-3" style={{ background: r.bg, border: `1px solid ${r.color}` }}>
             <div className="flex items-center justify-between mb-1">
-              <span className="font-bold" style={{ color: r.color, fontFamily: CINZEL }}>{r.icon} {r.name}</span>
-              <span className="text-xl font-bold" style={{ color: r.color, fontFamily: CINZEL }}>×{r.count}</span>
+              <span className="font-bold" style={{ color: r.color, fontFamily: FELL }}>{r.icon} {r.name}</span>
+              <span className="text-xl font-bold" style={{ color: r.color, fontFamily: FELL }}>×{r.count}</span>
             </div>
             <div className="text-sm leading-snug" style={{ color: PARCH }}>{r.goal}</div>
             <div className="text-sm leading-snug mt-1 italic" style={{ color: 'rgba(232,217,168,0.75)' }}>{r.knows}</div>
@@ -182,7 +182,7 @@ const DecreeDemo = () => {
     <Panel>
       <div className="grid sm:grid-cols-3 gap-3 items-start">
         <div className="text-center">
-          <div className="text-[13px] uppercase tracking-widest mb-2 font-bold" style={{ color: step === 0 ? '#fde68a' : GOLD, fontFamily: CINZEL }}>① Le Roi pioche 3</div>
+          <div className="text-[13px] uppercase tracking-widest mb-2 font-bold" style={{ color: step === 0 ? '#fde68a' : GOLD, fontFamily: FELL }}>① Le Roi pioche 3</div>
           <div className="flex justify-center gap-1.5">
             {START_HAND.map((k, i) => (
               <Card key={i} kind={k} small={step > 0} faded={kingOut === i}
@@ -193,7 +193,7 @@ const DecreeDemo = () => {
           {step === 0 && <div className="text-sm mt-2" style={{ color: '#fde68a' }}>👆 Vous êtes le Roi : cliquez sur la carte à <b>écarter</b>.</div>}
         </div>
         <div className="text-center">
-          <div className="text-[13px] uppercase tracking-widest mb-2 font-bold" style={{ color: step === 1 ? '#fde68a' : GOLD, fontFamily: CINZEL }}>② Le Conseiller en reçoit 2</div>
+          <div className="text-[13px] uppercase tracking-widest mb-2 font-bold" style={{ color: step === 1 ? '#fde68a' : GOLD, fontFamily: FELL }}>② Le Conseiller en reçoit 2</div>
           {step >= 1 ? (
             <div className="flex justify-center gap-1.5">
               {passed.map((k, i) => (
@@ -206,7 +206,7 @@ const DecreeDemo = () => {
           {step === 1 && <div className="text-sm mt-2" style={{ color: '#fde68a' }}>👆 Vous êtes le Conseiller : écartez-en encore 1.</div>}
         </div>
         <div className="text-center">
-          <div className="text-[13px] uppercase tracking-widest mb-2 font-bold" style={{ color: step === 2 ? '#fde68a' : GOLD, fontFamily: CINZEL }}>③ Le dernier est adopté</div>
+          <div className="text-[13px] uppercase tracking-widest mb-2 font-bold" style={{ color: step === 2 ? '#fde68a' : GOLD, fontFamily: FELL }}>③ Le dernier est adopté</div>
           {enacted ? (
             <div className="flex flex-col items-center gap-2">
               <Card kind={enacted} selected />
@@ -341,13 +341,13 @@ const buildSteps = ({ answers, setAnswers }) => [
         <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-center my-4">
           <Panel className="text-center" style={{ borderColor: BLUE }}>
             <div className="text-4xl mb-1">🛡️</div>
-            <div className="font-bold" style={{ color: BLUE, fontFamily: CINZEL }}>Les Fidèles</div>
+            <div className="font-bold" style={{ color: BLUE, fontFamily: FELL }}>Les Fidèles</div>
             <div className="text-sm mt-1" style={{ color: PARCH }}>la majorité, qui ne sait rien</div>
           </Panel>
           <div className="text-2xl font-bold" style={{ color: GOLD, fontFamily: CINZEL }}>VS</div>
           <Panel className="text-center" style={{ borderColor: RED }}>
             <div className="text-4xl mb-1">⚔️👑</div>
-            <div className="font-bold" style={{ color: RED, fontFamily: CINZEL }}>Les Traîtres</div>
+            <div className="font-bold" style={{ color: RED, fontFamily: FELL }}>Les Traîtres</div>
             <div className="text-sm mt-1" style={{ color: PARCH }}>une minorité cachée, avec leur Tyran</div>
           </Panel>
         </div>
@@ -377,11 +377,11 @@ const buildSteps = ({ answers, setAnswers }) => [
         </Panel>
         <div className="grid sm:grid-cols-2 gap-2 mt-3">
           <div className="rounded-lg p-3" style={{ background: 'rgba(30,58,138,0.3)', border: `1px solid ${BLUE}` }}>
-            <div className="font-bold text-base mb-1" style={{ color: BLUE, fontFamily: CINZEL }}>🛡️ Les Fidèles gagnent si…</div>
+            <div className="font-bold text-base mb-1" style={{ color: BLUE, fontFamily: FELL }}>🛡️ Les Fidèles gagnent si…</div>
             <div className="text-base" style={{ color: PARCH }}>5 décrets Loyaux sont adoptés,<br /><b>ou</b> le Tyran est tué (Exécution ou Flèche du Peuple).</div>
           </div>
           <div className="rounded-lg p-3" style={{ background: 'rgba(127,29,29,0.35)', border: `1px solid ${RED}` }}>
-            <div className="font-bold text-base mb-1" style={{ color: RED, fontFamily: CINZEL }}>⚔️ Les Traîtres gagnent si…</div>
+            <div className="font-bold text-base mb-1" style={{ color: RED, fontFamily: FELL }}>⚔️ Les Traîtres gagnent si…</div>
             <div className="text-base" style={{ color: PARCH }}>6 décrets de Trahison sont adoptés,<br /><b>ou</b> le Tyran est élu Conseiller après 3 Trahisons.</div>
           </div>
         </div>
@@ -478,7 +478,7 @@ const buildSteps = ({ answers, setAnswers }) => [
           ].map(([i, n, d]) => (
             <Panel key={n} className="!p-3 flex gap-3 items-start">
               <span className="text-3xl">{i}</span>
-              <span><b className="text-base" style={{ color: '#fde68a', fontFamily: CINZEL }}>{n}</b><span className="block text-base" style={{ color: PARCH }}>{d}</span></span>
+              <span><b className="text-base" style={{ color: '#fde68a', fontFamily: FELL }}>{n}</b><span className="block text-base" style={{ color: PARCH }}>{d}</span></span>
             </Panel>
           ))}
         </div>
@@ -493,8 +493,8 @@ const buildSteps = ({ answers, setAnswers }) => [
         <P>Chaque camp gagne aussi <B>un pouvoir unique</B> dans la partie, quel que soit le nombre de joueurs.</P>
         <div className="grid sm:grid-cols-2 gap-3">
           <div className="rounded-lg p-4" style={{ background: 'rgba(30,58,138,0.3)', border: `1px solid ${BLUE}` }}>
-            <div className="font-bold text-lg mb-1" style={{ color: BLUE, fontFamily: CINZEL }}>🏹 La Flèche du Peuple</div>
-            <div className="text-sm uppercase tracking-widest mb-2" style={{ color: 'rgba(232,217,168,0.7)', fontFamily: CINZEL }}>Au 3ᵉ Décret Loyal</div>
+            <div className="font-bold text-lg mb-1" style={{ color: BLUE, fontFamily: FELL }}>🏹 La Flèche du Peuple</div>
+            <div className="text-sm uppercase tracking-widest mb-2" style={{ color: 'rgba(232,217,168,0.7)', fontFamily: FELL }}>Au 3ᵉ Décret Loyal</div>
             <div className="text-base leading-snug" style={{ color: PARCH }}>
               Tous les joueurs vivants désignent celui qu'ils croient être le <B c={PURPLE}>Tyran</B>. Le plus désigné est visé :
               <span className="block mt-1">✔️ c'est le Tyran → <B c={BLUE}>les Fidèles gagnent</B> ;</span>
@@ -503,8 +503,8 @@ const buildSteps = ({ answers, setAnswers }) => [
             </div>
           </div>
           <div className="rounded-lg p-4" style={{ background: 'rgba(127,29,29,0.35)', border: `1px solid ${RED}` }}>
-            <div className="font-bold text-lg mb-1" style={{ color: RED, fontFamily: CINZEL }}>🗡️ Le Complot</div>
-            <div className="text-sm uppercase tracking-widest mb-2" style={{ color: 'rgba(232,217,168,0.7)', fontFamily: CINZEL }}>Au 2ᵉ Décret de Trahison</div>
+            <div className="font-bold text-lg mb-1" style={{ color: RED, fontFamily: FELL }}>🗡️ Le Complot</div>
+            <div className="text-sm uppercase tracking-widest mb-2" style={{ color: 'rgba(232,217,168,0.7)', fontFamily: FELL }}>Au 2ᵉ Décret de Trahison</div>
             <div className="text-base leading-snug" style={{ color: PARCH }}>
               La nuit tombe : les <B c={RED}>Traîtres</B> choisissent en secret un <B c={BLUE}>Fidèle</B> à assassiner. Au matin, tout le monde découvre la victime… mais personne ne sait qui a frappé.
               <span className="block mt-1">Le Tyran ne participe pas et ne peut pas être visé.</span>
@@ -540,7 +540,7 @@ const buildSteps = ({ answers, setAnswers }) => [
           </ul>
         </div>
         <Panel className="mt-4 !p-3">
-          <div className="flex flex-wrap items-center gap-1.5 text-[13px] uppercase tracking-wider mb-2" style={{ fontFamily: CINZEL, color: 'rgba(232,217,168,0.7)' }}>
+          <div className="flex flex-wrap items-center gap-1.5 text-[13px] uppercase tracking-wider mb-2" style={{ fontFamily: FELL, color: 'rgba(232,217,168,0.7)' }}>
             {['👑 Nomination', '🗳️ Vote', '📜 Décret', '🕯️ Débat', '⚜️ Pouvoir'].map((s, i) => (
               <span key={s} className="px-2 py-1 rounded" style={{ background: i === 1 ? 'rgba(199,168,105,0.3)' : 'rgba(0,0,0,0.4)', color: i === 1 ? '#fde68a' : undefined }}>{s}</span>
             ))}
@@ -561,7 +561,7 @@ const buildSteps = ({ answers, setAnswers }) => [
           { c: PURPLE, bg: 'rgba(88,28,135,0.35)', t: '👑 Tyran', tips: ['Vous ne connaissez pas vos alliés : ne vous fiez à personne.', 'Jouez le Fidèle modèle, sans excès.', 'Après 3 Trahisons, faites-vous nommer Conseiller.'] },
         ].map((r) => (
           <div key={r.t} className="rounded-lg p-3" style={{ background: r.bg, border: `1px solid ${r.c}` }}>
-            <div className="font-bold mb-2" style={{ color: r.c, fontFamily: CINZEL }}>{r.t}</div>
+            <div className="font-bold mb-2" style={{ color: r.c, fontFamily: FELL }}>{r.t}</div>
             <ul className="space-y-1.5">
               {r.tips.map((t) => <li key={t} className="text-base leading-snug" style={{ color: PARCH }}>• {t}</li>)}
             </ul>
@@ -593,7 +593,7 @@ const buildSteps = ({ answers, setAnswers }) => [
             <><B c={RED}>6 Trahisons</B> ou le Tyran Conseiller après 3 Trahisons : victoire des Traîtres.</>,
           ].map((t, i) => (
             <li key={i} className="flex gap-3 items-start text-[17px]" style={{ color: PARCH }}>
-              <span className="w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-base font-bold" style={{ background: 'rgba(199,168,105,0.2)', border: `1px solid ${GOLD}`, fontFamily: CINZEL }}>{i + 1}</span>
+              <span className="w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-base font-bold" style={{ background: 'rgba(199,168,105,0.2)', border: `1px solid ${GOLD}`, fontFamily: FELL }}>{i + 1}</span>
               <span className="pt-0.5">{t}</span>
             </li>
           ))}
@@ -660,10 +660,10 @@ const Tutorial = ({ open, onClose, onFinish }) => {
           <div className="flex items-center justify-between gap-3 mb-3">
             <button type="button" onClick={onClose} aria-label="Quitter le tutoriel"
               className="px-3 py-1.5 rounded-lg text-sm hover:bg-amber-900/40 whitespace-nowrap"
-              style={{ color: PARCH, border: '1px solid rgba(199,168,105,0.4)', fontFamily: CINZEL }}>
+              style={{ color: PARCH, border: '1px solid rgba(199,168,105,0.4)', fontFamily: FELL }}>
               ← Quitter
             </button>
-            <span className="text-[13px] uppercase tracking-[0.2em] text-right" style={{ color: GOLD, fontFamily: CINZEL }}>
+            <span className="text-[13px] uppercase tracking-[0.2em] text-right" style={{ color: GOLD, fontFamily: FELL }}>
               🎓 Tutoriel · {CHAPTERS[step.chapter]} · {i + 1}/{steps.length}
             </span>
           </div>
@@ -690,7 +690,7 @@ const Tutorial = ({ open, onClose, onFinish }) => {
         <div className="max-w-4xl mx-auto px-4 sm:px-8 py-3 flex items-center gap-3">
           <button type="button" onClick={() => setI((v) => Math.max(v - 1, 0))} disabled={i === 0}
             className="px-4 py-2.5 rounded-lg text-base disabled:opacity-30"
-            style={{ color: PARCH, border: '1px solid rgba(199,168,105,0.4)', fontFamily: CINZEL }}>
+            style={{ color: PARCH, border: '1px solid rgba(199,168,105,0.4)', fontFamily: FELL }}>
             ← Précédent
           </button>
           <span className="flex-1 text-center text-sm hidden sm:block" style={{ color: 'rgba(232,217,168,0.55)' }}>
@@ -701,7 +701,7 @@ const Tutorial = ({ open, onClose, onFinish }) => {
           <span className="flex-1 sm:hidden" />
           <button ref={nextRef} type="button" onClick={() => (last ? finish() : setI((v) => v + 1))}
             className="px-5 py-2.5 rounded-lg text-base font-bold"
-            style={{ background: 'linear-gradient(180deg, #d9b56c, #a7823f)', color: '#1a1008', fontFamily: CINZEL, boxShadow: '0 0 12px rgba(199,168,105,0.35)' }}>
+            style={{ background: 'linear-gradient(180deg, #d9b56c, #a7823f)', color: '#1a1008', fontFamily: FELL, boxShadow: '0 0 12px rgba(199,168,105,0.35)' }}>
             {last ? 'Jouer ⚔️' : i === 0 ? 'Commencer →' : 'Suivant →'}
           </button>
         </div>

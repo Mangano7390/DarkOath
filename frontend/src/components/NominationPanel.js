@@ -10,7 +10,7 @@ const NominationPanel = ({ meSeat, regentSeat, players, prevGovernment, disgrace
     return (
       <div className="text-center py-6 px-3">
         <Hourglass className="h-10 w-10 text-amber-400/80 mx-auto mb-3 animate-pulse" />
-        <p className="text-amber-200 text-base mb-1" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.05em' }}>
+        <p className="text-amber-200 text-base mb-1" style={{ fontFamily: "'Lora', Georgia, serif", letterSpacing: '0.05em' }}>
           Le Roi délibère…
         </p>
         <p className="text-amber-100/70 text-sm">
@@ -55,7 +55,7 @@ const NominationPanel = ({ meSeat, regentSeat, players, prevGovernment, disgrace
       >
         <Crown className="h-5 w-5 text-amber-400 flex-shrink-0 mt-0.5" />
         <div>
-          <p className="text-amber-200 font-medium text-sm mb-1" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.05em' }}>
+          <p className="text-amber-200 font-medium text-sm mb-1" style={{ fontFamily: "'Lora', Georgia, serif", letterSpacing: '0.05em' }}>
             Vous êtes le Roi
           </p>
           <p className="text-amber-100/80 text-xs leading-relaxed">
@@ -95,12 +95,12 @@ const NominationPanel = ({ meSeat, regentSeat, players, prevGovernment, disgrace
                     background: 'rgba(199, 168, 105, 0.2)',
                     border: '1px solid rgba(199, 168, 105, 0.5)',
                     color: '#e8d9a8',
-                    fontFamily: "'Cinzel', serif",
+                    fontFamily: "'Lora', Georgia, serif",
                   }}
                 >
                   {player.seat}
                 </div>
-                <span className="font-medium text-base truncate" style={{ fontFamily: "'Cinzel', serif" }}>
+                <span className="font-medium text-base truncate" style={{ fontFamily: "'Lora', Georgia, serif" }}>
                   {player.name}
                 </span>
               </div>
@@ -115,7 +115,7 @@ const NominationPanel = ({ meSeat, regentSeat, players, prevGovernment, disgrace
             border: '1px solid rgba(220, 38, 38, 0.45)',
           }}
         >
-          <p className="text-red-200 font-medium text-sm mb-1" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.05em' }}>
+          <p className="text-red-200 font-medium text-sm mb-1" style={{ fontFamily: "'Lora', Georgia, serif", letterSpacing: '0.05em' }}>
             Aucun candidat éligible
           </p>
           <p className="text-red-300/80 text-xs">
@@ -127,7 +127,7 @@ const NominationPanel = ({ meSeat, regentSeat, players, prevGovernment, disgrace
       {excludedSeats.length > 0 && (
         <div className="flex flex-wrap gap-2 text-xs text-amber-100/60">
           <Users className="h-3.5 w-3.5 mt-0.5" />
-          <span className="uppercase tracking-widest" style={{ fontFamily: "'Cinzel', serif", fontSize: '10px' }}>Exclus&nbsp;:</span>
+          <span className="uppercase tracking-widest" style={{ fontFamily: "'Lora', Georgia, serif", fontSize: '10px' }}>Exclus&nbsp;:</span>
           {excludedSeats.map(({ seat, reason }) => (
             <span
               key={`${seat}-${reason}`}

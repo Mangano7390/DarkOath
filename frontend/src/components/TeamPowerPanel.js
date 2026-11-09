@@ -1,8 +1,7 @@
 // Pouvoirs de camp : Flèche du Peuple (toute la table) et Complot (Traîtres).
 import React, { useEffect, useState } from 'react';
 
-const CINZEL = "'Cinzel', serif";
-const FELL = "'IM Fell English', serif";
+const FELL = "'Lora', Georgia, serif";
 const PARCH = '#e8d9a8';
 const GOLD = '#c7a869';
 
@@ -10,7 +9,7 @@ const Header = ({ icon, title, color, children }) => (
   <div className="p-3 rounded-lg" style={{ background: `linear-gradient(180deg, ${color}26, rgba(10,6,4,0.85))`, border: `1px solid ${color}88`, boxShadow: `0 0 18px ${color}33` }}>
     <div className="flex items-center gap-2 mb-1">
       <span className="text-2xl" aria-hidden>{icon}</span>
-      <span className="font-bold uppercase tracking-widest text-sm" style={{ fontFamily: CINZEL, color }}>{title}</span>
+      <span className="font-bold uppercase tracking-widest text-sm" style={{ fontFamily: FELL, color }}>{title}</span>
     </div>
     <p className="text-sm leading-snug" style={{ color: PARCH, fontFamily: FELL }}>{children}</p>
   </div>
@@ -29,9 +28,9 @@ const Candidate = ({ p, selected, onClick, disabled, note }) => (
     }}
     aria-pressed={selected}
   >
-    <span className="w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: 'rgba(199,168,105,0.18)', border: `1px solid ${GOLD}`, fontFamily: CINZEL }}>{p.seat}</span>
+    <span className="w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: 'rgba(199,168,105,0.18)', border: `1px solid ${GOLD}`, fontFamily: FELL }}>{p.seat}</span>
     <span className="flex-1 min-w-0">
-      <span className="block truncate font-semibold" style={{ fontFamily: CINZEL }}>{p.name}</span>
+      <span className="block truncate font-semibold" style={{ fontFamily: FELL }}>{p.name}</span>
       {note && <span className="block text-xs italic" style={{ color: 'rgba(232,217,168,0.7)' }}>{note}</span>}
     </span>
     {selected && <span aria-hidden>🎯</span>}
@@ -83,7 +82,7 @@ const TeamPowerPanel = ({ gameState: gs, me, pending, onAction }) => {
               disabled={!choice || pending}
               onClick={() => onAction('ARROW_VOTE', { targetSeat: choice })}
               className="w-full py-3 rounded-lg font-bold uppercase tracking-widest disabled:opacity-40"
-              style={{ fontFamily: CINZEL, background: 'linear-gradient(180deg, #93c5fd, #2563eb)', color: '#06122b', boxShadow: '0 0 14px rgba(96,165,250,0.45)' }}
+              style={{ fontFamily: FELL, background: 'linear-gradient(180deg, #93c5fd, #2563eb)', color: '#06122b', boxShadow: '0 0 14px rgba(96,165,250,0.45)' }}
             >
               {choice ? `🏹 Viser ${nameOf(choice)}` : 'Choisissez une cible'}
             </button>
@@ -139,7 +138,7 @@ const TeamPowerPanel = ({ gameState: gs, me, pending, onAction }) => {
               disabled={!choice || pending}
               onClick={() => onAction('PLOT_VOTE', { targetSeat: choice })}
               className="w-full py-3 rounded-lg font-bold uppercase tracking-widest disabled:opacity-40"
-              style={{ fontFamily: CINZEL, background: 'linear-gradient(180deg, #f87171, #991b1b)', color: '#1a0505', boxShadow: '0 0 14px rgba(248,113,113,0.45)' }}
+              style={{ fontFamily: FELL, background: 'linear-gradient(180deg, #f87171, #991b1b)', color: '#1a0505', boxShadow: '0 0 14px rgba(248,113,113,0.45)' }}
             >
               {choice ? `🗡️ Abattre ${nameOf(choice)}` : 'Choisissez une victime'}
             </button>

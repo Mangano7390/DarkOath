@@ -35,7 +35,7 @@ const ConseilTimer = ({ startTime, duration = CONSEIL_DURATION }) => {
       <div className="flex flex-col items-center leading-tight">
         <span
           className="uppercase tracking-widest text-[10px] opacity-80"
-          style={{ fontFamily: "'Cinzel', serif", color: urgent ? '#fecaca' : '#e8d9a8' }}
+          style={{ fontFamily: "'Lora', Georgia, serif", color: urgent ? '#fecaca' : '#e8d9a8' }}
         >
           Conseil du Royaume
         </span>
@@ -424,7 +424,7 @@ const ConseilRoyaumePanel = ({
 
         {speakingPlayers.length > 0 && (
           <div className="p-3 rounded-lg" style={{ background: 'rgba(199, 168, 105, 0.08)', border: '1px solid rgba(199, 168, 105, 0.2)' }}>
-            <h4 className="text-amber-300 font-medium mb-2 text-sm" style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' }}>
+            <h4 className="text-amber-300 font-medium mb-2 text-sm" style={{ fontFamily: "'Lora', Georgia, serif", letterSpacing: '0.08em' }}>
               EN TRAIN DE PARLER
             </h4>
             <div className="flex flex-wrap gap-2">
@@ -462,7 +462,7 @@ const ConseilRoyaumePanel = ({
             >
               <h4
                 className="text-amber-300 font-medium mb-2 text-sm flex items-center gap-2"
-                style={{ fontFamily: "'Cinzel', serif", letterSpacing: '0.08em' }}
+                style={{ fontFamily: "'Lora', Georgia, serif", letterSpacing: '0.08em' }}
               >
                 <VolumeX className="h-4 w-4" />
                 SILENCE INDIVIDUEL
@@ -497,14 +497,14 @@ const ConseilRoyaumePanel = ({
                           background: 'rgba(199, 168, 105, 0.2)',
                           border: '1px solid rgba(199, 168, 105, 0.4)',
                           color: '#e8d9a8',
-                          fontFamily: "'Cinzel', serif",
+                          fontFamily: "'Lora', Georgia, serif",
                         }}
                       >
                         {p.seat}
                       </div>
                       <span
                         className="flex-1 text-left truncate text-sm"
-                        style={{ fontFamily: "'Cinzel', serif" }}
+                        style={{ fontFamily: "'Lora', Georgia, serif" }}
                       >
                         {p.name}
                       </span>
