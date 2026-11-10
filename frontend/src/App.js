@@ -297,6 +297,26 @@ const LandingPage = () => {
     }
   };
 
+  // One click to a real game: a private table filled with bots, already started.
+  const quickPlay = async () => {
+    if (!playerName.trim() || busy) return;
+    setBusy(true);
+    try {
+      const roomResponse = await withAuth(playerName.trim(), () => axios.post(`${API}/rooms`));
+      const { code } = roomResponse.data;
+      await axios.post(`${API}/rooms/${code}/join`);
+      for (let i = 0; i < 5; i += 1) {
+        await axios.post(`${API}/rooms/${code}/action`, { action_type: 'ADD_BOT', payload: {} });
+      }
+      await axios.post(`${API}/rooms/${code}/start`);
+      navigate(`/game/${code}`);
+    } catch (error) {
+      toast.error(errorMessage(error, "Impossible de lancer la partie rapide."));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const joinRoom = async (codeOverride) => {
     const code = (typeof codeOverride === 'string' ? codeOverride : roomCode).trim().toUpperCase();
     if (!playerName.trim() || !code || busy) return;
@@ -859,8 +879,18 @@ const LandingPage = () => {
                 >
                   {busy ? 'Ouverture des portes…' : 'Sceller le Serment'}
                 </Button>
+                <Button
+                  onClick={quickPlay}
+                  disabled={!playerName.trim() || busy}
+                  variant="outline"
+                  className="w-full py-5 bg-black/40 border-amber-700/60 text-amber-100 hover:bg-amber-950/50 font-serif"
+                >
+                  ⚔️ Partie rapide contre 5 bots
+                </Button>
                 <p className="text-center text-xs text-amber-200/60 font-serif italic">
-                  Pas assez d'amis ? Ajoutez des bots dans l'antichambre.
+                  {playerName.trim()
+                    ? "Seul ? La partie rapide démarre tout de suite. Entre amis, scellez le serment et partagez le code."
+                    : "Entrez d'abord votre nom ci-dessus."}
                 </p>
               </TabsContent>
 

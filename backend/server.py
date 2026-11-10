@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from enum import Enum
 import random
 import time
+import pickle
 from fastapi import Header
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -212,6 +213,10 @@ class GameState(BaseModel):
     bot_chat_queue: List[Dict[str, Any]] = []  # delayed bot chat lines {due, player_id, text}
     investigated_seats: List[int] = []        # nobody can be investigated twice
     phase_key: Optional[str] = None           # detects phase changes for the phase clock
+    # Réactions rapides (emotes) affichées au-dessus des sièges
+    emotes: List[Dict[str, Any]] = []         # {id, seat, emote, ts}
+    emote_queue: List[Dict[str, Any]] = []    # réactions de bots à venir {due, seat, emote}
+    emote_marks: List[str] = []               # évènements auxquels les bots ont déjà réagi
 
 
 def _now() -> float:
@@ -234,6 +239,177 @@ def log_event(game_state: "GameState", kind: str, text: str, **data: Any) -> Non
     })
     if len(game_state.events) > MAX_EVENTS:
         game_state.events = game_state.events[-MAX_EVENTS:]
+
+
+# Réactions rapides : un jeu fixe, sans texte libre (rien à modérer, rien à fuiter).
+EMOTES = ("clap", "laugh", "sus", "shock", "angry", "pray", "skull", "crown")
+EMOTE_COOLDOWN_SECONDS = 1.5
+EMOTE_VISIBLE_SECONDS = 8
+
+
+def push_emote(game_state: "GameState", seat: int, emote: str) -> None:
+    game_state.emotes.append({
+        "id": (game_state.emotes[-1]["id"] + 1) if game_state.emotes else 1,
+        "seat": seat, "emote": emote, "ts": _now(),
+    })
+    if len(game_state.emotes) > 40:
+        game_state.emotes = game_state.emotes[-40:]
+    game_state.version += 1
+
+
+def bot_emotes(game_state: "GameState", now: float) -> bool:
+    """Bots react to public events with emotes. Never depends on hidden roles."""
+    t = game_state.turn
+    fresh: List[tuple] = []
+    lv, ld, la, lp = t.last_vote, t.last_decree, t.last_arrow, t.last_plot
+    if lv and now - lv.get("ts", 0) < 6:
+        fresh.append((f"vote-{lv.get('ts')}", ["clap", "pray", "crown"] if lv.get("result") == "elected"
+                      else ["angry", "shock", "laugh"]))
+    if ld and now - ld.get("ts", 0) < 6:
+        fresh.append((f"decree-{ld.get('ts')}", ["clap", "pray"] if ld.get("type") == "LOYAL"
+                      else ["shock", "sus", "angry"]))
+    if la and now - la.get("ts", 0) < 6:
+        fresh.append((f"arrow-{la.get('ts')}", ["shock", "laugh", "pray", "sus"]))
+    if lp and now - lp.get("ts", 0) < 6:
+        fresh.append((f"plot-{lp.get('ts')}", ["skull", "shock", "pray", "angry"]))
+    for e in game_state.events[-4:]:
+        if e.get("kind") == "execute" and now - e.get("ts", 0) < 6:
+            fresh.append((f"exec-{e.get('id')}", ["skull", "shock", "pray"]))
+    for key, pool in fresh:
+        if key in game_state.emote_marks:
+            continue
+        game_state.emote_marks = (game_state.emote_marks + [key])[-20:]
+        live = [p for p in game_state.players if p.is_bot and p.alive]
+        random.shuffle(live)
+        for p in live[:random.randint(0, min(3, len(live)))]:
+            game_state.emote_queue.append({"due": now + random.uniform(1.5, 6.0), "seat": p.seat,
+                                           "emote": random.choice(pool)})
+    due = [e for e in game_state.emote_queue if e["due"] <= now]
+    if due:
+        game_state.emote_queue = [e for e in game_state.emote_queue if e["due"] > now]
+        for e in due:
+            push_emote(game_state, e["seat"], e["emote"])
+    return bool(due)
+
+
+def build_recap(game_state: "GameState") -> Dict[str, Any]:
+    """End-of-game summary computed from the public chronicle: decree timeline + awards."""
+    players = {p.seat: p for p in game_state.players}
+    evil = {s for s, p in players.items() if p.role in (Role.CONJURE, Role.USURPATEUR)}
+    decrees: List[Dict[str, Any]] = []
+    stats = {s: {"yes": 0, "no": 0, "loyal": 0, "conjure": 0, "elected": 0, "good_calls": 0, "calls": 0}
+             for s in players}
+    for e in game_state.events:
+        kind = e.get("kind")
+        if kind == "decree" and e.get("type"):
+            decrees.append({"turn": e.get("turn"), "type": e.get("type"), "auto": bool(e.get("auto")),
+                            "regent_seat": e.get("regent_seat"), "chambellan_seat": e.get("chambellan_seat")})
+            if not e.get("auto"):
+                for s in (e.get("regent_seat"), e.get("chambellan_seat")):
+                    if s in stats:
+                        stats[s]["loyal" if e.get("type") == "LOYAL" else "conjure"] += 1
+        elif kind == "vote":
+            gov = {e.get("regent_seat"), e.get("nominee_seat")}
+            shady = bool(gov & evil)
+            if e.get("result") == "elected":
+                for s in gov:
+                    if s in stats:
+                        stats[s]["elected"] += 1
+            for seat_s, ballot in (e.get("ballots") or {}).items():
+                st = stats.get(int(seat_s))
+                if not st:
+                    continue
+                st["yes" if ballot == "oui" else "no"] += 1
+                st["calls"] += 1
+                if (ballot == "non") == shady:
+                    st["good_calls"] += 1
+
+    def best(key, seats=None, minimum=1):
+        pool = [s for s in (seats if seats is not None else stats) if stats[s][key] >= minimum]
+        if not pool:
+            return None
+        return max(pool, key=lambda s: (stats[s][key], -s))
+
+    awards: List[Dict[str, Any]] = []
+
+    def award(key, icon, title, seat, detail):
+        if seat is not None:
+            awards.append({"key": key, "icon": icon, "title": title, "seat": seat,
+                           "name": players[seat].name, "detail": detail})
+
+    good = [s for s in players if s not in evil]
+    s = best("loyal")
+    award("loyal_hand", "🛡️", "Main loyale", s, s is not None and (f"{stats[s]['loyal']} Décrets Loyaux adoptés sous son gouvernement" if stats[s]['loyal'] > 1 else "1 Décret Loyal adopté sous son gouvernement"))
+    s = best("conjure")
+    award("red_hand", "🗡️", "Main rouge", s, s is not None and (f"{stats[s]['conjure']} Trahisons adoptées sous son gouvernement" if stats[s]['conjure'] > 1 else "1 Trahison adoptée sous son gouvernement"))
+    s = best("elected", seats=list(evil), minimum=2)
+    award("mask", "🎭", "Maître du masque", s, s is not None and f"Traître élu {stats[s]['elected']} fois au gouvernement sans se faire prendre")
+    lynx = [x for x in good if stats[x]["calls"] >= 3]
+    if lynx:
+        s = max(lynx, key=lambda x: (stats[x]["good_calls"] / stats[x]["calls"], stats[x]["calls"], -x))
+        if stats[s]["good_calls"] * 2 > stats[s]["calls"]:
+            award("lynx", "🦅", "Œil de lynx", s, f"{stats[s]['good_calls']} votes justes sur {stats[s]['calls']}")
+    s = best("no", minimum=3)
+    award("rebel", "✊", "L'Opposant", s, s is not None and f"{stats[s]['no']} votes NON")
+    s = best("yes", minimum=3)
+    award("courtier", "🙇", "Le Courtisan", s, s is not None and f"{stats[s]['yes']} votes OUI")
+    return {"decrees": decrees, "awards": awards,
+            "stats": {str(s): {k: v for k, v in st.items() if k in ("yes", "no", "loyal", "conjure", "elected")}
+                      for s, st in stats.items()},
+            "turns": game_state.turn.turn_number}
+
+
+# ----------------------------------------------------------------------
+# Sauvegarde des salles sur disque : une partie survit à un redémarrage du serveur
+# ----------------------------------------------------------------------
+STATE_FILE = os.environ.get("DARKOATH_STATE_FILE", str(ROOT_DIR / "data" / "rooms.pkl"))
+
+
+def save_rooms(path: Optional[str] = None) -> int:
+    path = path or STATE_FILE
+    if not path:
+        return 0
+    rooms = {code: gs.model_dump() for code, gs in manager.game_states.items() if gs.players}
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    tmp = f"{path}.tmp"
+    with open(tmp, "wb") as f:
+        pickle.dump({"saved_at": _now(), "rooms": rooms}, f)
+    os.replace(tmp, path)
+    return len(rooms)
+
+
+def load_rooms(path: Optional[str] = None) -> int:
+    """Restore rooms saved by save_rooms. Clocks are shifted so nobody is timed out by the downtime."""
+    path = path or STATE_FILE
+    if not path or not os.path.exists(path):
+        return 0
+    with open(path, "rb") as f:
+        data = pickle.load(f)
+    now = _now()
+    delta = now - float(data.get("saved_at") or now)
+    if delta > ROOM_IDLE_TTL_SECONDS:
+        return 0
+    restored = 0
+    for code, raw in (data.get("rooms") or {}).items():
+        try:
+            gs = GameState.model_validate(raw)
+        except Exception as e:  # schema changed too much: drop that room only
+            logging.getLogger(__name__).warning("room %s not restored: %s", code, e)
+            continue
+        t = gs.turn
+        for attr in ("phase_started_at", "conseil_royaume_start_time", "defiance_start_time"):
+            if getattr(t, attr):
+                setattr(t, attr, getattr(t, attr) + delta)
+        gs.last_seen = {pid: now for pid in gs.last_seen}
+        gs.bot_next_act = {}
+        gs.bot_chat_queue = []
+        gs.emote_queue = []
+        gs.emotes = []
+        t.speaking_players = []
+        manager.game_states[code] = gs
+        manager.last_activity[code] = now
+        restored += 1
+    return restored
 
 
 def seat_name(game_state: "GameState", seat: Optional[int]) -> str:
@@ -438,6 +614,9 @@ class WebSocketManager:
         game_state.bot_chat_queue = []
         game_state.investigated_seats = []
         game_state.phase_key = None
+        game_state.emotes = []
+        game_state.emote_queue = []
+        game_state.emote_marks = []
         for p in game_state.players:
             p.role = None
             p.alive = True
@@ -1186,6 +1365,20 @@ async def perform_action(
         await manager.broadcast_to_room(room_code, {"type": "lobby_update", "version": game_state.version})
         return {"success": True, "version": game_state.version}
 
+    if action_type == "EMOTE":
+        if game_state.status == "lobby":
+            _bad_request("La partie n'a pas commencé.")
+        emote = str(payload.get("emote") or "")
+        if emote not in EMOTES:
+            _bad_request("Réaction inconnue.")
+        last = next((e for e in reversed(game_state.emotes) if e["seat"] == player.seat), None)
+        if last and _now() - last["ts"] < EMOTE_COOLDOWN_SECONDS:
+            _bad_request("Doucement : une réaction à la fois.")
+        push_emote(game_state, player.seat, emote)
+        await manager.broadcast_to_room(room_code, {"type": "game_update", "data": "emote",
+                                                    "version": game_state.version})
+        return {"success": True, "version": game_state.version}
+
     if game_state.status != "in_progress" or t.phase == Phase.ENDGAME:
         _bad_request("La partie n'est pas en cours.")
 
@@ -1616,6 +1809,7 @@ async def tick_room(room_code: str, game_state: GameState) -> bool:
                     bots.queue_line(game_state, p, bots.accusation(game_state, p), now, delay=0.5)
     if bots.flush_chat(game_state, now, lambda p, text: post_chat(game_state, p, text)):
         game_state.version += 1
+    bot_emotes(game_state, now)
 
     started = t.phase_started_at or now
     for pid in manager.pending_actor_ids(game_state):
@@ -1819,6 +2013,8 @@ async def get_game_state(
         ),
         "plot_has_voted": player_id in t.plot_votes,
         "events": game_state.events[-120:],
+        "emotes": [e for e in game_state.emotes if _now() - e["ts"] < EMOTE_VISIBLE_SECONDS],
+        "recap": build_recap(game_state) if t.phase == Phase.ENDGAME else None,
     }
 
 
@@ -2084,6 +2280,28 @@ logger = logging.getLogger(__name__)
 
 _prune_task: Optional[asyncio.Task] = None
 _ticker_task: Optional[asyncio.Task] = None
+_persist_task: Optional[asyncio.Task] = None
+
+
+def _rooms_signature() -> tuple:
+    return tuple(sorted((code, gs.version, gs.status, len(gs.players), len(gs.turn.chat_messages))
+                        for code, gs in manager.game_states.items()))
+
+
+async def _persist_loop():
+    """Background task: snapshot rooms to disk whenever something changed."""
+    last = None
+    while True:
+        try:
+            await asyncio.sleep(5)
+            sig = _rooms_signature()
+            if sig != last:
+                save_rooms()
+                last = sig
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            logger.warning("persist_loop error: %s", e)
 
 
 async def _prune_loop():
@@ -2102,14 +2320,25 @@ async def _prune_loop():
 
 @app.on_event("startup")
 async def _start_prune_task():
-    global _prune_task, _ticker_task
+    global _prune_task, _ticker_task, _persist_task
+    try:
+        restored = load_rooms()
+        if restored:
+            logger.info("Restored %d room(s) from %s", restored, STATE_FILE)
+    except Exception as e:
+        logger.warning("could not restore rooms: %s", e)
     _prune_task = asyncio.create_task(_prune_loop())
     _ticker_task = asyncio.create_task(ticker_loop())
+    _persist_task = asyncio.create_task(_persist_loop())
 
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
-    for task in (_prune_task, _ticker_task):
+    try:
+        save_rooms()
+    except Exception as e:
+        logger.warning("could not save rooms: %s", e)
+    for task in (_prune_task, _ticker_task, _persist_task):
         if task is not None:
             task.cancel()
             try:

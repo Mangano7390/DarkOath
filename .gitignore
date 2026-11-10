@@ -97,3 +97,6 @@ credentials.json
 
 # Admin stats written at runtime
 backend/stats.json
+
+# Local room snapshots
+backend/data/

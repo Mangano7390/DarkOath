@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Check, ScrollText, Timer, X } from 'lucide-react';
 import { serverNow, powerMarks } from '../lib/game';
+import { sfx } from './GameJuice';
 
 const cinzel = { fontFamily: "'Lora', Georgia, serif", letterSpacing: '0.08em' };
 const fell = { fontFamily: "'Lora', Georgia, serif" };
@@ -23,38 +24,10 @@ export const useIsDesktop = () => {
 };
 
 // ---------------------------------------------------------------------
-// Short sound cues generated with WebAudio (no extra assets).
+// Sound cues and staged reveals live in GameJuice.js
 // ---------------------------------------------------------------------
-let _ctx = null;
-export const playCue = (kind) => {
-  try {
-    const enabled = localStorage.getItem('darkoath_music_enabled');
-    if (enabled === 'false') return;
-    _ctx = _ctx || new (window.AudioContext || window.webkitAudioContext)();
-    const ctx = _ctx;
-    const notes = {
-      turn: [[660, 0], [880, 0.12]],
-      loyal: [[523, 0], [659, 0.12], [784, 0.24]],
-      traitor: [[220, 0], [185, 0.18], [147, 0.36]],
-      vote: [[440, 0], [440, 0.1]],
-      death: [[110, 0], [82, 0.3]],
-    }[kind] || [[440, 0]];
-    notes.forEach(([freq, at]) => {
-      const o = ctx.createOscillator();
-      const g = ctx.createGain();
-      o.type = kind === 'traitor' || kind === 'death' ? 'sawtooth' : 'triangle';
-      o.frequency.value = freq;
-      g.gain.setValueAtTime(0.0001, ctx.currentTime + at);
-      g.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + at + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + at + 0.35);
-      o.connect(g).connect(ctx.destination);
-      o.start(ctx.currentTime + at);
-      o.stop(ctx.currentTime + at + 0.4);
-    });
-  } catch {
-    // audio not available — ignore
-  }
-};
+export const playCue = (kind) => sfx(kind);
+export { RevealOverlay } from './GameJuice';
 
 // ---------------------------------------------------------------------
 // Who must act now? (mirrors server pending_actor_ids)
@@ -200,157 +173,6 @@ export const MiniTracks = ({ tracks = {}, deckCount, powerBoard }) => {
       <span className="inline-flex items-center gap-1">⚔️ {pip(tracks.conjure || 0, 6, '#dc2626', { ...powerMarks(powerBoard), 2: '🗡️' })}</span>
       <span className="inline-flex items-center gap-1">⚡ {pip(tracks.crisis || 0, 3, '#f59e0b')}</span>
       {typeof deckCount === 'number' && <span className="opacity-70">📜 {deckCount}</span>}
-    </div>
-  );
-};
-
-// ---------------------------------------------------------------------
-// Reveal overlay: vote result (who voted what) and enacted decree
-// ---------------------------------------------------------------------
-export const RevealOverlay = ({ gameState }) => {
-  const [reveal, setReveal] = useState(null);
-  const seen = useRef({ vote: null, decree: null, arrow: null, plot: null, init: false });
-
-  useEffect(() => {
-    const lv = gameState?.last_vote;
-    const ld = gameState?.last_decree;
-    const la = gameState?.last_arrow;
-    const lp = gameState?.last_plot;
-    const s = seen.current;
-    if (!s.init) {
-      // Don't replay old reveals when (re)opening the page
-      s.vote = lv?.ts || null;
-      s.decree = ld?.ts || null;
-      s.arrow = la?.ts || null;
-      s.plot = lp?.ts || null;
-      s.init = true;
-      return undefined;
-    }
-    let next = null;
-    if (lp && lp.ts !== s.plot) {
-      s.plot = lp.ts;
-      next = { kind: 'plot', data: lp };
-      playCue('death');
-    }
-    if (la && la.ts !== s.arrow) {
-      s.arrow = la.ts;
-      next = { kind: 'arrow', data: la, then: next };
-      playCue(la.hit ? 'loyal' : 'vote');
-    }
-    if (ld && ld.ts !== s.decree) {
-      s.decree = ld.ts;
-      next = { kind: 'decree', data: ld };
-      playCue(ld.type === 'LOYAL' ? 'loyal' : 'traitor');
-    }
-    if (lv && lv.ts !== s.vote) {
-      s.vote = lv.ts;
-      // a vote that triggered the Colère du Peuple shows both: vote first
-      next = { kind: 'vote', data: lv, then: next };
-      playCue('vote');
-    }
-    if (next) setReveal(next);
-    return undefined;
-  }, [gameState?.last_vote, gameState?.last_decree, gameState?.last_arrow, gameState?.last_plot]);
-
-  useEffect(() => {
-    if (!reveal) return undefined;
-    const t = setTimeout(() => setReveal(reveal.then || null), reveal.kind === 'vote' || reveal.kind === 'arrow' ? 5200 : 3600);
-    return () => clearTimeout(t);
-  }, [reveal]);
-
-  if (!reveal) return null;
-  const players = gameState?.players || [];
-  const name = (seat) => players.find((p) => p.seat === seat)?.name || `Siège ${seat}`;
-
-  if (reveal.kind === 'plot') {
-    return (
-      <div className="fixed inset-0 z-40 flex items-center justify-center pointer-events-none p-4" aria-live="assertive">
-        <div className="px-6 py-5 rounded-lg text-center" style={{ background: 'rgba(10,6,4,0.95)', border: '2px solid #dc2626', boxShadow: '0 0 40px rgba(220,38,38,0.55)', animation: 'fadeIn .3s ease-out', maxWidth: 440 }}>
-          <div className="text-5xl mb-2">🗡️</div>
-          <div className="text-xl md:text-2xl font-bold" style={{ ...cinzel, color: '#fca5a5' }}>Un Fidèle est assassiné</div>
-          <div className="text-sm mt-2 italic" style={{ ...fell, color: 'rgba(232,217,168,0.9)' }}>
-            À l'aube, on découvre le corps de <b>{name(reveal.data.target_seat)}</b>. Les Traîtres ont frappé… mais qui tenait la lame ?
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (reveal.kind === 'arrow') {
-    const la = reveal.data;
-    const color = la.hit ? '#60a5fa' : '#c7a869';
-    const ballots = Object.entries(la.ballots || {}).map(([seat, target]) => ({ seat: Number(seat), target }));
-    return (
-      <div className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/40" onClick={() => setReveal(reveal.then || null)} aria-live="assertive">
-        <div className="w-full max-w-md px-5 py-4 rounded-lg" style={{ background: 'rgba(10,6,4,0.96)', border: `2px solid ${color}`, boxShadow: `0 0 40px ${color}66`, animation: 'fadeIn .3s ease-out' }}>
-          <div className="text-center mb-3">
-            <div className="text-4xl mb-1">🏹</div>
-            <div className="text-xs uppercase tracking-widest opacity-70" style={{ ...cinzel, color: '#e8d9a8' }}>Flèche du Peuple</div>
-            <div className="text-xl font-bold" style={{ ...cinzel, color: la.hit ? '#93c5fd' : '#fde68a' }}>
-              {la.tie ? 'La table est divisée : la flèche se perd' : la.hit ? `${name(la.target_seat)} était le Tyran !` : `${name(la.target_seat)} n'est pas le Tyran`}
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-1.5">
-            {ballots.map(({ seat, target }) => (
-              <div key={seat} className="flex items-center justify-between gap-1 px-2 py-1 rounded text-sm" style={{ background: 'rgba(30,20,10,0.7)', border: '1px solid rgba(199,168,105,0.3)', color: '#f5e9c8' }}>
-                <span className="truncate">{name(seat)}</span>
-                <span className="truncate font-bold" style={{ color: target === la.target_seat ? '#fde68a' : 'rgba(232,217,168,0.75)' }}>→ {name(target)}</span>
-              </div>
-            ))}
-          </div>
-          <div className="text-center text-[11px] mt-3 opacity-60" style={{ color: '#e8d9a8' }}>Touchez pour fermer</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (reveal.kind === 'decree') {
-    const loyal = reveal.data.type === 'LOYAL';
-    const color = loyal ? '#3b82f6' : '#dc2626';
-    return (
-      <div className="fixed inset-0 z-40 flex items-center justify-center pointer-events-none p-4" aria-live="assertive">
-        <div className="px-6 py-5 rounded-lg text-center" style={{ background: 'rgba(10,6,4,0.94)', border: `2px solid ${color}`, boxShadow: `0 0 40px ${color}88`, animation: 'fadeIn .3s ease-out', maxWidth: 420 }}>
-          <div className="text-5xl mb-2">{loyal ? '🛡️' : '⚔️'}</div>
-          <div className="text-xl md:text-2xl font-bold" style={{ ...cinzel, color }}>
-            {loyal ? 'Décret Loyal adopté' : 'Décret de Trahison adopté'}
-          </div>
-          <div className="text-sm mt-2 italic" style={{ ...fell, color: 'rgba(232,217,168,0.85)' }}>
-            {reveal.data.auto
-              ? 'Imposé par la Colère du Peuple.'
-              : `Par ${name(reveal.data.regent_seat)} (Roi) et ${name(reveal.data.chambellan_seat)} (Conseiller).`}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const lv = reveal.data;
-  const elected = lv.result === 'elected';
-  const ballots = Object.entries(lv.ballots || {}).map(([seat, v]) => ({ seat: Number(seat), v }));
-  return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/40" onClick={() => setReveal(reveal.then || null)} aria-live="assertive">
-      <div className="w-full max-w-md px-5 py-4 rounded-lg" style={{ background: 'rgba(10,6,4,0.96)', border: `2px solid ${elected ? '#16a34a' : '#b91c1c'}`, boxShadow: '0 0 40px rgba(0,0,0,0.8)', animation: 'fadeIn .3s ease-out' }}>
-        <div className="text-center mb-3">
-          <div className="text-xs uppercase tracking-widest opacity-70" style={{ ...cinzel, color: '#e8d9a8' }}>Résultat du vote</div>
-          <div className="text-2xl font-bold" style={{ ...cinzel, color: elected ? '#86efac' : '#fca5a5' }}>
-            {elected ? 'Gouvernement élu' : 'Gouvernement rejeté'}
-          </div>
-          <div className="text-sm" style={{ color: '#e8d9a8' }}>
-            👑 {name(lv.regent_seat)} · 🗝️ {name(lv.nominee_seat)} — {lv.yes} oui / {lv.no} non
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-1.5">
-          {ballots.map(({ seat, v }) => (
-            <div key={seat} className="flex items-center justify-between px-2 py-1 rounded text-sm" style={{ background: v === 'oui' ? 'rgba(22,101,52,0.35)' : 'rgba(127,29,29,0.35)', border: `1px solid ${v === 'oui' ? 'rgba(134,239,172,0.4)' : 'rgba(252,165,165,0.4)'}`, color: '#f5e9c8' }}>
-              <span className="truncate">{name(seat)}</span>
-              <span className="flex items-center gap-1 font-bold" style={{ color: v === 'oui' ? '#86efac' : '#fca5a5' }}>
-                {v === 'oui' ? <Check className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}{v.toUpperCase()}
-              </span>
-            </div>
-          ))}
-        </div>
-        <div className="text-center text-[11px] mt-3 opacity-60" style={{ color: '#e8d9a8' }}>Touchez pour fermer</div>
-      </div>
     </div>
   );
 };

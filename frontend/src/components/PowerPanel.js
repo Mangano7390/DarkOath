@@ -5,7 +5,7 @@ import { POWER_LABELS } from '../lib/game';
 
 const titleFont = { fontFamily: "'Lora', Georgia, serif", letterSpacing: '0.08em' };
 
-const PowerPanel = ({ gameState, currentPlayerId, onAction }) => {
+const PowerPanel = ({ gameState, currentPlayerId, onAction, confirm }) => {
   const players = gameState?.players || [];
   const me = players.find((p) => p.id === currentPlayerId);
   const mySeat = me?.seat;
@@ -158,7 +158,9 @@ const PowerPanel = ({ gameState, currentPlayerId, onAction }) => {
   const act = async (targetSeat) => {
     if (pending) return;
     if (activePower === 'EXECUTE') {
-      if (!window.confirm(`Exécuter le siège ${targetSeat} ? Cette action est irréversible.`)) return;
+      const victim = players.find((p) => p.seat === targetSeat)?.name || `le siège ${targetSeat}`;
+      const ok = await confirm({ icon: '⚔️', danger: true, title: `Exécuter ${victim} ?`, text: 'Cette action est irréversible. Si c\'est le Tyran, les Fidèles gagnent.', confirmLabel: 'Exécuter' });
+      if (!ok) return;
     }
     setPending(true);
     try {

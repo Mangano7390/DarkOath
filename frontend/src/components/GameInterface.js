@@ -17,6 +17,7 @@ import TeamPowerPanel from './TeamPowerPanel';
 import { IdentityBar, TurnSteps, CourtTable, useMedia } from './ThroneRoom';
 import Tutorial from './Tutorial';
 import { RevealOverlay, Chronicle, TurnHint, MiniTracks, ConseilReady, SpectatorNotice, useIsDesktop, playCue } from './GameExtras';
+import { EmoteBar, Recap, TensionBanner, useConfirm } from './GameJuice';
 import { errorMessage, rememberRoom, forgetRoom, syncServerClock, serverNow, powerMarks, powerLegend, plotMark } from '../lib/game';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -382,6 +383,8 @@ const EndgameBanner = ({ gameState, currentPlayerId, isHost = false, pending = f
         </div>
       </div>
 
+      <Recap gameState={gameState} />
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {isHost ? (
           <Button onClick={onRestart} disabled={pending} className="oath-btn-primary py-5">
@@ -523,6 +526,7 @@ const GameInterface = ({ roomCode }) => {
 
   const currentPlayerId = localStorage.getItem('userId');
   const me = gameState?.players?.find((p) => p.id === currentPlayerId) || null;
+  const [confirm, confirmDialog] = useConfirm();
   const isHost = !!gameState?.host_id && gameState.host_id === currentPlayerId;
 
   // Multiplayer game music - Morceau 2
@@ -795,6 +799,11 @@ const GameInterface = ({ roomCode }) => {
   }, [messages.length, chatVisible]);
 
   // One helper for every game action: pending state, toast on error, instant refresh.
+  // Reactions are fire-and-forget: they never block the real actions.
+  const sendEmote = (emote) => {
+    axios.post(`${API}/rooms/${roomCode}/action`, { action_type: 'EMOTE', payload: { emote } }).catch(() => {});
+  };
+
   const act = async (action_type, payload = {}) => {
     if (pending) return false;
     setPending(true);
@@ -880,29 +889,34 @@ const GameInterface = ({ roomCode }) => {
     selectableSeats = players.filter((p) => p.alive && p.seat !== me.seat && !allies.includes(p.seat)).map((p) => p.seat);
     selectHint = '🗡️ Cliquez sur le Fidèle à abattre';
   }
-  const onSeatSelect = (seat) => {
+  const onSeatSelect = async (seat) => {
     const name = players.find((p) => p.seat === seat)?.name || `siège ${seat}`;
     if (phase === 'NOMINATION') { act('NOMINATE', { nomineeSeat: seat }); return; }
     if (phase === 'JUGEMENT') {
-      if (window.confirm(`Viser ${name} avec la Flèche du Peuple ? Votre choix est définitif.`)) act('ARROW_VOTE', { targetSeat: seat });
+      if (await confirm({ icon: '🏹', title: `Viser ${name} ?`, text: 'Vous désignez celui que vous croyez être le Tyran. Votre choix est définitif.', confirmLabel: 'Décocher' })) act('ARROW_VOTE', { targetSeat: seat });
       return;
     }
     if (phase === 'COMPLOT') {
-      if (window.confirm(`Abattre ${name} cette nuit ?`)) act('PLOT_VOTE', { targetSeat: seat });
+      if (await confirm({ icon: '🗡️', danger: true, title: `Abattre ${name} cette nuit ?`, text: 'Les Traîtres votent en secret : la cible la plus désignée meurt.', confirmLabel: 'Frapper' })) act('PLOT_VOTE', { targetSeat: seat });
       return;
     }
-    if (gameState.active_power === 'EXECUTE' && !window.confirm(`Exécuter ${name} ? Cette action est irréversible.`)) return;
-    act(gameState.active_power, { targetSeat: seat });
+    const power = gameState.active_power;
+    if (power === 'EXECUTE' && !(await confirm({ icon: '⚔️', danger: true, title: `Exécuter ${name} ?`, text: 'Cette action est irréversible. Si c\'est le Tyran, les Fidèles gagnent.', confirmLabel: 'Exécuter' }))) return;
+    act(power, { targetSeat: seat });
   };
   const table = (layout) => (
-    <CourtTable
-      gameState={gameState}
-      me={me}
-      layout={layout}
-      selectableSeats={pending ? [] : selectableSeats}
-      onSelect={onSeatSelect}
-      selectHint={selectHint}
-    />
+    <div className="w-full flex flex-col items-center gap-2">
+      <TensionBanner gameState={gameState} />
+      <CourtTable
+        gameState={gameState}
+        me={me}
+        layout={layout}
+        selectableSeats={pending ? [] : selectableSeats}
+        onSelect={onSeatSelect}
+        selectHint={selectHint}
+      />
+      {me && <EmoteBar onEmote={sendEmote} />}
+    </div>
   );
 
   const tracks = (
@@ -1051,6 +1065,7 @@ const GameInterface = ({ roomCode }) => {
 
       {phase === 'POWER' && (
         <PowerPanel
+          confirm={confirm}
           gameState={gameState}
           currentPlayerId={currentPlayerId}
           onAction={(actionType, payload) => act(actionType, payload || {})}
@@ -1171,6 +1186,7 @@ const GameInterface = ({ roomCode }) => {
   return (
     <div className="darkoath-game text-gray-100 relative flex flex-col" style={isDesktop ? { height: '100dvh', overflow: 'hidden' } : { minHeight: '100dvh' }}>
       <RevealOverlay gameState={gameState} />
+      {confirmDialog}
       <Tutorial open={showTuto} onClose={() => setShowTuto(false)} />
 
       {/* Piste de Défiance banners */}

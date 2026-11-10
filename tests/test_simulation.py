@@ -372,3 +372,102 @@ def test_nobody_left_to_vote_installs_the_government():
     t.prev_government = None
     asyncio.run(server.perform_action("LAST2", gs, king, "NOMINATE", {"nomineeSeat": nominee.seat}))
     assert t.phase in (server.Phase.LEGIS_REGENT, server.Phase.ENDGAME)
+
+
+def test_emotes_fixed_set_cooldown_and_bots_react():
+    random.seed(11)
+    clock = FakeClock()
+    server._now = clock
+    mgr = server.manager
+    gs = mgr.create_room("EMO1")
+    mgr.add_player("EMO1", "h0", "Hote")
+    for _ in range(4):
+        mgr.add_bot(gs)
+    host = gs.players[0]
+    first = []
+
+    async def go():
+        try:
+            await server.perform_action("EMO1", gs, host, "EMOTE", {"emote": "clap"})
+            raise AssertionError("no emote in the lobby")
+        except server.HTTPException:
+            pass
+        assert mgr.start_game("EMO1")
+        await server.perform_action("EMO1", gs, host, "EMOTE", {"emote": "clap"})
+        first.append((gs.emotes[-1]["seat"], gs.emotes[-1]["emote"]))
+        for bad in ("clap", "<script>"):  # cooldown, then unknown emote
+            try:
+                await server.perform_action("EMO1", gs, host, "EMOTE", {"emote": bad})
+                raise AssertionError("emote should be refused")
+            except server.HTTPException:
+                pass
+            clock.t += 2
+        for _ in range(20_000):
+            clock.t += 1.5
+            await server.tick_room("EMO1", gs)
+            if gs.turn.phase == server.Phase.ENDGAME:
+                break
+    asyncio.run(go())
+    assert first[0] == (host.seat, "clap")
+    bot_seats = {p.seat for p in gs.players if p.is_bot}
+    assert any(e["seat"] in bot_seats for e in gs.emotes), "bots never reacted"
+    assert all(e["emote"] in server.EMOTES for e in gs.emotes)
+    mgr.game_states.pop("EMO1", None)
+
+
+def test_recap_matches_the_tracks():
+    for seed in range(6):
+        _, _, _, gs = asyncio.run(play_one(5 + seed, 100 + seed))
+        recap = server.build_recap(gs)
+        loyal = sum(1 for d in recap["decrees"] if d["type"] == "LOYAL")
+        assert loyal == gs.tracks.loyal
+        assert len(recap["decrees"]) - loyal == gs.tracks.conjure
+        seats = {p.seat for p in gs.players}
+        evil = {p.seat for p in gs.players if p.role != server.Role.LOYAL}
+        for a in recap["awards"]:
+            assert a["seat"] in seats and a["detail"]
+            if a["key"] == "mask":
+                assert a["seat"] in evil
+            if a["key"] == "lynx":
+                assert a["seat"] not in evil
+
+
+def test_rooms_survive_a_restart(tmp_path):
+    random.seed(21)
+    clock = FakeClock()
+    server._now = clock
+    mgr = server.manager
+    gs = mgr.create_room("SAVE1")
+    mgr.add_player("SAVE1", "h0", "Hote")
+    for _ in range(5):
+        mgr.add_bot(gs)
+    assert mgr.start_game("SAVE1")
+
+    async def some_turns(state, n):
+        for _ in range(n):
+            clock.t += 1.5
+            await server.tick_room("SAVE1", state)
+    asyncio.run(some_turns(gs, 60))
+    path = str(tmp_path / "rooms.pkl")
+    assert server.save_rooms(path) >= 1
+    before = gs.model_dump()
+    mgr.game_states.pop("SAVE1")
+    clock.t += 300  # the server was down for 5 minutes
+    assert server.load_rooms(path) >= 1
+    back = mgr.game_states["SAVE1"]
+    assert back.tracks == gs.tracks and back.turn.phase == gs.turn.phase
+    assert [(p.id, p.role, p.alive) for p in back.players] == [(p.id, p.role, p.alive) for p in gs.players]
+    assert back.deck == gs.deck and back.bot_memory == before["bot_memory"]
+    if gs.turn.phase_started_at:
+        assert back.turn.phase_started_at == gs.turn.phase_started_at + 300
+
+    async def finish():
+        for _ in range(20_000):
+            clock.t += 1.5
+            await server.tick_room("SAVE1", back)
+            _check_invariants(back)
+            if back.turn.phase == server.Phase.ENDGAME:
+                return
+        raise AssertionError("restored game is stuck")
+    asyncio.run(finish())
+    mgr.game_states.pop("SAVE1", None)

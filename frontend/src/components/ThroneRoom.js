@@ -5,6 +5,7 @@
 //                   decree board, with King / Conseiller / votes / deaths
 import React, { useEffect, useState } from 'react';
 import { POWER_ICONS, POWER_LABELS } from '../lib/game';
+import { SeatEmote } from './GameJuice';
 
 const FELL = "'Lora', Georgia, serif";
 const GOLD = '#c7a869';
@@ -335,6 +336,7 @@ export const SeatCard = ({ p, gs, me, teammates, selectable, onSelect, width = 1
       }}
       aria-label={`${p.name}${isMe ? ' (vous)' : ''}${isKing ? ', Roi' : ''}${isNominee ? ', Conseiller' : ''}${dead ? ', mort' : ''}`}
     >
+      <SeatEmote gs={gs} seat={p.seat} />
       {role && (
         <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2 py-px rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap" style={{ background: role.bg, color: role.color, fontFamily: FELL, boxShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
           {role.text}
