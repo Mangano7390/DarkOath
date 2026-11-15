@@ -453,7 +453,6 @@ const GovernmentBadge = ({ label, icon, seat, players, color }) => {
 
 // Music control: toggle + volume slider (expandable)
 const MusicControl = ({ enabled, volume, onToggle, onVolume }) => {
-  const [expanded, setExpanded] = useState(false);
   return (
     <div
       className="flex items-center gap-2 px-2 py-1.5 rounded-full"
@@ -466,31 +465,29 @@ const MusicControl = ({ enabled, volume, onToggle, onVolume }) => {
         onClick={onToggle}
         className="flex items-center justify-center rounded-full transition-colors"
         style={{ width: 28, height: 28, color: enabled ? '#e8d9a8' : '#8a6d3a' }}
-        title={enabled ? 'Couper la musique' : 'Activer la musique'}
-        aria-label={enabled ? 'Couper la musique' : 'Activer la musique'}
+        title={enabled ? 'Couper le son' : 'Activer le son'}
+        aria-label={enabled ? 'Couper le son' : 'Activer le son'}
       >
         {enabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
       </button>
-      <button
-        onClick={() => setExpanded(v => !v)}
-        className="text-[10px] uppercase tracking-widest opacity-70 hover:opacity-100"
-        style={{ color: '#e8d9a8', fontFamily: "'Lora', Georgia, serif" }}
-        aria-label="Régler le volume"
-      >
-        Musique
-      </button>
-      {expanded && (
-        <input
-          type="range"
-          min="0"
-          max="1"
-          step="0.05"
-          value={volume}
-          onChange={(e) => onVolume(parseFloat(e.target.value))}
-          className="w-20 accent-amber-500"
-          aria-label="Volume de la musique"
-        />
-      )}
+      <input
+        type="range"
+        min="0"
+        max="1"
+        step="0.05"
+        value={enabled ? volume : 0}
+        onChange={(e) => {
+          const v = parseFloat(e.target.value);
+          onVolume(v);
+          if (v > 0 && !enabled) onToggle();
+        }}
+        className="w-16 sm:w-24 accent-amber-500 cursor-pointer"
+        title={`Volume : ${Math.round((enabled ? volume : 0) * 100)} %`}
+        aria-label="Volume du jeu (musique et effets)"
+      />
+      <span className="text-[10px] tabular-nums w-7 text-right" style={{ color: '#e8d9a8', fontFamily: "'Lora', Georgia, serif" }} aria-hidden>
+        {Math.round((enabled ? volume : 0) * 100)}%
+      </span>
     </div>
   );
 };
@@ -555,9 +552,9 @@ const GameInterface = ({ roomCode }) => {
     let started = false;
     const tryPlay = () => {
       if (started) return;
+      if (!musicEnabledRef.current) return;
       const el = musicRef.current;
       if (!el) return;
-      if (!musicEnabledRef.current) return;
       const p = el.play();
       if (p && typeof p.then === 'function') {
         p.then(() => { started = true; }).catch(() => {
@@ -640,7 +637,7 @@ const GameInterface = ({ roomCode }) => {
 
     try {
       const sting = new Audio('/endgame.wav');
-      sting.volume = 0.8;
+      sting.volume = Math.min(1, musicVolume * 2.5);
       sting.playsInline = true;
       sting.setAttribute('playsinline', '');
       sting.setAttribute('webkit-playsinline', '');

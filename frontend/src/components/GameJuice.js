@@ -28,8 +28,8 @@ const audio = () => {
 const sfxVolume = () => {
   const raw = parseFloat(localStorage.getItem('darkoath_music_volume'));
   const music = Number.isFinite(raw) ? Math.min(1, Math.max(0, raw > 1 ? raw / 100 : raw)) : 0.2;
-  // effects stay audible even when the music is low, but follow it down to silence
-  return music === 0 ? 0 : 0.35 + music * 0.65;
+  // one slider for the whole game: effects follow it all the way down to silence
+  return Math.min(1, music * 2.5);
 };
 
 const noiseBuffer = (ctx) => {
